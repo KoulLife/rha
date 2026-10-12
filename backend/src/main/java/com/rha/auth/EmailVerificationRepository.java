@@ -10,6 +10,8 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
 
     Optional<EmailVerification> findFirstByEmailOrderByIdDesc(String email);
 
+    Optional<EmailVerification> findByVerificationTokenHash(String verificationTokenHash);
+
     @Modifying
     @Query("DELETE FROM EmailVerification v WHERE v.email = :email")
     void deleteAllByEmail(@Param("email") String email);
