@@ -23,4 +23,10 @@ public class AuthController {
     public void requestEmailVerification(@Valid @RequestBody EmailVerificationRequest request) {
         emailVerificationService.requestVerification(request.email());
     }
+
+    @PostMapping("/email-verifications/confirm")
+    public EmailVerificationToken confirmEmailVerification(
+            @Valid @RequestBody EmailVerificationConfirmRequest request) {
+        return emailVerificationService.confirm(request.email(), request.code());
+    }
 }

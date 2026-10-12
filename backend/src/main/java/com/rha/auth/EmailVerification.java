@@ -25,6 +25,12 @@ public class EmailVerification {
     @Column(nullable = false)
     private Instant codeExpiresAt;
 
+    private Instant verifiedAt;
+
+    private String verificationTokenHash;
+
+    private Instant tokenExpiresAt;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -36,5 +42,18 @@ public class EmailVerification {
         this.codeHash = codeHash;
         this.codeExpiresAt = codeExpiresAt;
         this.createdAt = createdAt;
+    }
+
+    /** 아직 확인되지 않았고, 만료 전이며, 코드 해시가 일치하는지 확인한다. */
+    public boolean matchesCode(String codeHash, Instant now) {
+        return verifiedAt == null
+                && now.isBefore(codeExpiresAt)
+                && TokenHasher.matches(this.codeHash, codeHash);
+    }
+
+    public void verify(String verificationTokenHash, Instant verifiedAt, Instant tokenExpiresAt) {
+        this.verificationTokenHash = verificationTokenHash;
+        this.verifiedAt = verifiedAt;
+        this.tokenExpiresAt = tokenExpiresAt;
     }
 }
