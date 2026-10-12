@@ -31,6 +31,8 @@ public class EmailVerification {
 
     private Instant tokenExpiresAt;
 
+    private Instant usedAt;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -55,5 +57,17 @@ public class EmailVerification {
         this.verificationTokenHash = verificationTokenHash;
         this.verifiedAt = verifiedAt;
         this.tokenExpiresAt = tokenExpiresAt;
+    }
+
+    /** 요청한 이메일의 토큰이고, 아직 사용되지 않았으며, 만료 전인지 확인한다. */
+    public boolean matchesToken(String email, Instant now) {
+        return this.email.equals(email)
+                && verificationTokenHash != null
+                && usedAt == null
+                && now.isBefore(tokenExpiresAt);
+    }
+
+    public void markUsed(Instant usedAt) {
+        this.usedAt = usedAt;
     }
 }
