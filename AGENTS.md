@@ -48,9 +48,11 @@
 
 ## 명령어
 - 프론트 실행: `{명령어}`
-- 백엔드 실행: `{명령어}`
+- 백엔드 DB 실행: `cd backend && docker compose up -d`
+- 백엔드 실행: `cd backend && ./gradlew bootRun` (JDK 21 필요, `JAVA_HOME` 지정)
+- 백엔드 테스트: `cd backend && ./gradlew test` (Testcontainers 사용, Docker 필요)
 - API 코드 생성: `{명령어}`
-- 타입체크/테스트: `{명령어}`
+- 프론트 타입체크/테스트: `{명령어}`
 
 ## 결정 기록
 - 주요 결정은 `/docs/`에 마크다운으로 남긴다.
