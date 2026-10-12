@@ -1,10 +1,10 @@
 # 와이어프레임 화면별 API 연결
 
-기준: `docs/Wireframe/wireframes.html`, `api-spec/openapi.yaml` (현재 정의된 경로와 권한 정책)
+기준: `docs/wireframes/wireframes.html`, `api-spec/openapi.yaml` (현재 정의된 경로와 권한 정책)
 
 `operationId`는 프론트엔드에서 생성 API 함수/훅을 찾을 때 기준으로 사용한다. 아래 경로는 `/v1` 기준이다.
 
-> 현재 `docs/Wireframe/wireframes.html`은 화면 전환과 입력·모달을 보여주는 정적 프로토타입이다. 버튼은 로컬 미리보기 상태만 바꾸며 서버 API를 실제 호출하지 않는다. 아래는 실제 프론트엔드 구현 시 컨트롤에 연결할 계약이다.
+> 현재 `docs/wireframes/wireframes.html`은 화면 전환과 입력·모달을 보여주는 정적 프로토타입이다. 버튼은 로컬 미리보기 상태만 바꾸며 서버 API를 실제 호출하지 않는다. 아래는 실제 프론트엔드 구현 시 컨트롤에 연결할 계약이다.
 
 ## 화면 안 메뉴와 버튼 흐름
 

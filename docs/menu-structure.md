@@ -45,7 +45,7 @@
 
 - 강사의 수업 개설·수정·공개·취소는 해당 유형의 운영 권한이 있어야 한다.
 - 위 예약 승인·대기 처리와 출결 시 차감은 **회의안 화면 제안**이며 현행 API 계약에는 없는 부분이 있다. 기존 회원 화면의 즉시 예약 방식과 차이가 있어 운영 정책·계약 합의가 필요하다.
-- 근거·화면별 API·누락 사항은 `docs/Wireframe/wireframe-api-mapping.md`의 회의안 절에 기록한다.
+- 근거·화면별 API·누락 사항은 `docs/wireframes/wireframe-api-mapping.md`의 회의안 절에 기록한다.
 
 ### 3.2 내 이용권
 
@@ -151,7 +151,7 @@
 - 관리자: 발급·조정·홀딩·결제 관리.
 - 회원: 기존 `내 이용권`에서 본인 이용권과 처리 결과 조회.
 - 강사: 담당 수업 예약 상세의 이용권 요약 조회. 전체 이용권 관리 메뉴는 제공하지 않는다.
-- 와이어프레임·역할별 API 정리: `docs/Wireframe/07-pass-management-{admin,member,instructor}-api.md`.
+- 와이어프레임·역할별 API 정리: `docs/wireframes/07-pass-management-{admin,member,instructor}-api.md`.
 
 ### 7.1 이용권 현황
 
@@ -207,7 +207,7 @@
 
 - 관리자: 운영 기준 조회·등록·수정. 와이어프레임은 `운영 설정` 안의 5개 메뉴에서 진입한다.
 - 회원·강사: 기존 예약·이용권·수업 화면에서 설정 결과 확인. 설정 관리 메뉴는 제공하지 않는다.
-- 역할별 화면/API 정리: `docs/Wireframe/08-operation-settings-{admin,member,instructor}-api.md`.
+- 역할별 화면/API 정리: `docs/wireframes/08-operation-settings-{admin,member,instructor}-api.md`.
 
 ### 8.1 이용권 상품 관리
 
@@ -257,7 +257,7 @@
 
 - 관리자: 강사별 단가·정산 조회, 계산·검토·확정·지급 사실 기록. 메뉴 5 강사 정산과 동일한 화면에 연결한다.
 - 회원에게 강사 금융 정보를 제공하지 않는다. 강사 본인 조회·검토 요청은 현재 관리자 전용 API와의 권한 차이를 문서에 기록한다.
-- 역할별 화면/API: `docs/Wireframe/09-instructor-settlements-{admin,instructor,member}-api.md`.
+- 역할별 화면/API: `docs/wireframes/09-instructor-settlements-{admin,instructor,member}-api.md`.
 
 ### 9.1 수당 기준
 
@@ -276,7 +276,7 @@
 
 - 회원·강사·관리자: 본인의 알림 조회·읽음 처리.
 - 관리자: 활동 이력 조회·필터·변경 전후 상세. 회원·강사에게 관리 메뉴를 제공하지 않는다.
-- 역할별 화면/API: `docs/Wireframe/10-notifications-activity-{admin,instructor,member}-api.md`.
+- 역할별 화면/API: `docs/wireframes/10-notifications-activity-{admin,instructor,member}-api.md`.
 
 ### 10.1 알림
 
@@ -302,8 +302,8 @@
 
 이 장은 새 업무 기능이 아니라 역할별 메뉴의 요약이다. 와이어프레임에서는 로그인 후 `내 메뉴 안내` 또는 홈의 `내 메뉴 전체 보기`에서 해당 역할의 기존 화면에 진입한다.
 
-- 공통 화면/API·권한 비교: `docs/Wireframe/11-role-menu-overview.md`.
-- 역할별 API: `docs/Wireframe/11-role-menu-{member,instructor,admin}-api.md`.
+- 공통 화면/API·권한 비교: `docs/wireframes/11-role-menu-overview.md`.
+- 역할별 API: `docs/wireframes/11-role-menu-{member,instructor,admin}-api.md`.
 
 ### 회원
 

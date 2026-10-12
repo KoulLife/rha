@@ -1,7 +1,7 @@
 # 메뉴 5 강사 관리 — 관리자 기준
 
 기준: `docs/menu-structure.md` 5.1~5.3, `api-spec/openapi.yaml`.
-화면: `docs/Wireframe/wireframes.html`에 누적 추가. API·ERD는 변경하지 않았습니다.
+화면: `docs/wireframes/wireframes.html`에 누적 추가. API·ERD는 변경하지 않았습니다.
 
 ## 화면과 진입 경로
 
