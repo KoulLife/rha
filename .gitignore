@@ -1,0 +1,18 @@
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# backend
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# env
+.env
+.env.*
