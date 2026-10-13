@@ -1,10 +1,10 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { DialogState } from "@/app/routes";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-export function Dialog({ dialog, onClose, onConfirm }: { dialog: NonNullable<DialogState>; onClose: () => void; onConfirm?: () => void }) {
+export function Dialog({ dialog, onClose, onConfirm, children }: { dialog: NonNullable<DialogState>; onClose: () => void; onConfirm?: () => void; children?: ReactNode }) {
   const opener = useRef(document.activeElement as HTMLElement | null);
   const restoreFocus = (event: Event) => { if (opener.current?.isConnected) { event.preventDefault(); opener.current.focus(); } };
   const confirm = () => { onConfirm?.(); onClose(); };
@@ -16,7 +16,8 @@ export function Dialog({ dialog, onClose, onConfirm }: { dialog: NonNullable<Dia
     <DialogPrimitive.Overlay className="menu-dialog-overlay" />
     <DialogPrimitive.Content className="menu-dialog" onCloseAutoFocus={restoreFocus}>
       <DialogPrimitive.Title className="menu-dialog-title">{dialog.title}</DialogPrimitive.Title>
-      <DialogPrimitive.Description className="menu-dialog-body">{dialog.body}</DialogPrimitive.Description>
+      <DialogPrimitive.Description className={children ? "sr-only" : "menu-dialog-body"}>{dialog.body}</DialogPrimitive.Description>
+      {children && <div className="menu-dialog-content">{children}</div>}
       <div className="menu-dialog-actions"><Button variant="outline" onClick={onClose}>닫기</Button>{dialog.action && <Button onClick={confirm}>{dialog.action}</Button>}</div>
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal></DialogPrimitive.Root>;
