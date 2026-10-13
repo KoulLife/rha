@@ -90,6 +90,11 @@ public class Member {
         this.updatedAt = now;
     }
 
+    public void changePassword(String passwordHash, Instant now) {
+        this.passwordHash = passwordHash;
+        this.updatedAt = now;
+    }
+
     public Long getId() {
         return id;
     }
