@@ -41,6 +41,7 @@
 | `ACCOUNT_DISABLED` | 탈퇴, 비활성화 또는 퇴사한 계정 | `login` |
 | `INVALID_CREDENTIALS` | 이메일 또는 비밀번호가 일치하지 않음 | `login` |
 | `INVALID_REFRESH_TOKEN` | Refresh Token이 없거나 만료/폐기됨 | `refreshToken` |
+| `UNAUTHENTICATED` | Access Token이 없거나 유효하지 않거나 만료됨 | 인증이 필요한 모든 API (`security: []`가 아닌 API) |
 
 ## 403 권한 없음
 
