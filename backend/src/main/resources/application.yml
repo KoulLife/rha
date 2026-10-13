@@ -24,6 +24,12 @@ spring:
       pageable:
         one-indexed-parameters: true
 
+rha:
+  auth:
+    jwt:
+      # HS256 서명 키. 32바이트 이상이어야 한다. 운영에서는 반드시 환경변수로 교체한다.
+      secret: ${JWT_SECRET:local-dev-only-jwt-secret-change-me-in-production}
+
 server:
   servlet:
     context-path: /v1
