@@ -33,7 +33,7 @@
 
 | 역할 | 메뉴 | 이동 화면 | 화면 진입 시 주요 조회 API |
 | --- | --- | --- | --- |
-| 회원 | 홈 | 오늘 내 수업 | `getMyReservations`, `getMyPasses`, 알림 조회 |
+| 회원 | 홈 | 공개 수업 6개·내 예약 2칸·내 이용권 | `getMyReservations`, `getMyPasses`, 알림 조회 |
 | 회원 | 수업 목록 | 공개 수업 목록 | `GET /lessons` · `getLessons` |
 | 회원 | 내 이용권 | 내 이용권 목록 | `GET /members/me/passes` · `getMyPasses` |
 | 회원 | 내 예약·대기·출결 | 내 예약 목록 | `GET /members/me/reservations` · `getMyReservations` |
@@ -71,16 +71,17 @@
 
 ## 2. 회원 대시보드
 
+2026-10-13 확정 UI 기준. 아래 API는 향후 연동 기준이며 현재 React 구현은 디자인 검토용 메모리 예시다.
+
 | 화면 영역 | API | 연결 방식 |
 | --- | --- | --- |
-| 오늘 내 수업 목록 / 예약 상태 | `GET /members/me/reservations` · `getMyReservations` | `lessonFrom`, `lessonTo`를 오늘 범위로 전달한다. 예약 응답의 수업 정보와 예약 상태로 오늘 수업을 표시한다. 날짜 경계는 센터 현지 시각(Asia/Seoul) 기준으로 계산한 뒤 UTC로 변환한다. |
-| 오늘의 수업 수, 다음 수업, 출석 상태 | `GET /members/me/reservations` · `getMyReservations` | 같은 결과에서 상태별·시간별로 클라이언트 집계한다. 대시보드 전용 집계 API는 없다. |
-| 이용권 카드 / 잔여 횟수·만료일 | `GET /members/me/passes` · `getMyPasses` | 내 이용권을 조회해 대표 이용권을 카드에 표시한다. |
-| 읽지 않은 알림 뱃지 | `GET /notifications/unread-count` · `getMyUnreadNotificationCount` | 화면 진입 시와 적절한 주기로 조회한다. |
-| 최근 알림 미리보기 | `GET /notifications` · `getMyNotifications` | 첫 페이지를 조회해 최근 항목을 표시한다. |
-| 빠른 메뉴: 수업 예약 | `GET /lessons` · `getLessons`; `POST /reservations` · `createReservation` | 수업 목록에서 공개 수업을 조회한 뒤 회원이 예약한다. 대기 예약 API는 현재 스펙에 없다. |
-| 빠른 메뉴: 이용권 확인 | `GET /members/me/passes` · `getMyPasses` | 내 이용권 화면으로 이동한다. |
-| 빠른 메뉴: 예약 내역 | `GET /members/me/reservations` · `getMyReservations` | 내 예약 목록 화면으로 이동한다. |
+| 공개 수업 최대 6개 | `GET /lessons` · `getLessons` | 공개 수업을 시작 시각순으로 표시하고 명시적인 상세 보기 버튼으로 이동한다. |
+| 내가 예약한 수업 최대 2개 | `GET /members/me/reservations` · `getMyReservations` | 본인의 RESERVED 예약을 표시한다. 항상 2칸을 확보하며 부족한 칸은 접근성 트리에서 제외한 공백으로 둔다. |
+| 예약 완료·지난 수업/취소 요약 | `getMyReservations` | 본인 예약 상태별 요약. 오늘만으로 제한하지 않는다. |
+| 대기 신청 요약 | 현재 대응 API 없음 | 예시 UI다. 실제 대기 저장·조회 완료로 간주하지 않는다. |
+| 이용권 카드·잔여·진행 바·횟수 표·만료일 | `GET /members/me/passes` · `getMyPasses` | 대표 이용권을 표시한다. 범례는 진행 바 아래 오른쪽, 표 제목 행은 구분 배경을 사용한다. |
+| 헤더·사이드바 읽지 않은 알림 | `GET /notifications/unread-count` · `getMyUnreadNotificationCount` | 본인 수신 알림만 표시한다. 회원 홈에 최근 알림·빠른 메뉴는 표시하지 않는다. |
+| 로딩·오류·데이터 없음 | 향후 조회 상태 | Skeleton, Alert와 재시도, Empty를 사용한다. 로그인 만료·권한 없음은 별도 안내와 로그인 복귀 버튼을 표시한다. |
 
 ## 3. 강사 대시보드
 
@@ -106,9 +107,9 @@
 | 승인 대기: 강사 부재 | `GET /absences` · `getAbsences`; 승인 `POST /absences/{absenceId}/approvals` · `approveAbsence`; 반려 `POST /absences/{absenceId}/rejections` · `rejectAbsence` | `status=REQUESTED`로 대기 목록을 조회하고 상세 행에서 승인/반려한다. |
 | 승인 대기 숫자 | `GET /absences` · `getAbsences` | 부재 신청은 조회 가능하다. 현재 대시보드는 부재 승인 대기만 표시한다. 기타 승인 종류를 추가하려면 업무 정의와 계약 확인이 필요하다. |
 | 읽지 않은 알림 뱃지·최근 알림 | `GET /notifications/unread-count` · `getMyUnreadNotificationCount`; `GET /notifications` · `getMyNotifications` | 관리자 본인 알림 수와 목록을 조회한다. |
-| 빠른 메뉴: 수업 개설 | `POST /lessons` · `createLesson` | 수업 개설 권한을 확인한 뒤 등록한다. |
-| 빠른 메뉴: 회원 등록 | 현재 대응 API 없음 | `POST /members`의 현재 요약은 “강사/관리자 등록”이며, 일반 회원 직접 등록을 지원하는지 스펙과 메뉴 설명이 불일치한다. |
-| 빠른 메뉴: 이용권 발급 | `GET /pass-products` · `getPassProducts`; `POST /passes` · `createPass` | 상품을 선택하고 회원에게 이용권을 발급한다. 결제 기록은 `POST /passes/{passId}/payments` · `recordPassPayment`로 별도 등록한다. |
+| 수업 운영 화면: 수업 개설 (홈 빠른 메뉴 제외) | `POST /lessons` · `createLesson` | 수업 개설 권한을 확인한 뒤 등록한다. |
+| 회원 관리 화면: 회원 등록 (홈 빠른 메뉴 제외) | 현재 대응 API 없음 | `POST /members`의 현재 요약은 “강사/관리자 등록”이며, 일반 회원 직접 등록을 지원하는지 스펙과 메뉴 설명이 불일치한다. |
+| 회원 이용권 화면: 이용권 발급 (홈 빠른 메뉴 제외) | `GET /pass-products` · `getPassProducts`; `POST /passes` · `createPass` | 상품을 선택하고 회원에게 이용권을 발급한다. 결제 기록은 `POST /passes/{passId}/payments` · `recordPassPayment`로 별도 등록한다. |
 | 로그아웃 | `POST /auth/logout` · `logout` | 프로필 메뉴에서 실행한다. |
 
 ## 메뉴 3.1 수업 — 회원 화면과 현행 API 기준
@@ -176,7 +177,7 @@
 
 | 화면 / 이벤트 | API · operationId | 요청값 / 성공 후 변화 |
 | --- | --- | --- |
-| 회원 홈의 `공개 수업 목록` | `GET /lessons` · `getLessons` | 공개된 예정 수업을 시작 시각순으로 최대 3개 미리보기. 행 클릭은 해당 ID의 수업 상세로 이동. `수업 목록 보기`·`수업 목록 전체 보기`는 전체 목록으로 이동 |
+| 회원 홈의 `공개 수업 목록` | `GET /lessons` · `getLessons` | 공개된 예정 수업을 시작 시각순으로 최대 6개 미리보기. 행 클릭은 해당 ID의 수업 상세로 이동. `수업 목록 보기`·`수업 목록 전체 보기`는 전체 목록으로 이동 |
 | `수업 목록` 진입·필터 조회·페이지 변경 | `GET /lessons` · `getLessons` | `from`, `to`, `lessonTypeId`, `instructorId`, `roomId`, `page`, `size`, `order=ASC`. 회원은 공개된 수업만 조회 |
 | `상세 보기` | `GET /lessons/{lessonId}` · `getLesson` | 클릭한 목록의 `id`를 경로에 전달. 개인 예약·이용권·취소 정책은 별도 조회 |
 | 상세에서 내 예약 여부 확인 | `GET /members/me/reservations` · `getMyReservations` | 해당 수업일의 `lessonFrom`, `lessonTo` 범위 조회 후 `lesson.id`로 연결 |
