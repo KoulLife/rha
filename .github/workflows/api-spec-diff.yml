@@ -71,7 +71,8 @@ jobs:
           [ -z "$SLACK_WEBHOOK_URL" ] && exit 0
           flag=""
           [ "$BREAKING" = "failure" ] && flag=" :warning: *BREAKING*"
-          jq -n --arg t ":memo: API 스펙 변경 PR${flag}\n<${PR_URL}|${PR_TITLE}>" '{text: $t}' \
+          text=$(printf ':memo: API 스펙 변경 PR%s\n<%s|%s>' "$flag" "$PR_URL" "$PR_TITLE")
+          jq -n --arg t "$text" '{text: $t}' \
             | curl -fsS -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL"
 
       - name: Fail on breaking change
