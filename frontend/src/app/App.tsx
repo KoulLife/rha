@@ -5,7 +5,7 @@ import { AppHeader } from "../components/layout/AppHeader";
 import { BrandLogo } from "../components/layout/BrandLogo";
 import { PageBreadcrumb } from "../components/layout/PageBreadcrumb";
 import { Dialog } from "../components/ui/Dialog";
-import { canAccessMenu, memberMenuItems, dashboardMenuItems, type Permission } from "../config/access";
+import { canAccessScreen, getMenuScreen, getNavigation, type NavigationItem, type Permission } from "../config/access";
 import { currentUser } from "../mocks/member";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,13 +27,12 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   const [selectedId, setSelectedId] = useState(101);
   const [data, setData] = useState(() => initialHomeView === "empty" ? { lessons: [], reservations: [], absences: [], notifications: [] } : dashboardPreview);
   const snapshot = getDashboardSnapshot(data, user, dashboardPreviewTime);
-  const navigation = [...memberMenuItems, ...dashboardMenuItems].filter(item => canAccessMenu(item, user.role, currentUser.permissions));
+  const navigation = getNavigation(user.role, currentUser.permissions);
   const onReadNotification = (id: number) => setData(previous => ({ ...previous, notifications: previous.notifications.map(item => item.id === id && item.recipientId === user.id ? { ...item, read: true } : item) }));
   const [dialog, setDialog] = useState<DialogState>(null);
 
   const go = (next: Screen, id?: number) => {
-    const parent: Partial<Record<Screen, Screen>> = { "lesson-detail": "classes", "reservation-detail": "reservations", "pass-detail": "passes" };
-    if (!navigation.some(item => item.screen === (parent[next] ?? next))) return;
+    if (!canAccessScreen(next, user.role, currentUser.permissions)) return;
     if (user.role === "MEMBER" && next === "reservation-detail" && id !== undefined) { setDialog(reservationDialog(id)); return; }
     if (id !== undefined) setSelectedId(id);
     setScreen(next);
@@ -44,7 +43,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
 
   return (
     <SidebarProvider className="member-sidebar-shell" style={{ "--sidebar-width": "var(--navigation-width)" } as CSSProperties}>
-      <MemberSidebar name={name} user={user} navigation={navigation} unreadCount={snapshot.unread} screen={screen} onNavigate={go} />
+      <AppSidebar name={name} user={user} navigation={navigation} unreadCount={snapshot.unread} screen={screen} onNavigate={go} />
       <main className={`main-content${screen === "home" ? ` home-main${user.role === "MEMBER" ? " member-home-main" : ""}` : ""}`}>
         <AppHeader
           location={<><MobileMenuButton /><PageBreadcrumb screen={screen} role={user.role} /></>}
@@ -73,7 +72,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   );
 }
 
-function MemberSidebar({ name, user, navigation, unreadCount, screen, onNavigate }: { name: string; user: DashboardUser; navigation: typeof memberMenuItems; unreadCount: number; screen: Screen; onNavigate: (screen: Screen) => void }) {
+function AppSidebar({ name, user, navigation, unreadCount, screen, onNavigate }: { name: string; user: DashboardUser; navigation: NavigationItem[]; unreadCount: number; screen: Screen; onNavigate: (screen: Screen) => void }) {
   const { isMobile, setOpenMobile } = useSidebar();
   return (
     <Sidebar className="member-sidebar" aria-label={`${roleLabels[user.role]} 사이드 메뉴`}>
@@ -85,12 +84,7 @@ function MemberSidebar({ name, user, navigation, unreadCount, screen, onNavigate
       <SidebarContent>
         <SidebarGroup><SidebarGroupContent><nav aria-label={`${roleLabels[user.role]} 메뉴`}><SidebarMenu>
         {navigation.map((item) => {
-          const detailParent: Record<string, Screen> = {
-            "lesson-detail": "classes",
-            "pass-detail": "passes",
-            "reservation-detail": "reservations",
-          };
-          const active = screen === item.screen || detailParent[screen] === item.screen;
+          const active = getMenuScreen(screen) === item.screen;
           return <SidebarMenuItem key={item.screen}>
             <SidebarMenuButton variant="brand" size="lg" isActive={active} aria-current={active ? "page" : undefined} onClick={() => { onNavigate(item.screen); if (isMobile) setOpenMobile(false); }}>
               <span>{item.label}</span>{item.screen === "notifications" && <Badge variant="outline">{unreadCount}</Badge>}

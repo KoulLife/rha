@@ -1,6 +1,6 @@
-import type { UserRole } from "@/config/access";
+import { getScreenLabel, type UserRole } from "@/config/access";
 import { roleLabels } from "@/features/dashboard/model";
-import { screenLabels, type Screen } from "../../app/routes";
+import type { Screen } from "../../app/routes";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/Breadcrumb";
 
 export function PageBreadcrumb({ screen, role = "MEMBER" }: { screen: Screen; role?: UserRole }) {
@@ -9,7 +9,7 @@ export function PageBreadcrumb({ screen, role = "MEMBER" }: { screen: Screen; ro
       <BreadcrumbList>
         <BreadcrumbItem>{roleLabels[role]}</BreadcrumbItem>
         <BreadcrumbSeparator>/</BreadcrumbSeparator>
-        <BreadcrumbItem><BreadcrumbPage>{screenLabels[screen]}</BreadcrumbPage></BreadcrumbItem>
+        <BreadcrumbItem><BreadcrumbPage>{getScreenLabel(screen, role)}</BreadcrumbPage></BreadcrumbItem>
       </BreadcrumbList>
     </Breadcrumb>
   );
