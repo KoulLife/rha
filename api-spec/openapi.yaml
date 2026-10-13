@@ -13,7 +13,7 @@ info:
 
 servers:
   - url: http://localhost:8080/v1
-    description: Local Server
+    description: Local Server (알림 테스트)
   - url: https://api.example.com/v1
     description: Production Server
 
