@@ -4,11 +4,7 @@ import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.member.Member;
 import com.rha.member.MemberRepository;
-import java.security.SecureRandom;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,29 +13,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class LoginService {
 
     private final MemberRepository memberRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AccessTokenProvider accessTokenProvider;
-    private final Duration refreshTokenTtl;
-    private final SecureRandom random = new SecureRandom();
+    private final AuthTokenIssuer tokenIssuer;
     /** 가입되지 않은 이메일도 같은 비용으로 비밀번호를 비교해, 응답 시간으로 가입 여부가 드러나지 않게 한다. */
     private final String dummyPasswordHash;
 
     public LoginService(MemberRepository memberRepository,
-            RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
-            AccessTokenProvider accessTokenProvider,
-            @Value("${rha.auth.refresh-token-ttl:14d}") Duration refreshTokenTtl) {
+            AuthTokenIssuer tokenIssuer) {
         this.memberRepository = memberRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
-        this.accessTokenProvider = accessTokenProvider;
-        this.refreshTokenTtl = refreshTokenTtl;
+        this.tokenIssuer = tokenIssuer;
         this.dummyPasswordHash = passwordEncoder.encode("dummy-password-for-timing");
     }
 
     @Transactional
-    public LoginResult login(String email, String password) {
+    public AuthTokens login(String email, String password) {
         Instant now = Instant.now();
         Member member = memberRepository.findByEmail(email).orElse(null);
 
@@ -56,18 +45,6 @@ public class LoginService {
             throw new ApiException(ErrorCode.ACCOUNT_DISABLED);
         }
 
-        String refreshToken = newRandomToken();
-        refreshTokenRepository.save(new RefreshToken(
-                member.getId(), TokenHasher.sha256(refreshToken), now.plus(refreshTokenTtl), now));
-
-        TokenResponse tokens = new TokenResponse(
-                accessTokenProvider.issue(member, now), accessTokenProvider.expiresInSeconds());
-        return new LoginResult(tokens, refreshToken, refreshTokenTtl);
-    }
-
-    private String newRandomToken() {
-        byte[] bytes = new byte[32];
-        random.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return tokenIssuer.issue(member, now);
     }
 }
