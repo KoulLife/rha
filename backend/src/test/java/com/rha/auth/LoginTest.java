@@ -15,7 +15,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Map;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -40,12 +39,6 @@ class LoginTest extends IntegrationTestSupport {
 
     @Autowired
     JdbcTemplate jdbc;
-
-    @BeforeEach
-    void setUp() {
-        jdbc.update("DELETE FROM refresh_tokens");
-        jdbc.update("DELETE FROM members");
-    }
 
     @Test
     void 올바른_이메일과_비밀번호면_200과_AccessToken을_응답한다() throws Exception {

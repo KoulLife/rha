@@ -1,7 +1,10 @@
 package com.rha;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
@@ -16,5 +19,19 @@ public abstract class IntegrationTestSupport {
 
     static {
         POSTGRES.start();
+    }
+
+    @Autowired
+    private JdbcTemplate cleanerJdbc;
+
+    /**
+     * 컨테이너를 모든 테스트 클래스가 공유하므로, 앞선 클래스가 남긴 데이터가 외래키로 정리를 막지 않도록
+     * 매 테스트 전에 모든 테이블을 외래키 순서(자식 → 부모)대로 비운다. 테이블이 늘면 여기에 추가한다.
+     */
+    @BeforeEach
+    void cleanDatabase() {
+        cleanerJdbc.update("DELETE FROM refresh_tokens");
+        cleanerJdbc.update("DELETE FROM email_verifications");
+        cleanerJdbc.update("DELETE FROM members");
     }
 }

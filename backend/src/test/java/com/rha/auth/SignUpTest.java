@@ -39,8 +39,6 @@ class SignUpTest extends IntegrationTestSupport {
 
     @BeforeEach
     void setUp() {
-        jdbc.update("DELETE FROM email_verifications");
-        jdbc.update("DELETE FROM members");
         mailer.clear();
     }
 
