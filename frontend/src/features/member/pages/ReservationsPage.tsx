@@ -24,7 +24,7 @@ export function ReservationsPage({ onDialog, canCancel }: { onDialog: (dialog: D
     <Tabs value={tab} onValueChange={setTab} className="menu-tabs"><TabsList><TabsTrigger value="reserved">예약 완료</TabsTrigger><TabsTrigger value="waiting">대기 신청</TabsTrigger><TabsTrigger value="history">지난 수업·취소</TabsTrigger></TabsList>
       {["reserved", "waiting", "history"].map(value => <TabsContent value={value} key={value}>
         <div className="menu-stack">
-          <MenuPanel variant="table" title={value === "reserved" ? "예약한 수업" : value === "history" ? "지난 수업·취소 기록" : "대기 신청 내역"}>
+          <MenuPanel variant="table">
             {rows.length ? <Table variant="management">
               <TableHeader><TableRow><TableHead>수업</TableHead><TableHead>수업 일시</TableHead><TableHead>예약 일시</TableHead><TableHead>강사</TableHead><TableHead>상태</TableHead><TableHead>사용 이용권</TableHead>{value === "reserved" && canCancel && <TableHead>예약 취소</TableHead>}</TableRow></TableHeader>
               <TableBody>{rows.map(item => <TableRow key={item.id}>

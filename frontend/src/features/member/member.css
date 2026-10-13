@@ -6,6 +6,26 @@
   .menu-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-detail); padding-bottom: var(--space-detail); border-bottom: 1px solid var(--border); }
   .menu-panel-heading h2, .menu-stack h3, .menu-lesson-info h2 { margin: 0; font-size: var(--font-size-body); font-weight: var(--font-weight-heading); }
   .menu-panel > [data-slot="card-content"] { min-width: 0; }
+  .menu-panel-settings[data-slot="card"] {
+    border-radius: var(--radius-panel-compact);
+    box-shadow: none;
+    padding-block: 0;
+    gap: 0;
+  }
+  .menu-panel-settings > .menu-panel-heading {
+    flex-wrap: wrap;
+    padding: var(--space-detail) var(--panel-padding);
+    border-radius: 0;
+    background: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .menu-panel-settings > [data-slot="card-content"] { padding: var(--panel-padding); }
+  .menu-panel-settings .menu-facts { gap: 0; }
+  .menu-panel-settings .menu-facts > div { padding-block: var(--space-detail); }
+  .menu-panel-settings .menu-facts > div:first-child { padding-top: 0; }
+  .menu-panel-settings .menu-facts > div:last-child { padding-bottom: 0; }
+  .menu-panel-settings .menu-facts > div + div { border-top: 1px solid var(--border); }
+  .menu-panel-settings .menu-stack { gap: var(--space-control); }
   .menu-panel-closed { background: var(--muted); box-shadow: none; }
   .menu-panel-lesson:hover { border-color: var(--border-hover); }
   .lesson-list-card {
@@ -97,3 +117,6 @@
     line-height: 1.2;
   }
   .menu-tabs [data-slot="tabs-trigger"] { min-height: var(--control-height); } }
+@layer utilities {
+  .menu-panel-table:not(:has(> [data-slot="card-header"])) { padding-top: 0; }
+}
