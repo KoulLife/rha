@@ -30,7 +30,7 @@ export function LessonsPage({ onOpen, canReserve, canWaitlist }: { onOpen: (id: 
       <Field><FieldLabel htmlFor="lesson-room">룸</FieldLabel><Select value={draft.room} onValueChange={room => setDraft({ ...draft, room })}><SelectTrigger id="lesson-room"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 룸</SelectItem>{[...new Set(lessons.map(item => item.room))].map(room => <SelectItem key={room} value={room}>{room}</SelectItem>)}</SelectContent></Select></Field>
       <div className="menu-actions"><Button variant="outline" type="submit">조회</Button><Button variant="outline" type="button" onClick={() => { setDraft(initialFilters); setFilters(initialFilters); }}>초기화</Button></div>
     </form></MenuPanel>
-    <div className="menu-results"><strong>수업 {rows.length}개</strong><span>공개 수업만 표시 · 서울 시간 기준</span></div>
+    <div className="menu-results"><strong>수업 {rows.length}개</strong></div>
     <div className="menu-list">{rows.length ? rows.map(lesson => <LessonCard key={lesson.id} lesson={lesson} onOpen={onOpen} canReserve={canReserve} canWaitlist={canWaitlist} />) : <MenuPanel><MenuEmpty title="조건에 맞는 수업이 없습니다" description="조회 조건을 변경하거나 초기화해 주세요." /></MenuPanel>}</div>
     <Pagination total={rows.length} />
   </div>;
@@ -39,12 +39,12 @@ export function LessonsPage({ onOpen, canReserve, canWaitlist }: { onOpen: (id: 
 function LessonCard({ lesson, onOpen, canReserve, canWaitlist }: { lesson: Lesson; onOpen: (id: number) => void; canReserve: boolean; canWaitlist: boolean }) {
   const status = lessonStatus(lesson);
   const canAct = status === "AVAILABLE" ? canReserve : status === "WAITING" && canWaitlist;
-  return <MenuPanel variant={status === "CLOSED" ? "closed" : "lesson"}>
+  return <MenuPanel variant={status === "CLOSED" ? "closed" : "lesson"} className="lesson-list-card">
     <div className="menu-lesson-row">
       <div className="menu-lesson-date"><strong>{lesson.date}</strong><span>{lesson.time}</span></div>
       <div className="menu-lesson-info"><h2>{lesson.type}</h2><p>{lesson.teacher} · {lesson.room}</p></div>
       <div className="menu-lesson-meta"><StatusBadge domain="lesson" status={status} /><span>예약 {lesson.booked}</span></div>
-      <div className="menu-actions"><Button variant="outline" onClick={() => onOpen(lesson.id)}>상세 보기</Button><Button variant={status === "WAITING" ? "waiting" : status === "CLOSED" ? "outline" : "default"} disabled={!canAct} onClick={() => onOpen(lesson.id)}>{status === "CLOSED" ? "수업 마감" : status === "WAITING" ? "대기 신청하기" : "수업 예약하기"}</Button></div>
+      <div className="menu-actions lesson-card-actions"><Button variant="outline" onClick={() => onOpen(lesson.id)}>상세 보기</Button><Button className="lesson-primary-action" variant={status === "WAITING" ? "waiting" : status === "CLOSED" ? "outline" : "default"} disabled={!canAct} onClick={() => onOpen(lesson.id)}>{status === "CLOSED" ? "수업 마감" : status === "WAITING" ? "대기 신청하기" : "수업 예약하기"}</Button></div>
     </div>
   </MenuPanel>;
 }

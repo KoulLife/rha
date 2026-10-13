@@ -8,11 +8,12 @@ const panelVariants = cva("menu-panel", { variants: { variant: {
   closed: "menu-panel-closed", table: "menu-panel-table", pass: "menu-panel-pass",
 } }, defaultVariants: { variant: "default" } });
 
-export function MenuPanel({ title, action, children, variant = "default" }: {
+export function MenuPanel({ title, action, children, variant = "default", className }: {
   title?: string; action?: ReactNode; children: ReactNode;
   variant?: "default" | "filter" | "lesson" | "closed" | "table" | "pass";
+  className?: string;
 }) {
-  return <Card size="sm" className={panelVariants({ variant })}>
+  return <Card size="sm" className={panelVariants({ variant, className })}>
     {title && <CardHeader className="menu-panel-heading"><CardTitle><h2>{title}</h2></CardTitle>{action}</CardHeader>}
     <CardContent>{children}</CardContent>
   </Card>;

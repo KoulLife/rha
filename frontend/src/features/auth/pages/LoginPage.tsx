@@ -22,13 +22,13 @@ export function LoginPage({ onPreview, onLogin, onVerify, onReset, initialEmail 
   });
   return (
     <AuthLayout variant="login" title="로그인" description="R.HA 필라테스 관리 시스템" preview={<>
-      <details className="auth-demo-account"><summary>로그인 테스트 계정 보기</summary>{demoAccounts.map(account => <p key={account.email}>{account.role === "MEMBER" ? "회원" : account.role === "INSTRUCTOR" ? "강사" : "관리자"}: {account.email}</p>)}<p>공통 비밀번호: {demoAccount.password}</p></details>
-      <details className="auth-demo-account"><summary>홈 화면 상태 선택 · {homeViewLabels[homeView]}</summary>
+      <details className="auth-demo-account"><summary>계정 정보 보기</summary>{demoAccounts.map(account => <p key={account.email}>{account.role === "MEMBER" ? "회원" : account.role === "INSTRUCTOR" ? "강사" : "관리자"}: {account.email}</p>)}<p>공통 비밀번호: {demoAccount.password}</p></details>
+      <details className="auth-demo-account"><summary>화면 상태 · {homeViewLabels[homeView]}</summary>
         <Field className="auth-preview-state"><FieldLabel htmlFor="home-preview-state">홈 화면 상태</FieldLabel>
           <Select value={homeView} onValueChange={value => setHomeView(value as HomeView)}><SelectTrigger id="home-preview-state"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(homeViewLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
         </Field>
       </details>
-      <div className="auth-preview-actions">{demoAccounts.map(account => <Button key={account.role} variant="outline" className="auth-preview-button" onClick={() => onPreview(account, homeView)}>{account.role === "MEMBER" ? "회원" : account.role === "INSTRUCTOR" ? "강사" : "관리자"} 화면 미리보기</Button>)}</div>
+      <div className="auth-preview-actions">{demoAccounts.map(account => <Button key={account.role} variant="outline" className="auth-preview-button" onClick={() => onPreview(account, homeView)}>{account.role === "MEMBER" ? "회원" : account.role === "INSTRUCTOR" ? "강사" : "관리자"} 화면 열기</Button>)}</div>
     </>}>
       <form noValidate onSubmit={handleSubmit(async (values) => {
         setError("");

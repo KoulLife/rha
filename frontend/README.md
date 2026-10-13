@@ -18,9 +18,13 @@ npm test
 - 화면 구성: `../docs/wireframes/wireframes.html`
 - 컴포넌트 사용 규칙: `../docs/shadcn-ui-component-guide.md`
 - 업무 메뉴: `../docs/menu-structure.md`
+- 역할별 메뉴 설정: `src/config/access.ts`. 메뉴 순서·노출 역할·권한·역할별 이름·상세 화면 관계를 관리한다. 관리 방법과 예시 권한의 범위는 `../docs/navigation-management.md` 참고.
 - shadcn 설정: `components.json`. 부품은 `@/components/ui/*`에서 가져온다.
 - 부품 추가: `npx shadcn@latest add <컴포넌트명>`. 공통 부품과 설정은 Git으로 공유하며 기존 부품을 덮어쓰기 전에 변경 내용을 확인한다.
 - 공통 스타일·간격·색상: `src/globals.css`. 로그인은 가이드의 그린·아이보리 브랜드 색상과 Pretendard를 사용한다.
+- 공통 스타일 기준: 본문 15px, 보조 설명 13px, 기본 컨트롤 높이 44px·작은 버튼 40px, 카드 그림자 없음. `globals.css` 상단 토큰에서 조절한다.
+- 홈·대시보드는 다른 팀원의 작업 범위로, 기존 배치·높이·간격·전용 스타일을 유지한다. 공통 스타일 변경은 공유하지만 화면 전용 덮어쓰기는 추가하지 않는다.
+- 홈 외 화면(인증, 수업·이용권·예약·계정·알림, 강사·관리자 조회 화면)에 새 스타일을 적용한다. 업무 화면의 제목은 24px, 이용권 잔여 숫자는 30px/굵기 300, 카드 여백은 데스크톱 20px·모바일 16px이다. 운영진 조회 화면은 `.dashboard-subpage`로 한정한다.
 - 기존 회원 화면 스타일도 `src/globals.css`의 `legacy` 레이어 안 `.member-preview` 범위에 둔다.
 
 ## 인증 화면과 미리보기

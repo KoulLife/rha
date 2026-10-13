@@ -21,11 +21,9 @@ export function AuthLayout({ title, description, children, preview, variant = "d
           </CardHeader>
           <CardContent>{children}</CardContent>
         </Card>
-        <section className="auth-preview" aria-label="화면 미리보기">
-          <p>화면 미리보기 · 실제 이메일은 발송되지 않습니다.</p>
-          <p>입력 정보는 새로고침하면 초기화됩니다.</p>
+        {preview && <section className="auth-preview">
           {preview}
-        </section>
+        </section>}
         <footer className="auth-footer">R.HA Pilates Center</footer>
       </div>
     </main>

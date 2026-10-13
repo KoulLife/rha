@@ -21,7 +21,7 @@ export function EmailVerificationPage({ onLogin, onVerified }: { onLogin: () => 
     toast.success("인증 코드를 요청했습니다.");
   };
   return (
-    <AuthLayout title="이메일 인증" description="회원가입을 위해 이메일을 먼저 확인해 주세요." preview={demoCode && <p className="auth-demo-code">미리보기 인증 코드: <strong>{demoCode}</strong> · 유효 시간 5분</p>}>
+    <AuthLayout title="이메일 인증" description="회원가입을 위해 이메일을 먼저 확인해 주세요." preview={demoCode && <p className="auth-demo-code">인증 코드: <strong>{demoCode}</strong> · 유효 시간 5분</p>}>
       <p className="auth-step">회원가입 1 / 2 · 이메일 확인</p>
       <form noValidate onSubmit={handleSubmit(async ({ email, code }) => {
         setError("");

@@ -12,7 +12,7 @@ export function PasswordResetRequestPage({ onLogin, onReset }: { onLogin: () => 
   const [token, setToken] = useState("");
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<{ email: string }>({ mode: "onTouched" });
   return (
-    <AuthLayout title={requested ? "재설정 안내 요청 완료" : "비밀번호 재설정"} description={requested ? "이메일의 안내를 따라 비밀번호를 다시 설정하세요." : "가입한 이메일로 재설정 안내를 요청해 주세요."} preview={requested && <Button variant="outline" className="auth-preview-button" onClick={() => onReset(token)}>재설정 메일 링크 미리보기</Button>}>
+    <AuthLayout title={requested ? "재설정 안내 요청 완료" : "비밀번호 재설정"} description={requested ? "이메일의 안내를 따라 비밀번호를 다시 설정하세요." : "가입한 이메일로 재설정 안내를 요청해 주세요."} preview={requested && <Button variant="outline" className="auth-preview-button" onClick={() => onReset(token)}>비밀번호 재설정 진행</Button>}>
       {requested ? <>
         <Alert><AlertDescription>가입된 이메일이라면 비밀번호 재설정 안내가 전달됩니다. 메일이 보이지 않으면 스팸함도 확인해 주세요.</AlertDescription></Alert>
         <Button className="auth-submit" onClick={onLogin}>로그인으로 돌아가기</Button>
