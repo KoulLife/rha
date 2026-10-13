@@ -39,4 +39,8 @@ public class PasswordResetToken {
         this.expiresAt = expiresAt;
         this.createdAt = createdAt;
     }
+
+    public Long getMemberId() {
+        return memberId;
+    }
 }
