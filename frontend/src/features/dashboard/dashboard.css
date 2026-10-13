@@ -65,7 +65,7 @@
     white-space: normal;
   }
   .dashboard-metric-link strong {
-    font-size: 1.75rem;
+    font-size: var(--dashboard-metric-value-size);
     line-height: 1.2;
     font-weight: 650;
     color: var(--foreground);
@@ -358,8 +358,8 @@
   .home-main .dashboard-metric-link {
     gap: var(--dashboard-metric-gap);
   }
-  .home-main .dashboard-metric-link strong {
-    font-size: 1.5rem;
+  .home-main .dashboard-metric-link {
+    --dashboard-metric-value-size: 1.5rem;
   }
   .home-main .dashboard-panel [data-slot="table-cell"] {
     padding-block: var(--dashboard-table-cell-padding);
@@ -384,4 +384,51 @@
   .dashboard-subpage .dashboard-muted,
   .dashboard-subpage .dashboard-short-list p,
   .dashboard-subpage .dashboard-section-note { font-size: var(--font-size-caption); }
+}
+@layer utilities {
+  .dashboard-reservation-value { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-control); }
+  .dashboard-reservation-counts { display: inline-flex; align-items: center; gap: var(--space-control); }
+  .dashboard-metric-link .status-badge-count strong { color: inherit; font-size: 1.125rem; }
+  .dashboard-lessons-table { table-layout: fixed; min-width: var(--dashboard-lessons-table-width); }
+  .dashboard-lessons-schedule { table-layout: auto; }
+  .dashboard-roster-table { table-layout: auto; min-width: var(--dashboard-roster-table-width); }
+  .dashboard-roster-table tr > :first-child { width: var(--dashboard-roster-number-width); }
+  .dashboard-roster-table th:first-child .table-sort-button { padding-inline: var(--space-tight); }
+  .dashboard-lessons-table tbody tr { height: var(--dashboard-lesson-row-height); }
+  .dashboard-lesson-placeholder:hover { background: transparent; }
+  .dashboard-page .dashboard-panel-table { gap: 0; padding-bottom: 0; }
+  .dashboard-panel-table:not(:has(> [data-slot="card-header"])) { padding-top: 0; }
+  .dashboard-panel-table > [data-slot="card-content"] { padding: 0; }
+  .dashboard-dated-list > li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+  .dashboard-list-date {
+    display: grid;
+    gap: var(--space-tight);
+    justify-items: center;
+    text-align: center;
+    color: var(--muted-foreground);
+    font-size: .75rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .dashboard-dated-list > li > :last-child { justify-self: end; }
+  .member-info { display: grid; gap: var(--space-panel); }
+  .member-info-summary { --card-spacing: var(--space-panel); background: var(--accent); border: 1px solid var(--border); box-shadow: none; }
+  .member-info-summary > [data-slot="card-content"] { display: flex; justify-content: space-between; align-items: center; gap: var(--space-detail); }
+  .member-info-label, .member-info-number > span { color: var(--muted-foreground); font-size: .75rem; }
+  .member-info-summary h3 { margin-top: var(--space-tight); font-size: 1.5rem; font-weight: 700; }
+  .member-info-number { display: grid; gap: var(--space-tight); text-align: right; }
+  .member-info-number strong { color: var(--secondary-foreground); font-size: 1.125rem; font-variant-numeric: tabular-nums; }
+  .member-info-heading { display: flex; justify-content: space-between; align-items: center; gap: var(--space-detail); padding-bottom: var(--space-detail); }
+  .member-info-heading h3 { font-size: .875rem; font-weight: 600; }
+  .member-info-facts { margin: 0; border-top: 1px solid var(--border); }
+  .member-info-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-detail); padding-block: var(--space-detail); border-bottom: 1px solid var(--border); }
+  .member-info-facts dt { color: var(--muted-foreground); font-size: .875rem; }
+  .member-info-facts dd { margin: 0; text-align: right; font-size: .875rem; font-weight: 500; }
+}
+@media (min-width: 1100px) and (min-height: 720px) {
+  .home-main .dashboard-panel-table { gap: 0; }
 }
