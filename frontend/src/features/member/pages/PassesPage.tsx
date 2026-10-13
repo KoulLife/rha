@@ -1,6 +1,8 @@
 import { passes } from "@/mocks/member";
+import { passHistory } from "@/mocks/passHistory";
+import { seoulDate, seoulTime } from "@/features/dashboard/model";
 import { PageTitle } from "@/components/ui/PageTitle";
-import { MenuPanel } from "@/components/layout/MenuPanel";
+import { MenuEmpty, MenuPanel } from "@/components/layout/MenuPanel";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -28,9 +30,23 @@ export function PassesPage({ onOpen }: { onOpen: (id: number) => void }) {
 
 export function PassDetailPage({ passId, onBack }: { passId: number; onBack: () => void }) {
   const pass = passes.find(item => item.id === passId) ?? passes[0];
+  const history = passHistory.filter(item => item.passId === pass.id)
+    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt) || b.id - a.id);
   return <div className="menu-page"><PageTitle title="이용권 상세" description={pass.name} action={<Button variant="outline" onClick={onBack}>목록으로</Button>} />
     <MenuPanel title={pass.name} action={<StatusBadge domain="pass" status="ACTIVE" />}>
       <div className="menu-pass-detail"><PassBalance pass={pass} /><div className="menu-stack"><Table variant="management" className="menu-info-table"><TableBody>{[["담당 강사", pass.teacher], ["시작일", pass.start], ["만료일", `${pass.end} · 당일까지 이용`], ["이용권 상태", pass.state]].map(([label, value]) => <TableRow key={label}><TableHead scope="row">{label}</TableHead><TableCell>{value}</TableCell></TableRow>)}</TableBody></Table><p className="menu-note">차감 횟수에는 예약과 관리자 조정이 포함됩니다. 실제 출석 횟수와 다를 수 있습니다.</p></div></div>
+    </MenuPanel>
+    <MenuPanel variant="table" title="횟수 차감·복구 내역">
+      {history.length ? <Table variant="management" aria-label={`${pass.name} 횟수 차감·복구 내역`}>
+        <TableHeader><TableRow><TableHead scope="col">처리 일시</TableHead><TableHead scope="col">내용</TableHead><TableHead scope="col">수업</TableHead><TableHead scope="col">횟수 변동</TableHead><TableHead scope="col">처리 후 잔여</TableHead></TableRow></TableHeader>
+        <TableBody>{history.map(item => <TableRow key={item.id}>
+          <TableCell><time dateTime={item.occurredAt}>{seoulDate(item.occurredAt)} {seoulTime(item.occurredAt)}</time></TableCell>
+          <TableCell>{item.type === "RESERVATION" ? "수업 예약 차감" : "예약 취소 복구"}</TableCell>
+          <TableCell><strong>{item.lesson}</strong><p className="menu-muted"><time dateTime={item.lessonStartAt}>{seoulDate(item.lessonStartAt)} {seoulTime(item.lessonStartAt)}</time></p></TableCell>
+          <TableCell>{item.change > 0 ? "+" : ""}{item.change}회</TableCell>
+          <TableCell>{item.remaining}회</TableCell>
+        </TableRow>)}</TableBody>
+      </Table> : <MenuEmpty title="횟수 변경 내역이 없습니다" description="수업 예약이나 취소로 이용권 횟수가 변경되면 표시됩니다." />}
     </MenuPanel>
   </div>;
 }

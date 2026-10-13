@@ -6,12 +6,12 @@ import "@/features/member/member.css";
 
 const panelVariants = cva("menu-panel", { variants: { variant: {
   default: "menu-panel-default", filter: "menu-panel-filter", lesson: "menu-panel-lesson",
-  closed: "menu-panel-closed", table: "menu-panel-table", pass: "menu-panel-pass",
+  closed: "menu-panel-closed", table: "menu-panel-table", pass: "menu-panel-pass", settings: "menu-panel-settings",
 } }, defaultVariants: { variant: "default" } });
 
 export function MenuPanel({ title, action, children, variant = "default", className }: {
   title?: string; action?: ReactNode; children: ReactNode;
-  variant?: "default" | "filter" | "lesson" | "closed" | "table" | "pass";
+  variant?: "default" | "filter" | "lesson" | "closed" | "table" | "pass" | "settings";
   className?: string;
 }) {
   return <Card size="sm" className={panelVariants({ variant, className })}>

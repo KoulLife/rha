@@ -256,3 +256,6 @@
     font-size: var(--font-size-body);
   }
 }
+@layer utilities {
+  .brand-home-link { display: flex; height: auto; padding: 0; }
+}
