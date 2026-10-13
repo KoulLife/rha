@@ -18,4 +18,13 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
             where t.tokenHash = :tokenHash and t.revokedAt is null and t.expiresAt > :now
             """)
     int revoke(@Param("tokenHash") String tokenHash, @Param("now") Instant now);
+
+    /** 해당 회원의 토큰만, 아직 폐기되지 않았다면 폐기한다. 만료 여부는 따지지 않는다. */
+    @Modifying
+    @Query("""
+            update RefreshToken t set t.revokedAt = :now
+            where t.tokenHash = :tokenHash and t.memberId = :memberId and t.revokedAt is null
+            """)
+    int revokeOwned(@Param("tokenHash") String tokenHash, @Param("memberId") Long memberId,
+            @Param("now") Instant now);
 }
