@@ -59,6 +59,12 @@ public class AuthController {
         passwordResetService.request(request.email());
     }
 
+    @PostMapping("/password-resets")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody PasswordResetConfirmRequest request) {
+        passwordResetService.reset(request.token(), request.newPassword());
+    }
+
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         return withRefreshTokenCookie(loginService.login(request.email(), request.password()));
