@@ -64,8 +64,10 @@
   --radius-panel: 1rem;
   --page-padding-block: 2.25rem;
   --page-padding-inline: 2.5rem;
-  --table-header-background: var(--secondary);
+  --table-header-background: color-mix(in srgb, var(--primary) 16%, var(--secondary));
   --table-header-foreground: var(--secondary-foreground);
+  --table-header-divider: color-mix(in srgb, var(--primary) 30%, var(--border));
+  --table-header-weight: 700;
   --table-row-background: var(--card);
   --table-row-hover: var(--accent);
   --table-divider: var(--border);
@@ -240,6 +242,11 @@
   --dashboard-dialog-padding: 1.5rem;
   --dashboard-page-width: 75rem;
   --dashboard-control-height: 2rem;
+  --dashboard-metric-value-size: 1.75rem;
+  --dashboard-lessons-table-width: 34rem;
+  --dashboard-lesson-row-height: 4rem;
+  --dashboard-roster-table-width: 42rem;
+  --dashboard-roster-number-width: 7rem;
 }
 @media (min-width: 1100px) and (min-height: 720px) and (max-height: 900px) {
   :root {

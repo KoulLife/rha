@@ -89,7 +89,7 @@
 - 사이드 메뉴의 제목·설명·본문 간격과 헤더·푸터는 회원 홈의 동일한 토큰을 사용한다. 긴 목록은 자연스럽게 스크롤한다.
 - 독립 정보, 필터, 수업 카드, 이용권, 표 영역은 공통 `MenuPanel` variant로 구성한다. 카드 내부 간격은 `--card-spacing`으로 관리한다.
 - 필터는 `Field` + `Input`/`Select`, 예약 내역은 `Tabs` + `Table`, 알림은 `Table` + `Checkbox`와 중앙 상세 `Dialog`를 사용한다. 예약 취소 확정은 `AlertDialog`를 사용한다.
-- 횟수 요약 표는 가운데 정렬하고 제목 행에 `--accent` 배경과 `--secondary-foreground`를 적용한다. 그래프 범례는 오른쪽에 모아 정렬한다.
+- 횟수 요약 표는 가운데 정렬하고 제목 행에 공통 표 헤더 토큰을 적용한다. 그래프 범례는 오른쪽에 모아 정렬한다.
 
 ## 3. 컴포넌트 사용 계약
 
@@ -130,6 +130,8 @@
 - 날짜·시간 범위는 첫 구현에서 `Input type="date"`/`type="datetime-local"` + `FieldLabel`을 쓴다. 모든 화면에 달력 `Popover`를 섞지 않는다. 날짜 입력 UI를 교체할 경우 전체 화면에 함께 적용한다.
 - 페이지 바는 `Pagination` 셸과 텍스트 `이전`/`다음` 버튼으로 통일한다. 기본 `PaginationPrevious`/`PaginationNext`가 아이콘을 포함하면 그대로 사용하지 않고 텍스트 전용 버튼으로 구성한다. 항상 `현재 페이지 / 전체 페이지`, 전체 건수, 이전·다음 비활성 상태를 같은 위치에 표시한다. API의 1부터 시작하는 `pageInfo.page`를 그대로 쓴다. [Pagination 공식 안내](https://ui.shadcn.com/docs/components/radix/pagination).
 - 표의 상태 열은 `StatusBadge`, 금액 열은 우측 정렬, 날짜는 같은 서울 시간 표기, 식별자/상세 이동은 명시적인 링크로 둔다. 행 전체 클릭에만 의존하지 않는다.
+- 회원·강사·관리자 모든 표의 열 제목은 가운데 정렬한다. `--table-header-background`, `--table-header-foreground`, `--table-header-weight`, `--table-header-divider`를 공통 적용해 제목 행의 배경·굵기·하단 구분선과 열 사이 구분선을 통일한다. 일반 데이터 셀의 기본 정렬도 가운데로 맞춘다.
+- 페이지 제목이나 선택된 탭으로 목록을 식별할 수 있으면 표 카드 안에 제목을 반복하지 않는다. 독립 목록 표는 카드 안쪽 여백 없이 열 제목부터 시작한다. 홈의 여러 섹션과 선택한 수업의 예약자 표처럼 구분에 필요한 제목은 유지한다.
 - 화면 폭이 좁으면 필터를 줄바꿈하고 표는 가로 스크롤한다. 핵심 정보가 부족한 경우 공통 반응형 표 variant를 정의해 카드로 재배치한다. 메뉴별 즉흥적 재배치는 금지한다.
 
 ### 3.4 Tabs, Dialog, AlertDialog

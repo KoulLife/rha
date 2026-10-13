@@ -37,6 +37,7 @@
 - 날짜/시간: ISO 8601 (UTC)
 
 ## 프론트엔드 규칙
+- 모든 UI는 `/docs/shadcn-ui-component-guide.md`의 컴포넌트·variant·스타일 기준을 따른다.
 - UI: shadcn/ui + Tailwind, 폰트 Pretendard, `word-break: keep-all`
 - 색상·radius·간격은 `globals.css` 토큰으로만 지정
 - 반복되는 스타일은 className 대신 컴포넌트 variant로 추가

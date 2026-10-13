@@ -10,7 +10,15 @@ const statuses = {
 } as const;
 
 type Props = { domain: "absence"; status: keyof typeof statuses.absence } | { domain: "notification"; status: keyof typeof statuses.notification } | { domain: "lesson"; status: keyof typeof statuses.lesson } | { domain: "reservation"; status: keyof typeof statuses.reservation } | { domain: "pass"; status: keyof typeof statuses.pass };
+export function getStatusLabel(props: Props) {
+  return (statuses[props.domain] as Record<string, readonly [string, string]>)[props.status][0];
+}
 export function StatusBadge(props: Props) {
   const [label, tone] = (statuses[props.domain] as Record<string, readonly [string, string]>)[props.status];
   return <Badge variant="outline" className={`status-badge-${tone}`}>{label}</Badge>;
+}
+
+export function AttendanceCount({ status, count }: { status: "ATTENDED" | "NO_SHOW"; count: number }) {
+  const [, tone] = statuses.reservation[status];
+  return <Badge variant="outline" className={`status-badge-${tone} status-badge-count`}><span>{status === "ATTENDED" ? "출석" : "노쇼"}</span><strong>{count}</strong></Badge>;
 }
