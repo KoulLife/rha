@@ -77,6 +77,14 @@ public class Member {
         return email;
     }
 
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public boolean isActive() {
+        return status == MemberStatus.ACTIVE;
+    }
+
     public String getName() {
         return name;
     }
