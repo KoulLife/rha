@@ -118,7 +118,8 @@ class SignUpTest extends IntegrationTestSupport {
     @Test
     void 만료된_토큰이면_400_INVALID_VERIFICATION_TOKEN을_응답한다() throws Exception {
         String token = verifiedToken(EMAIL);
-        jdbc.update("UPDATE email_verifications SET token_expires_at = now() - interval '1 second' WHERE email = ?",
+        // DB 컨테이너와 호스트의 시계 차이에 영향받지 않도록 충분히 과거로 설정한다.
+        jdbc.update("UPDATE email_verifications SET token_expires_at = now() - interval '1 day' WHERE email = ?",
                 EMAIL);
 
         signUp(validBody(EMAIL, token))
