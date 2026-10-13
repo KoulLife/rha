@@ -2,11 +2,8 @@ package com.rha.auth;
 
 import com.rha.member.MemberResponse;
 import jakarta.validation.Valid;
-import java.time.Duration;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -20,22 +17,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 public class AuthController {
 
-    private static final String REFRESH_TOKEN_COOKIE = "refreshToken";
-
     private final EmailVerificationService emailVerificationService;
     private final SignUpService signUpService;
     private final LoginService loginService;
     private final RefreshTokenService refreshTokenService;
-    private final String refreshCookiePath;
+    private final RefreshTokenCookieFactory cookies;
 
     public AuthController(EmailVerificationService emailVerificationService, SignUpService signUpService,
             LoginService loginService, RefreshTokenService refreshTokenService,
-            @Value("${server.servlet.context-path:}") String contextPath) {
+            RefreshTokenCookieFactory cookies) {
         this.emailVerificationService = emailVerificationService;
         this.signUpService = signUpService;
         this.loginService = loginService;
         this.refreshTokenService = refreshTokenService;
-        this.refreshCookiePath = contextPath + "/auth";
+        this.cookies = cookies;
     }
 
     @PostMapping("/email-verifications")
@@ -63,33 +58,23 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponse> refreshToken(
-            @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
+            @CookieValue(name = RefreshTokenCookieFactory.NAME, required = false) String refreshToken) {
         return withRefreshTokenCookie(refreshTokenService.refresh(refreshToken));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@AuthenticationPrincipal AuthenticatedMember me,
-            @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
+            @CookieValue(name = RefreshTokenCookieFactory.NAME, required = false) String refreshToken) {
         refreshTokenService.revoke(me.id(), refreshToken);
         return ResponseEntity.noContent()
-                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie("", Duration.ZERO).toString())
+                .header(HttpHeaders.SET_COOKIE, cookies.expire().toString())
                 .build();
     }
 
     private ResponseEntity<TokenResponse> withRefreshTokenCookie(AuthTokens result) {
-        ResponseCookie cookie = refreshTokenCookie(result.refreshToken(), result.refreshTokenTtl());
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE,
+                        cookies.issue(result.refreshToken(), result.refreshTokenTtl()).toString())
                 .body(result.tokens());
-    }
-
-    private ResponseCookie refreshTokenCookie(String value, Duration maxAge) {
-        return ResponseCookie.from(REFRESH_TOKEN_COOKIE, value)
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path(refreshCookiePath)
-                .maxAge(maxAge)
-                .build();
     }
 }
