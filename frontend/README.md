@@ -21,7 +21,7 @@ npm test
 - shadcn 설정: `components.json`. 부품은 `@/components/ui/*`에서 가져온다.
 - 부품 추가: `npx shadcn@latest add <컴포넌트명>`. 공통 부품과 설정은 Git으로 공유하며 기존 부품을 덮어쓰기 전에 변경 내용을 확인한다.
 - 공통 스타일·간격·색상: `src/globals.css`. 로그인은 가이드의 그린·아이보리 브랜드 색상과 Pretendard를 사용한다.
-- 기존 회원 화면 CSS는 `src/styles.css`의 `.member-preview` 범위에 유지한다.
+- 기존 회원 화면 스타일도 `src/globals.css`의 `legacy` 레이어 안 `.member-preview` 범위에 둔다.
 
 ## 인증 화면과 미리보기
 
