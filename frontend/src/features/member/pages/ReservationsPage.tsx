@@ -1,0 +1,14 @@
+import { reservations } from "../../../mocks/member";
+import type { DialogState } from "../../../app/routes";
+import { PageTitle } from "../../../components/ui/PageTitle";
+import { Pagination } from "../../../components/ui/Pagination";
+
+export function ReservationsPage({ onOpen, onDialog, canCancel }: { onOpen: (id: number) => void; onDialog: (dialog: DialogState) => void; canCancel: boolean }) {
+  return <><PageTitle title="내 예약·출결" description="예약 내역과 출석·노쇼 상태를 확인합니다." /><div className="tabs"><button className="tab active" type="button">예약 목록</button><button className="tab" type="button">대기 신청</button><button className="tab" type="button">출석·노쇼</button></div><section className="card table-wrap"><table><thead><tr><th>수업</th><th>수업 일시</th><th>강사</th><th>상태</th><th>사용 이용권</th><th>상세</th></tr></thead><tbody>{reservations.map((reservation) => <tr key={reservation.id}><td><strong>{reservation.lesson}</strong><small>예약 #{reservation.id}</small></td><td>{reservation.date}</td><td>{reservation.teacher}</td><td><span className={`badge ${reservation.state === "출석 완료" ? "success" : "neutral"}`}>{reservation.state}</span></td><td>{reservation.pass}</td><td><div className="table-actions"><button className="button outline compact" type="button" onClick={() => onOpen(reservation.id)}>상세 보기</button>{reservation.state === "예약 완료" && canCancel && <button className="button destructive compact" type="button" onClick={() => onDialog({ title: "예약 취소", body: `${reservation.lesson} · ${reservation.date}`, action: "예약 취소하기" })}>예약 취소</button>}</div></td></tr>)}</tbody></table></section><Pagination /></>;
+}
+
+export function ReservationDetailPage({ reservationId, onBack }: { reservationId: number; onBack: () => void }) {
+  const reservation = reservations.find((item) => item.id === reservationId) ?? reservations[0];
+  return <><PageTitle title="예약 상세" description={reservation.lesson} action={<button className="button outline" type="button" onClick={onBack}>목록으로</button>} /><section className="card detail-card"><div className="panel-heading"><div><span className="eyebrow">내 예약</span><h2>{reservation.lesson}</h2></div><span className="badge success">{reservation.state}</span></div><div className="detail-table-heading"><div><h3>예약 정보</h3><p>예약 및 출결 상태를 확인합니다.</p></div></div><div className="detail-table-wrap"><table className="detail-table"><tbody><tr><th scope="row">예약 번호</th><td>#{reservation.id}</td></tr><tr><th scope="row">수업</th><td>{reservation.lesson}</td></tr><tr><th scope="row">수업 일시</th><td>{reservation.date}</td></tr><tr><th scope="row">담당 강사</th><td>{reservation.teacher}</td></tr><tr><th scope="row">사용 이용권</th><td>{reservation.pass}</td></tr><tr><th scope="row">출석·노쇼 상태</th><td><span className="badge success">{reservation.state}</span></td></tr></tbody></table></div></section></>;
+}
+
