@@ -43,7 +43,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
 
   return (
     <SidebarProvider className="member-sidebar-shell" style={{ "--sidebar-width": "var(--navigation-width)" } as CSSProperties}>
-      <AppSidebar name={name} user={user} navigation={navigation} unreadCount={snapshot.unread} screen={screen} onNavigate={go} />
+      <AppSidebar user={user} navigation={navigation} unreadCount={snapshot.unread} screen={screen} onNavigate={go} />
       <main className={`main-content${screen === "home" ? ` home-main${user.role === "MEMBER" ? " member-home-main" : ""}` : ""}`}>
         <AppHeader
           location={<><MobileMenuButton /><PageBreadcrumb screen={screen} role={user.role} /></>}
@@ -72,13 +72,14 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   );
 }
 
-function AppSidebar({ name, user, navigation, unreadCount, screen, onNavigate }: { name: string; user: DashboardUser; navigation: NavigationItem[]; unreadCount: number; screen: Screen; onNavigate: (screen: Screen) => void }) {
+function AppSidebar({ user, navigation, unreadCount, screen, onNavigate }: { user: DashboardUser; navigation: NavigationItem[]; unreadCount: number; screen: Screen; onNavigate: (screen: Screen) => void }) {
   const { isMobile, setOpenMobile } = useSidebar();
   return (
     <Sidebar className="member-sidebar" aria-label={`${roleLabels[user.role]} 사이드 메뉴`}>
       <SidebarHeader className="member-sidebar-header">
-        <div className="member-sidebar-brand"><BrandLogo variant="sidebar" /></div>
-        <div className="member-sidebar-profile"><strong>{name}</strong><span>{roleLabels[user.role]}</span></div>
+        <button type="button" className="member-sidebar-brand" aria-label="홈으로 이동" onClick={() => { onNavigate("home"); if (isMobile) setOpenMobile(false); }}>
+          <BrandLogo variant="sidebar" />
+        </button>
         {isMobile && <Button variant="outline" onClick={() => setOpenMobile(false)}>메뉴 닫기</Button>}
       </SidebarHeader>
       <SidebarContent>

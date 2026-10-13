@@ -71,24 +71,24 @@
   --table-divider: var(--border);
   --table-header-height: 3rem;
   --table-cell-padding: .875rem;
-  --background: #FCFDF3;
-  --foreground: #263326;
+  --background: #F7F8F6;
+  --foreground: #292E2B;
   --card: #FFFFFF;
-  --card-foreground: #263326;
+  --card-foreground: #292E2B;
   --popover: #FFFFFF;
   --popover-foreground: #263326;
-  --primary: #3F7C32;
+  --primary: #526B61;
   --primary-foreground: #FFFFFF;
-  --secondary: #E7EEDB;
-  --secondary-foreground: #31552C;
-  --muted: #F2F5EA;
-  --muted-foreground: #66705E;
-  --accent: #F1F6E8;
-  --accent-foreground: #31552C;
+  --secondary: #E8EEEB;
+  --secondary-foreground: #40564C;
+  --muted: #F0F2F0;
+  --muted-foreground: #68716C;
+  --accent: #EFF3F0;
+  --accent-foreground: #40564C;
   --destructive: #B34D45;
-  --border: #DCE5D2;
-  --input: #DCE5D2;
-  --ring: #3F7C32;
+  --border: #DFE4E0;
+  --input: #DFE4E0;
+  --ring: #71877D;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -103,8 +103,8 @@
   --sidebar-accent-foreground: var(--secondary-foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
-  --primary-hover: #326527;
-  --success: #3F7C32;
+  --primary-hover: #43594F;
+  --success: #5D806A;
   --warning: #A87422;
   --info: #4E7885;
 }
@@ -470,23 +470,25 @@
     padding: var(--space-panel) var(--navigation-padding) var(--space-control);
   }
   .member-sidebar-brand {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+    border: 0;
+    background: transparent;
+    color: inherit;
     font-weight: 700;
     font-size: 1.125rem;
     padding: var(--space-control) var(--space-detail) var(--space-panel);
     letter-spacing: -.02em;
-  }
-  .member-sidebar-profile {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-control);
-    padding: var(--space-detail);
-    border: 1px solid var(--border);
-    background: var(--card);
+    cursor: pointer;
     border-radius: var(--radius-panel);
   }
-  .member-sidebar-profile span {
-    color: var(--muted-foreground);
-    font-size: var(--font-size-caption);
+  .member-sidebar-brand:hover {
+    background: color-mix(in srgb, var(--sidebar-foreground) 5%, transparent);
+  }
+  .member-sidebar-brand:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
   .member-navigation-button {
     min-height: var(--navigation-control-height);
