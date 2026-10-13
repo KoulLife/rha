@@ -5515,7 +5515,10 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
     UnauthorizedError:
-      description: 401 인증 실패 또는 만료된 토큰
+      description: |
+        401 인증 실패 또는 만료된 토큰.
+        Access Token이 없거나 유효하지 않거나 만료되면 `code`는 `UNAUTHENTICATED`이다. 클라이언트는 이 경우 `POST /auth/refresh`로 재발급을 시도한다.
+        `login`, `refreshToken`의 401은 각 API 설명에 나온 코드를 따른다.
       content:
         application/problem+json:
           schema:
