@@ -339,7 +339,11 @@ paths:
       description: |
         전달한 필드만 수정한다 (부분 수정). 최소 1개 필드가 필요하다.
         - 이메일은 로그인 아이디이므로 변경할 수 없다.
-        - `address`에 null을 보내면 주소를 삭제한다.
+        - `address`에 null을 보내면 주소를 삭제한다. 필드를 아예 보내지 않으면 그대로 둔다.
+        - `address` 외의 필드에 null을 보내면 전달하지 않은 것으로 본다.
+        - 수정할 수 있는 필드(`name`, `phoneNumber`, `birthDate`, `address`)가 하나도 없으면 400 (INVALID_INPUT). 이메일, 역할, 상태 등 그 외의 필드는 무시한다.
+        - `name`은 공백만으로 이루어질 수 없다 (400, INVALID_INPUT).
+        - 기존과 같은 값을 보내도 오류 없이 200으로 응답한다.
       requestBody:
         required: true
         content:
