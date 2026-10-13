@@ -62,12 +62,14 @@
   --control-height-compact: 2.5rem;
   --panel-padding: 1.25rem;
   --radius-panel: 1rem;
+  --radius-panel-compact: .25rem;
   --page-padding-block: 2.25rem;
   --page-padding-inline: 2.5rem;
-  --table-header-background: color-mix(in srgb, var(--primary) 16%, var(--secondary));
-  --table-header-foreground: var(--secondary-foreground);
-  --table-header-divider: color-mix(in srgb, var(--primary) 30%, var(--border));
-  --table-header-weight: 700;
+  --table-radius: var(--radius-panel-compact);
+  --table-header-background: var(--muted);
+  --table-header-foreground: var(--foreground);
+  --table-header-divider: var(--border);
+  --table-header-weight: 600;
   --table-row-background: var(--card);
   --table-row-hover: var(--accent);
   --table-divider: var(--border);

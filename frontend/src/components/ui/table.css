@@ -1,4 +1,9 @@
 @layer utilities {
+  .menu-panel-table[data-slot="card"],
+  .dashboard-page .dashboard-panel-table[data-slot="card"] {
+    border-radius: var(--table-radius);
+    box-shadow: none;
+  }
   [data-slot="table"][data-variant="management"] {
     border-collapse: collapse;
     font-size: var(--font-size-body);
@@ -27,5 +32,20 @@
   }
   [data-slot="table"][data-variant="management"] .menu-actions {
     justify-content: center;
+  }
+}
+@layer utilities {
+  .table-centered [data-slot="table-head"], .table-centered [data-slot="table-cell"] { text-align: center; }
+  .table-centered [data-slot="table-header"] { background: var(--table-header-background); }
+  .table-sort-button { color: inherit; font-weight: inherit; }
+  .table-sort-direction { color: var(--primary); font-size: .6875rem; }
+  [data-slot="table"][data-variant] [data-slot="table-head"] {
+    text-align: center;
+    vertical-align: middle;
+    background: var(--table-header-background);
+    color: var(--table-header-foreground);
+    font-size: var(--font-size-caption);
+    font-weight: var(--table-header-weight);
+    border-bottom: 1px solid var(--table-header-divider);
   }
 }
