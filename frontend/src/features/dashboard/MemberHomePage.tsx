@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { lessons, passes } from "@/mocks/member";
 import { seoulDate, seoulTime, type DashboardData, type DashboardUser } from "./model";
-import { dashboardPreviewTime } from "./preview";
+import "./member-home.css";
 
 const weekdayFormatter = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", weekday: "short" });
 
@@ -43,7 +43,7 @@ export function MemberHomePage({ user, data, onNavigate, empty = false }: {
   return <div className="home-page">
     <div className="home-heading">
       <div><h1>내 수업과 신청 현황</h1><p>수업을 선택해 예약하거나 대기를 신청하세요.</p></div>
-      <div className="home-heading-actions"><span>화면 예시 · {seoulDate(dashboardPreviewTime).replace(/-/g, ".")}</span><Button variant="outline" onClick={() => onNavigate("classes")}>수업 목록 보기</Button></div>
+      <div className="home-heading-actions"><Button variant="outline" onClick={() => onNavigate("classes")}>수업 목록 보기</Button></div>
     </div>
     <section className="home-metrics" aria-label="내 현황 요약">
       {metrics.map(item => <Card size="sm" className="home-metric" key={item.label}><CardContent>

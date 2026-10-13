@@ -1,0 +1,31 @@
+@layer utilities {
+  [data-slot="table"][data-variant="management"] {
+    border-collapse: collapse;
+    font-size: var(--font-size-body);
+    font-variant-numeric: tabular-nums;
+  }
+  [data-slot="table"][data-variant="management"] [data-slot="table-head"],
+  [data-slot="table"][data-variant="management"] [data-slot="table-cell"] {
+    text-align: center;
+    vertical-align: middle;
+    padding: var(--table-cell-padding);
+    border-bottom: 1px solid var(--table-divider);
+  }
+  [data-slot="table"][data-variant="management"] [data-slot="table-head"] {
+    height: var(--table-header-height);
+    background: var(--table-header-background);
+    color: var(--table-header-foreground);
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-heading);
+  }
+  [data-slot="table"][data-variant="management"] [data-slot="table-cell"] {
+    background: var(--table-row-background);
+    color: var(--foreground);
+  }
+  [data-slot="table"][data-variant="management"] [data-slot="table-body"] [data-slot="table-row"]:hover [data-slot="table-cell"] {
+    background: var(--table-row-hover);
+  }
+  [data-slot="table"][data-variant="management"] .menu-actions {
+    justify-content: center;
+  }
+}

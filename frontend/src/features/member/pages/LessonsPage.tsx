@@ -30,7 +30,6 @@ export function LessonsPage({ onOpen, canReserve, canWaitlist }: { onOpen: (id: 
       <Field><FieldLabel htmlFor="lesson-room">룸</FieldLabel><Select value={draft.room} onValueChange={room => setDraft({ ...draft, room })}><SelectTrigger id="lesson-room"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 룸</SelectItem>{[...new Set(lessons.map(item => item.room))].map(room => <SelectItem key={room} value={room}>{room}</SelectItem>)}</SelectContent></Select></Field>
       <div className="menu-actions"><Button variant="outline" type="submit">조회</Button><Button variant="outline" type="button" onClick={() => { setDraft(initialFilters); setFilters(initialFilters); }}>초기화</Button></div>
     </form></MenuPanel>
-    <div className="menu-results"><strong>수업 {rows.length}개</strong></div>
     <div className="menu-list">{rows.length ? rows.map(lesson => <LessonCard key={lesson.id} lesson={lesson} onOpen={onOpen} canReserve={canReserve} canWaitlist={canWaitlist} />) : <MenuPanel><MenuEmpty title="조건에 맞는 수업이 없습니다" description="조회 조건을 변경하거나 초기화해 주세요." /></MenuPanel>}</div>
     <Pagination total={rows.length} />
   </div>;

@@ -32,8 +32,9 @@ export const passes = [
 ];
 
 export const reservations = [
-  { id: 501, lesson: "기구 필라테스", date: "2026.10.13 10:00", teacher: "김강사", state: "출석 완료", pass: "필라테스 10회권" },
-  { id: 502, lesson: "리포머 그룹", date: "2026.10.13 14:00", teacher: "박강사", state: "예약 완료", pass: "필라테스 10회권" },
+  // TODO: 실제 예약 API 연동 시 Reservation.createdAt을 사용한다. 현재 백엔드 마이그레이션에는 reservations 테이블이 없으며, ERD에는 created_at이 정의되어 있다.
+  { id: 501, lesson: "기구 필라테스", date: "2026.10.13 10:00", createdAt: "2026-10-11T00:20:00Z", teacher: "김강사", state: "출석 완료", pass: "필라테스 10회권" },
+  { id: 502, lesson: "리포머 그룹", date: "2026.10.13 14:00", createdAt: "2026-10-12T06:35:00Z", teacher: "박강사", state: "예약 완료", pass: "필라테스 10회권" },
 ];
 
 export const notifications = [

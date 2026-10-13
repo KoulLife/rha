@@ -1,0 +1,33 @@
+@layer utilities {
+  .brand-logo { display: block; position: relative; aspect-ratio: var(--brand-logo-ratio); overflow: hidden; flex-shrink: 0; }
+  .brand-logo img { position: absolute; width: var(--brand-logo-image-width); max-width: none; height: auto; left: var(--brand-logo-image-left); top: var(--brand-logo-image-top); }
+  .brand-logo-auth { width: var(--brand-logo-auth-width); margin-inline: auto; }
+  .brand-logo-sidebar {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--brand-logo-caption-gap);
+    aspect-ratio: auto;
+    overflow: visible;
+  }
+  .brand-logo-mark {
+    display: block;
+    position: relative;
+    width: var(--brand-logo-sidebar-width);
+    aspect-ratio: var(--brand-logo-sidebar-ratio);
+    overflow: hidden;
+    flex-shrink: 0;
+    --brand-logo-ratio: var(--brand-logo-sidebar-ratio);
+    --brand-logo-image-width: var(--brand-logo-sidebar-image-width);
+    --brand-logo-image-left: var(--brand-logo-sidebar-image-left);
+    --brand-logo-image-top: var(--brand-logo-sidebar-image-top);
+    mix-blend-mode: multiply;
+  }
+  .brand-logo-caption {
+    display: grid;
+    padding-bottom: var(--brand-logo-caption-offset);
+    color: var(--secondary-foreground);
+    font-size: var(--brand-logo-caption-size);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: var(--brand-logo-caption-tracking);
+  } }

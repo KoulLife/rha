@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import "../auth.css";
 
 export function AuthLayout({ title, description, children, preview, variant = "default" }: {
   title: string; description: string; children: ReactNode; preview?: ReactNode; variant?: "default" | "login";

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { cn } from "cn"
+import "./table.css"
 
 function Table({ className, variant = "default", ...props }: React.ComponentProps<"table"> & {
   variant?: "default" | "management";

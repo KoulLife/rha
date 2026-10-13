@@ -2,6 +2,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import "./dashboard-state.css";
 
 export function DashboardLoading() {
   return <section className="dashboard-state" aria-busy="true" aria-label="홈 불러오는 중">

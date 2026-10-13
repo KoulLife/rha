@@ -20,6 +20,8 @@ import { reservationDialog, ReservationsPage } from "../features/member/pages/Re
 import type { DialogState, Screen } from "./routes";
 import { DashboardError, DashboardLoading } from "@/features/dashboard/DashboardState";
 import type { HomeView } from "@/features/dashboard/viewState";
+import "./legacy.css";
+import "./shell.css";
 
 function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "normal" }: { user: DashboardUser; name?: string; onLogout: (trigger?: HTMLElement) => void; onLogin: () => void; initialHomeView?: HomeView }) {
   const [homeView, setHomeView] = useState(initialHomeView);
@@ -111,7 +113,7 @@ function MemberScreen({ screen, selectedId, onNavigate, onDialog, canReserve, ca
     case "lesson-detail": return <LessonDetailPage lessonId={selectedId} onBack={() => onNavigate("classes")} onDialog={onDialog} canReserve={canReserve} canWaitlist={canWaitlist} />;
     case "passes": return <PassesPage onOpen={(id) => onNavigate("pass-detail", id)} />;
     case "pass-detail": return <PassDetailPage passId={selectedId} onBack={() => onNavigate("passes")} />;
-    case "reservations": return <ReservationsPage onOpen={(id) => onNavigate("reservation-detail", id)} onDialog={onDialog} canCancel={canCancel} />;
+    case "reservations": return <ReservationsPage onDialog={onDialog} canCancel={canCancel} />;
     case "profile": return <AccountPage onDialog={onDialog} canUpdate={canUpdate} canChangePassword={canChangePassword} />;
     default: return null;
   }
