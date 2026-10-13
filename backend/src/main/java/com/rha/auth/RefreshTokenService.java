@@ -46,4 +46,16 @@ public class RefreshTokenService {
 
         return tokenIssuer.issue(member, now);
     }
+
+    /**
+     * 로그아웃하는 회원 본인의 Refresh Token을 폐기한다. 다른 기기의 토큰은 그대로 둔다.
+     * 토큰이 없거나 알 수 없거나 다른 회원의 것이거나 이미 폐기됐어도 오류 없이 넘어간다(멱등).
+     */
+    @Transactional
+    public void revoke(Long memberId, String rawRefreshToken) {
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            return;
+        }
+        refreshTokenRepository.revokeOwned(TokenHasher.sha256(rawRefreshToken), memberId, Instant.now());
+    }
 }

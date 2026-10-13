@@ -2,11 +2,13 @@ package com.rha.auth;
 
 import com.rha.member.MemberResponse;
 import jakarta.validation.Valid;
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -65,16 +67,29 @@ public class AuthController {
         return withRefreshTokenCookie(refreshTokenService.refresh(refreshToken));
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal AuthenticatedMember me,
+            @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
+        refreshTokenService.revoke(me.id(), refreshToken);
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie("", Duration.ZERO).toString())
+                .build();
+    }
+
     private ResponseEntity<TokenResponse> withRefreshTokenCookie(AuthTokens result) {
-        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, result.refreshToken())
+        ResponseCookie cookie = refreshTokenCookie(result.refreshToken(), result.refreshTokenTtl());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(result.tokens());
+    }
+
+    private ResponseCookie refreshTokenCookie(String value, Duration maxAge) {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE, value)
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Strict")
                 .path(refreshCookiePath)
-                .maxAge(result.refreshTokenTtl())
+                .maxAge(maxAge)
                 .build();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(result.tokens());
     }
 }
