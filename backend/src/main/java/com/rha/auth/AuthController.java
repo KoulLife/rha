@@ -21,15 +21,17 @@ public class AuthController {
     private final SignUpService signUpService;
     private final LoginService loginService;
     private final RefreshTokenService refreshTokenService;
+    private final PasswordResetService passwordResetService;
     private final RefreshTokenCookieFactory cookies;
 
     public AuthController(EmailVerificationService emailVerificationService, SignUpService signUpService,
             LoginService loginService, RefreshTokenService refreshTokenService,
-            RefreshTokenCookieFactory cookies) {
+            PasswordResetService passwordResetService, RefreshTokenCookieFactory cookies) {
         this.emailVerificationService = emailVerificationService;
         this.signUpService = signUpService;
         this.loginService = loginService;
         this.refreshTokenService = refreshTokenService;
+        this.passwordResetService = passwordResetService;
         this.cookies = cookies;
     }
 
@@ -49,6 +51,12 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public MemberResponse signUp(@Valid @RequestBody SignUpRequest request) {
         return MemberResponse.from(signUpService.signUp(request));
+    }
+
+    @PostMapping("/password-reset-requests")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void requestPasswordReset(@Valid @RequestBody PasswordResetRequest request) {
+        passwordResetService.request(request.email());
     }
 
     @PostMapping("/login")
