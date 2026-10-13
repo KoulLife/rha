@@ -1,4 +1,8 @@
 export type Screen =
+  | "today-lessons"
+  | "attendance-overview"
+  | "absence-requests"
+  | "home"
   | "classes"
   | "lesson-detail"
   | "passes"
@@ -12,9 +16,14 @@ export type DialogState = {
   title: string;
   body: string;
   action?: string;
+  destructive?: boolean;
 } | null;
 
 export const screenLabels: Record<Screen, string> = {
+  home: "홈",
+  "today-lessons": "오늘의 수업",
+  "attendance-overview": "예약·출결 현황",
+  "absence-requests": "부재 승인 대기",
   classes: "수업 목록",
   "lesson-detail": "수업 상세",
   passes: "내 이용권",

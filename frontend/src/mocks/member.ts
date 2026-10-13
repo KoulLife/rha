@@ -18,9 +18,12 @@ export const currentUser: { role: UserRole; permissions: ReadonlySet<Permission>
 };
 
 export const lessons = [
-  { id: 101, date: "10.12", time: "10:00–11:00", type: "기구 필라테스", teacher: "김강사", room: "룸 A", booked: "4 / 5명", status: "예약 가능" },
-  { id: 102, date: "10.12", time: "14:00–15:00", type: "리포머 그룹", teacher: "박강사", room: "룸 B", booked: "5 / 5명", status: "대기 신청 가능" },
-  { id: 103, date: "10.14", time: "19:00–20:00", type: "개인 레슨", teacher: "김강사", room: "룸 A", booked: "1 / 1명", status: "예약 마감" },
+  { id: 101, date: "10.13", startAt: "2026-10-13T01:00:00Z", time: "10:00–11:00", type: "기구 필라테스", teacher: "김강사", room: "룸 A", booked: "4 / 5명", status: "예약 가능" },
+  { id: 102, date: "10.13", startAt: "2026-10-13T05:00:00Z", time: "14:00–15:00", type: "리포머 그룹", teacher: "박강사", room: "룸 B", booked: "5 / 5명", status: "대기 신청 가능" },
+  { id: 103, date: "10.14", startAt: "2026-10-14T10:00:00Z", time: "19:00–20:00", type: "개인 레슨", teacher: "김강사", room: "룸 A", booked: "1 / 1명", status: "예약 마감" },
+  { id: 104, date: "10.15", startAt: "2026-10-15T01:00:00Z", time: "10:00–11:00", type: "모닝 리포머", teacher: "박강사", room: "룸 B", booked: "2 / 5명", status: "예약 가능" },
+  { id: 105, date: "10.15", startAt: "2026-10-15T09:00:00Z", time: "18:00–19:00", type: "코어 필라테스", teacher: "김강사", room: "룸 A", booked: "5 / 5명", status: "대기 신청 가능" },
+  { id: 106, date: "10.16", startAt: "2026-10-16T05:00:00Z", time: "14:00–15:00", type: "리포머 밸런스", teacher: "박강사", room: "룸 B", booked: "3 / 5명", status: "예약 가능" },
 ];
 
 export const passes = [
@@ -29,12 +32,12 @@ export const passes = [
 ];
 
 export const reservations = [
-  { id: 501, lesson: "기구 필라테스", date: "2026.10.12 10:00", teacher: "김강사", state: "출석 완료", pass: "필라테스 10회권" },
-  { id: 502, lesson: "리포머 그룹", date: "2026.10.12 14:00", teacher: "박강사", state: "예약 완료", pass: "필라테스 10회권" },
+  { id: 501, lesson: "기구 필라테스", date: "2026.10.13 10:00", teacher: "김강사", state: "출석 완료", pass: "필라테스 10회권" },
+  { id: 502, lesson: "리포머 그룹", date: "2026.10.13 14:00", teacher: "박강사", state: "예약 완료", pass: "필라테스 10회권" },
 ];
 
 export const notifications = [
-  { id: 1, title: "오늘 14:00 수업 예약이 확정되었습니다.", category: "예약 확정", time: "2026.10.12 09:15", read: false, message: "리포머 그룹 수업 예약이 확정되었습니다." },
+  { id: 1, title: "오늘 14:00 수업 예약이 확정되었습니다.", category: "예약 확정", time: "2026.10.13 09:15", read: false, message: "리포머 그룹 수업 예약이 확정되었습니다." },
   { id: 2, title: "이용권 잔여 횟수는 7회입니다.", category: "이용권", time: "2026.10.11 18:02", read: false, message: "필라테스 10회권의 잔여 횟수를 확인해 주세요." },
   { id: 3, title: "수업 출석이 기록되었습니다.", category: "출결", time: "2026.10.10 20:10", read: true, message: "기구 필라테스 수업의 출석이 기록되었습니다." },
 ];

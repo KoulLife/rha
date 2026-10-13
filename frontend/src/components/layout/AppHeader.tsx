@@ -1,31 +1,28 @@
+import { useRef } from "react";
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
 type AppHeaderProps = {
+  location: ReactNode;
+  name: string;
   unreadCount: number;
-  accountMenuOpen: boolean;
   onNotificationClick: () => void;
-  onAccountToggle: () => void;
-  onLogout: () => void;
+  onLogout: (trigger?: HTMLElement) => void;
 };
 
-function AppHeader({ unreadCount, accountMenuOpen, onNotificationClick, onAccountToggle, onLogout }: AppHeaderProps) {
+function AppHeader({ location, name, unreadCount, onNotificationClick, onLogout }: AppHeaderProps) {
+  const accountTrigger = useRef<HTMLButtonElement>(null);
   return (
     <header className="topbar">
-      <button className="text-button" type="button" onClick={onNotificationClick}>
-        알림 <span className="badge warning">{unreadCount}</span>
-      </button>
-      <div className="account-area">
-        <button className="user account-trigger" type="button" aria-expanded={accountMenuOpen} onClick={onAccountToggle}>
-          <span className="avatar">홍</span>
-          <span>홍길동</span>
-          <span className="account-chevron" aria-hidden="true">⌄</span>
-        </button>
-        {accountMenuOpen && (
-          <div className="account-menu" role="menu">
-            <button type="button" role="menuitem" onClick={onLogout}>로그아웃</button>
-          </div>
-        )}
-      </div>
+      <div className="app-header-location">{location}</div>
+      <Button variant="ghost" onClick={onNotificationClick}>알림 <Badge variant="outline">{unreadCount}</Badge></Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild><Button ref={accountTrigger} variant="ghost" aria-label={`${name} 계정 메뉴`}>{name} · 계정 메뉴</Button></DropdownMenuTrigger>
+        <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => onLogout(accountTrigger.current ?? undefined)}>로그아웃</DropdownMenuItem></DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
 }
-
 export { AppHeader };

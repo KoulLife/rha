@@ -1,9 +1,25 @@
-import { notifications } from "../../../mocks/member";
-import type { DialogState } from "../../../app/routes";
-import { PageTitle } from "../../../components/ui/PageTitle";
-import { Pagination } from "../../../components/ui/Pagination";
+import { useState } from "react";
+import { PageTitle } from "@/components/ui/PageTitle";
+import { Pagination } from "@/components/ui/Pagination";
+import { MenuPanel, MenuEmpty } from "@/components/layout/MenuPanel";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Dialog } from "@/components/ui/Dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { seoulDate, seoulTime, type DashboardNotification } from "@/features/dashboard/model";
 
-export function NotificationsPage({ onDialog }: { onDialog: (dialog: DialogState) => void }) {
-  return <><PageTitle title="알림" description="내 알림을 확인하고 읽음으로 표시합니다." action={<button className="button outline" type="button">모든 알림 읽음으로 표시</button>} /><div className="result-line"><strong>전체 {notifications.length}건 · 읽지 않은 알림 2건</strong><label className="checkbox"><input type="checkbox" /> 읽지 않은 알림만 보기</label></div><section className="card table-wrap"><table><thead><tr><th>알림</th><th>분류</th><th>받은 시간</th><th>상태</th><th>상세</th></tr></thead><tbody>{notifications.map((notification) => <tr key={notification.id}><td><strong>{!notification.read && <span className="unread-dot" />} {notification.title}</strong><small>{notification.message}</small></td><td>{notification.category}</td><td>{notification.time}</td><td><span className={`badge ${notification.read ? "neutral" : "warning"}`}>{notification.read ? "읽음" : "읽지 않음"}</span></td><td><button className="text-button" type="button" onClick={() => onDialog({ title: "알림 상세", body: `${notification.title}\n${notification.message}\n받은 시간: ${notification.time}`, action: "확인" })}>상세 보기</button></td></tr>)}</tbody></table></section><Pagination /></>;
+export function NotificationsPage({ items, onRead }: { items: DashboardNotification[]; onRead: (id: number) => void }) {
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const rows = items.filter(item => !unreadOnly || !item.read);
+  const unread = items.filter(item => !item.read).length;
+  const selected = items.find(item => item.id === selectedId);
+  return <div className="menu-page"><PageTitle title="내 알림" description="내 계정으로 받은 알림을 확인하고 읽음으로 표시합니다." action={<Button variant="outline" disabled={!unread} onClick={() => items.filter(item => !item.read).forEach(item => onRead(item.id))}>모든 알림 읽음으로 표시</Button>} />
+    <div className="menu-results"><strong>전체 {items.length}건 · 읽지 않은 알림 {unread}건</strong><Field orientation="horizontal" className="menu-checkbox-field"><Checkbox id="notification-unread" checked={unreadOnly} onCheckedChange={value => setUnreadOnly(value === true)} /><FieldLabel htmlFor="notification-unread">읽지 않은 알림만 보기</FieldLabel></Field></div>
+    <MenuPanel variant="table" title="알림 목록">{rows.length ? <Table><TableHeader><TableRow><TableHead>알림</TableHead><TableHead>분류</TableHead><TableHead>받은 시간</TableHead><TableHead>상태</TableHead><TableHead>상세</TableHead></TableRow></TableHeader><TableBody>{rows.map(item => <TableRow key={item.id}><TableCell><strong>{item.title}</strong><p className="menu-muted">{item.message}</p></TableCell><TableCell>{item.category ?? "안내"}</TableCell><TableCell>{seoulDate(item.createdAt)} {seoulTime(item.createdAt)}</TableCell><TableCell><StatusBadge domain="notification" status={item.read ? "READ" : "UNREAD"} /></TableCell><TableCell><Button variant="ghost" onClick={() => setSelectedId(item.id)} aria-label={`${item.title} 알림 상세 보기`}>상세 보기</Button></TableCell></TableRow>)}</TableBody></Table> : <MenuEmpty title="표시할 알림이 없습니다" description="새 알림이 도착하면 여기에서 확인할 수 있습니다." />}</MenuPanel>
+    <Pagination total={rows.length} />
+    {selected && <Dialog dialog={{ title: "알림 상세", body: `${selected.title}\n\n${selected.message}\n\n받은 시간: ${seoulDate(selected.createdAt)} ${seoulTime(selected.createdAt)}`, action: selected.read ? undefined : "읽음으로 표시" }} onClose={() => setSelectedId(null)} onConfirm={() => onRead(selected.id)} />}
+  </div>;
 }
-

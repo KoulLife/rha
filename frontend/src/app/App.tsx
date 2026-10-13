@@ -1,52 +1,60 @@
 import { useState } from "react";
+import type { CSSProperties } from "react";
 import { AppFooter } from "../components/layout/AppFooter";
 import { AppHeader } from "../components/layout/AppHeader";
-import { Breadcrumb } from "../components/ui/Breadcrumb";
+import { BrandLogo } from "../components/layout/BrandLogo";
+import { PageBreadcrumb } from "../components/layout/PageBreadcrumb";
 import { Dialog } from "../components/ui/Dialog";
-import { canAccessMenu, memberMenuItems, type Permission } from "../config/access";
+import { canAccessMenu, memberMenuItems, dashboardMenuItems, type Permission } from "../config/access";
 import { currentUser } from "../mocks/member";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, useSidebar } from "@/components/ui/sidebar";
+import { HomePage } from "../features/member/pages/HomePage";
 import { AccountPage } from "../features/member/pages/AccountPage";
 import { LessonDetailPage, LessonsPage } from "../features/member/pages/LessonsPage";
-import { NotificationsPage } from "../features/member/pages/NotificationsPage";
+import { dashboardPreview, dashboardPreviewTime } from "@/features/dashboard/preview";
+import { getDashboardSnapshot, roleLabels, type DashboardUser } from "@/features/dashboard/model";
 import { PassDetailPage, PassesPage } from "../features/member/pages/PassesPage";
-import { ReservationDetailPage, ReservationsPage } from "../features/member/pages/ReservationsPage";
+import { reservationDialog, ReservationsPage } from "../features/member/pages/ReservationsPage";
 import type { DialogState, Screen } from "./routes";
+import { DashboardError, DashboardLoading } from "@/features/dashboard/DashboardState";
+import type { HomeView } from "@/features/dashboard/viewState";
 
-const memberNavigation = memberMenuItems.filter((item) =>
-  canAccessMenu(item, currentUser.role, currentUser.permissions),
-);
-
-function App() {
-  const [screen, setScreen] = useState<Screen>("classes");
+function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "normal" }: { user: DashboardUser; name?: string; onLogout: (trigger?: HTMLElement) => void; onLogin: () => void; initialHomeView?: HomeView }) {
+  const [homeView, setHomeView] = useState(initialHomeView);
+  const [screen, setScreen] = useState<Screen>("home");
   const [selectedId, setSelectedId] = useState(101);
+  const [data, setData] = useState(() => initialHomeView === "empty" ? { lessons: [], reservations: [], absences: [], notifications: [] } : dashboardPreview);
+  const snapshot = getDashboardSnapshot(data, user, dashboardPreviewTime);
+  const navigation = [...memberMenuItems, ...dashboardMenuItems].filter(item => canAccessMenu(item, user.role, currentUser.permissions));
+  const onReadNotification = (id: number) => setData(previous => ({ ...previous, notifications: previous.notifications.map(item => item.id === id && item.recipientId === user.id ? { ...item, read: true } : item) }));
   const [dialog, setDialog] = useState<DialogState>(null);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const go = (next: Screen, id?: number) => {
+    const parent: Partial<Record<Screen, Screen>> = { "lesson-detail": "classes", "reservation-detail": "reservations", "pass-detail": "passes" };
+    if (!navigation.some(item => item.screen === (parent[next] ?? next))) return;
+    if (user.role === "MEMBER" && next === "reservation-detail" && id !== undefined) { setDialog(reservationDialog(id)); return; }
     if (id !== undefined) setSelectedId(id);
     setScreen(next);
-    setAccountMenuOpen(false);
+    window.scrollTo(0, 0);
   };
 
-  const can = (permission: Permission) => currentUser.permissions.has(permission);
+  const can = (permission: Permission) => user.role === "MEMBER" && currentUser.permissions.has(permission);
 
   return (
-    <div className="app-shell">
-      <MemberSidebar screen={screen} onNavigate={go} />
-      <main className="main-content">
+    <SidebarProvider className="member-sidebar-shell" style={{ "--sidebar-width": "var(--navigation-width)" } as CSSProperties}>
+      <MemberSidebar name={name} user={user} navigation={navigation} unreadCount={snapshot.unread} screen={screen} onNavigate={go} />
+      <main className={`main-content${screen === "home" ? ` home-main${user.role === "MEMBER" ? " member-home-main" : ""}` : ""}`}>
         <AppHeader
-          unreadCount={2}
-          accountMenuOpen={accountMenuOpen}
+          location={<><MobileMenuButton /><PageBreadcrumb screen={screen} role={user.role} /></>}
+          name={name}
+          unreadCount={snapshot.unread}
           onNotificationClick={() => go("notifications")}
-          onAccountToggle={() => setAccountMenuOpen((open) => !open)}
-          onLogout={() => {
-            setAccountMenuOpen(false);
-            setDialog({ title: "로그아웃", body: "로그아웃하시겠습니까?", action: "로그아웃" });
-          }}
+          onLogout={onLogout}
         />
         <div className="content">
-          <Breadcrumb screen={screen} />
-          <MemberScreen
+          {screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : screen === "home" || screen === "notifications" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onReadNotification={onReadNotification} /> : <MemberScreen
             screen={screen}
             selectedId={selectedId}
             onNavigate={go}
@@ -56,45 +64,61 @@ function App() {
             canCancel={can("reservation.cancel")}
             canUpdate={can("profile.update")}
             canChangePassword={can("password.change")}
-          />
+          />}
         </div>
         <AppFooter />
       </main>
       {dialog && <Dialog dialog={dialog} onClose={() => setDialog(null)} />}
-    </div>
+    </SidebarProvider>
   );
 }
 
-function MemberSidebar({ screen, onNavigate }: { screen: Screen; onNavigate: (screen: Screen) => void }) {
+function MemberSidebar({ name, user, navigation, unreadCount, screen, onNavigate }: { name: string; user: DashboardUser; navigation: typeof memberMenuItems; unreadCount: number; screen: Screen; onNavigate: (screen: Screen) => void }) {
+  const { isMobile, setOpenMobile } = useSidebar();
   return (
-    <aside className="sidebar">
-      <div className="brand"><span className="brand-mark">R</span><strong>R.HA Pilates</strong></div>
-      <div className="member-summary"><strong>홍길동</strong><span>회원</span></div>
-      <nav aria-label="회원 메뉴">
-        {memberNavigation.map((item) => {
+    <Sidebar className="member-sidebar" aria-label={`${roleLabels[user.role]} 사이드 메뉴`}>
+      <SidebarHeader className="member-sidebar-header">
+        <div className="member-sidebar-brand"><BrandLogo variant="sidebar" /></div>
+        <div className="member-sidebar-profile"><strong>{name}</strong><span>{roleLabels[user.role]}</span></div>
+        {isMobile && <Button variant="outline" onClick={() => setOpenMobile(false)}>메뉴 닫기</Button>}
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup><SidebarGroupContent><nav aria-label={`${roleLabels[user.role]} 메뉴`}><SidebarMenu>
+        {navigation.map((item) => {
           const detailParent: Record<string, Screen> = {
             "lesson-detail": "classes",
             "pass-detail": "passes",
             "reservation-detail": "reservations",
           };
           const active = screen === item.screen || detailParent[screen] === item.screen;
-          return <button className={`sidebar-link ${active ? "active" : ""}`} type="button" key={item.screen} onClick={() => onNavigate(item.screen)}><span>{item.label}</span>{item.screen === "notifications" && <span className="count">2</span>}</button>;
+          return <SidebarMenuItem key={item.screen}>
+            <SidebarMenuButton variant="brand" size="lg" isActive={active} aria-current={active ? "page" : undefined} onClick={() => { onNavigate(item.screen); if (isMobile) setOpenMobile(false); }}>
+              <span>{item.label}</span>{item.screen === "notifications" && <Badge variant="outline">{unreadCount}</Badge>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>;
         })}
-      </nav>
-    </aside>
+        </SidebarMenu></nav></SidebarGroupContent></SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
   );
+}
+
+function MobileMenuButton() {
+  const { isMobile, openMobile, toggleSidebar } = useSidebar();
+  if (!isMobile) return null;
+  return <Button variant="outline" aria-expanded={openMobile} onClick={toggleSidebar}>메뉴 열기</Button>;
 }
 
 function MemberScreen({ screen, selectedId, onNavigate, onDialog, canReserve, canWaitlist, canCancel, canUpdate, canChangePassword }: { screen: Screen; selectedId: number; onNavigate: (screen: Screen, id?: number) => void; onDialog: (dialog: DialogState) => void; canReserve: boolean; canWaitlist: boolean; canCancel: boolean; canUpdate: boolean; canChangePassword: boolean }) {
   switch (screen) {
+
     case "classes": return <LessonsPage onOpen={(id) => onNavigate("lesson-detail", id)} canReserve={canReserve} canWaitlist={canWaitlist} />;
     case "lesson-detail": return <LessonDetailPage lessonId={selectedId} onBack={() => onNavigate("classes")} onDialog={onDialog} canReserve={canReserve} canWaitlist={canWaitlist} />;
     case "passes": return <PassesPage onOpen={(id) => onNavigate("pass-detail", id)} />;
     case "pass-detail": return <PassDetailPage passId={selectedId} onBack={() => onNavigate("passes")} />;
     case "reservations": return <ReservationsPage onOpen={(id) => onNavigate("reservation-detail", id)} onDialog={onDialog} canCancel={canCancel} />;
-    case "reservation-detail": return <ReservationDetailPage reservationId={selectedId} onBack={() => onNavigate("reservations")} />;
     case "profile": return <AccountPage onDialog={onDialog} canUpdate={canUpdate} canChangePassword={canChangePassword} />;
-    case "notifications": return <NotificationsPage onDialog={onDialog} />;
+    default: return null;
   }
 }
 
