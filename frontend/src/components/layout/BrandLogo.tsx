@@ -1,6 +1,7 @@
 import { cva } from "class-variance-authority";
 import logoUrl from "../../../../docs/R.ha.png";
 import sidebarLogoUrl from "../../../../docs/R.ha_logo_2.png";
+import "./brand-logo.css";
 
 const logoVariants = cva("brand-logo", { variants: { variant: {
   auth: "brand-logo-auth", sidebar: "brand-logo-sidebar",

@@ -21,11 +21,13 @@ npm test
 - 역할별 메뉴 설정: `src/config/access.ts`. 메뉴 순서·노출 역할·권한·역할별 이름·상세 화면 관계를 관리한다. 관리 방법과 예시 권한의 범위는 `../docs/navigation-management.md` 참고.
 - shadcn 설정: `components.json`. 부품은 `@/components/ui/*`에서 가져온다.
 - 부품 추가: `npx shadcn@latest add <컴포넌트명>`. 공통 부품과 설정은 Git으로 공유하며 기존 부품을 덮어쓰기 전에 변경 내용을 확인한다.
-- 공통 스타일·간격·색상: `src/globals.css`. 로그인은 가이드의 그린·아이보리 브랜드 색상과 Pretendard를 사용한다.
-- 공통 스타일 기준: 본문 15px, 보조 설명 13px, 기본 컨트롤 높이 44px·작은 버튼 40px, 카드 그림자 없음. `globals.css` 상단 토큰에서 조절한다.
+- 전역 토큰·기본 스타일: `src/globals.css`. 색상·간격·radius·글꼴 크기의 공통 값은 여기에서 조절한다. 본문 15px, 보조 설명 13px, 기본 컨트롤 높이 44px·작은 버튼 40px, 카드 그림자 없음.
+- 화면 전용 스타일: 인증은 `src/features/auth/auth.css`, 회원 메뉴는 `src/features/member/member.css`, 회원 홈은 `src/features/dashboard/member-home.css`, 강사·관리자 대시보드는 `src/features/dashboard/dashboard.css`, 홈 로딩·오류 상태는 `src/features/dashboard/dashboard-state.css`에서 관리한다. 각 스타일 파일은 해당 화면 컴포넌트가 가져온다.
+- 공통 부품 스타일: 로고·버튼·상태 배지·표·대화상자는 해당 컴포넌트 옆 CSS에서 관리한다. 반복되는 표현은 컴포넌트 variant로 추가하고, 색상·간격·radius 값은 전역 토큰을 사용한다.
+- 앱 셸은 `src/app/shell.css`, 이전 화면에서 쓰는 규칙은 `src/app/legacy.css`에 둔다. `src/main.tsx`는 전역 토큰을 먼저 불러와 스타일 레이어 순서를 고정한다.
 - 홈·대시보드는 다른 팀원의 작업 범위로, 기존 배치·높이·간격·전용 스타일을 유지한다. 공통 스타일 변경은 공유하지만 화면 전용 덮어쓰기는 추가하지 않는다.
 - 홈 외 화면(인증, 수업·이용권·예약·계정·알림, 강사·관리자 조회 화면)에 새 스타일을 적용한다. 업무 화면의 제목은 24px, 이용권 잔여 숫자는 30px/굵기 300, 카드 여백은 데스크톱 20px·모바일 16px이다. 운영진 조회 화면은 `.dashboard-subpage`로 한정한다.
-- 기존 회원 화면 스타일도 `src/globals.css`의 `legacy` 레이어 안 `.member-preview` 범위에 둔다.
+- 기존 회원 화면 스타일은 `src/app/legacy.css`의 `legacy` 레이어 안 `.member-preview` 범위에 둔다.
 
 ## 인증 화면과 미리보기
 

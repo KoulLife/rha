@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { DialogState } from "@/app/routes";
 import { Button } from "@/components/ui/button";
+import "./dialog.css";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export function Dialog({ dialog, onClose, onConfirm, children }: { dialog: NonNullable<DialogState>; onClose: () => void; onConfirm?: () => void; children?: ReactNode }) {

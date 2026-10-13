@@ -1,0 +1,307 @@
+@layer utilities {
+  .home-page {
+    display: grid;
+    gap: var(--home-gap);
+    min-width: 0;
+  }
+  .home-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--home-gap);
+  }
+  .home-heading h1 {
+    font-size: 1.5rem;
+    font-weight: 650;
+  }
+  .home-heading p {
+    color: var(--muted-foreground);
+    margin-top: var(--space-control);
+    font-size: .875rem;
+  }
+  .home-heading-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-detail);
+  }
+  .home-heading-actions > span {
+    color: var(--muted-foreground);
+    font-size: .75rem;
+    white-space: nowrap;
+  }
+  .home-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--home-gap);
+  }
+  .home-metric, .home-panel {
+    --card-spacing: var(--home-panel-padding);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-panel);
+    border-radius: var(--radius-lg);
+    min-width: 0;
+  }
+  .home-metric {
+    padding-block: var(--home-metric-padding);
+  }
+  .home-metric-link {
+    display: grid;
+    width: 100%;
+    height: auto;
+    gap: var(--space-control);
+    padding: 0;
+    justify-items: start;
+    justify-content: stretch;
+    text-align: left;
+    border-radius: var(--radius-sm);
+  }
+  .home-metric-link:hover {
+    background: transparent;
+  }
+  .home-metric-link strong {
+    font-size: 1.625rem;
+    font-weight: 650;
+    line-height: 1.1;
+  }
+  .home-metric-label, .home-metric-detail {
+    font-size: .75rem;
+    color: var(--muted-foreground);
+  }
+  .home-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: var(--home-gap);
+    align-items: stretch;
+    min-height: 0;
+  }
+  .home-side {
+    display: grid;
+    grid-template-rows: auto minmax(var(--home-pass-height), 1fr);
+    gap: var(--home-gap);
+    min-height: 0;
+  }
+  .home-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-control);
+    min-height: 0;
+  }
+  .home-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-control);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: var(--space-control);
+    flex-shrink: 0;
+  }
+  .home-panel-heading h2 {
+    font-size: .875rem;
+    font-weight: 650;
+  }
+  .home-panel-heading [data-slot="button"] {
+    font-size: .75rem;
+  }
+  .home-panel > [data-slot="card-content"] {
+    flex: 1;
+    min-height: 0;
+  }
+  .home-lesson-list, .home-reservation-list {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+  }
+  .home-lesson-list {
+    grid-auto-rows: minmax(var(--home-public-slot-height), 1fr);
+  }
+  .home-reservation-list {
+    height: auto;
+    grid-template-rows: repeat(2, minmax(var(--home-reservation-slot-height), 1fr));
+    grid-auto-rows: minmax(var(--home-reservation-slot-height), auto);
+  }
+  .home-lesson, .home-reservation {
+    border-bottom: 1px solid var(--border);
+  }
+  .home-lesson:last-child, .home-reservation:last-child {
+    border-bottom: 0;
+  }
+  .home-lesson {
+    display: grid;
+    grid-template-columns: minmax(var(--home-lesson-side-min), 1fr) minmax(0, 1.6fr) minmax(var(--home-lesson-side-min), 1fr);
+    gap: var(--space-detail);
+    align-items: center;
+    min-height: var(--home-public-slot-height);
+    padding-block: var(--space-control);
+  }
+  .home-lesson-time {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-tight);
+    font-size: .75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .home-lesson-info {
+    display: grid;
+    gap: var(--home-lesson-text-gap);
+    min-width: 0;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .home-lesson-info h3 {
+    line-height: 1.35;
+    letter-spacing: var(--home-lesson-title-tracking);
+  }
+  .home-lesson-info > span {
+    font-variant-numeric: tabular-nums;
+  }
+  .home-lesson-time span, .home-lesson-info p, .home-lesson-info > span, .home-reservation p {
+    font-size: .75rem;
+    color: var(--muted-foreground);
+  }
+  .home-lesson-info h3, .home-reservation h3, .home-pass-heading h3 {
+    font-size: .875rem;
+    font-weight: 600;
+  }
+  .home-lesson-action, .home-reservation-action {
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+    gap: var(--space-control);
+  }
+  .home-lesson-action [data-slot="button"], .home-reservation-action [data-slot="button"] {
+    font-size: .75rem;
+    height: auto;
+    padding-block: var(--space-control);
+  }
+  .home-reservation-action {
+    gap: var(--space-tight);
+  }
+  .home-reservation-action [data-slot="button"] {
+    height: var(--home-inline-action-height);
+    padding-block: 0;
+  }
+  .home-reservation {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-control);
+    min-height: var(--home-reservation-slot-height);
+    padding-block: var(--space-tight);
+  }
+  .home-pass-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-control);
+  }
+  .home-panel-pass {
+    min-height: var(--home-pass-height);
+  }
+  .home-panel-pass > [data-slot="card-content"] {
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    gap: var(--space-detail);
+  }
+  .home-pass-balance {
+    align-self: center;
+    font-size: .875rem;
+    margin-block: var(--space-control);
+  }
+  .home-pass-balance strong {
+    font-size: 1.375rem;
+    color: var(--primary);
+  }
+  .home-pass-counts {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.5fr;
+    gap: var(--space-control);
+    margin-top: var(--space-control);
+  }
+  .home-pass-counts dt {
+    font-size: .6875rem;
+    color: var(--muted-foreground);
+  }
+  .home-pass-counts dd {
+    margin: 0;
+    font-size: .75rem;
+    font-weight: 500;
+  }
+}
+@media (min-width: 1100px) and (min-height: 768px) {
+  .home-main .home-page {
+    flex: 1;
+    min-height: 0;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  .home-main .home-lesson {
+    padding-block: var(--space-tight);
+  }
+}
+@media (max-width: 1099px) {
+  .home-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-side {
+    grid-template-rows: auto auto;
+  }
+  .home-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .home-lesson-list, .home-reservation-list {
+    height: auto;
+  }
+}
+@media (max-width: 767px) {
+  .home-heading, .home-heading-actions {
+    align-items: start;
+    flex-direction: column;
+  }
+  .home-lesson {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+  }
+  .home-lesson-action {
+    grid-column: 2;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .home-reservation {
+    flex-wrap: wrap;
+  }
+}
+@layer utilities {
+  .home-panel-pass > [data-slot="card-content"] {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    gap: var(--home-pass-section-gap);
+  }
+  .home-pass-balance {
+    display: grid;
+    align-self: center;
+    gap: var(--home-pass-section-gap);
+    margin: 0;
+    padding: 0;
+  }
+  .home-pass-total { font-size: .75rem; color: var(--muted-foreground); }
+  .home-pass-remaining { display: flex; align-items: baseline; gap: var(--space-control); color: var(--foreground); font-size: 1.125rem; font-weight: 600; }
+  .home-pass-remaining strong { color: var(--foreground); font-size: var(--home-pass-balance-size); font-weight: 700; line-height: 1.1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+  .home-pass-balance [data-slot="progress"] { height: var(--home-pass-progress-height); margin-top: var(--home-pass-section-gap); }
+  .home-pass-legend { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-detail); color: var(--muted-foreground); font-size: .6875rem; }
+  .home-pass-legend span { display: inline-flex; align-items: center; gap: var(--space-control); }
+  .home-pass-legend i { width: var(--home-pass-legend-size); height: var(--home-pass-legend-size); border-radius: var(--home-pass-legend-radius); }
+  .home-pass-legend-used { background: var(--primary); }
+  .home-pass-legend-remaining { background: var(--muted); border: 1px solid var(--border); }
+  .home-pass-count-table { table-layout: fixed; font-variant-numeric: tabular-nums; }
+  .home-panel-pass .home-pass-count-table th, .home-panel-pass .home-pass-count-table td { height: auto; border: 1px solid var(--border); padding: var(--space-tight) var(--space-control); text-align: center; background: var(--card); }
+  .home-pass-count-table th { color: var(--muted-foreground); font-size: .6875rem; font-weight: 500; }
+  .home-pass-count-table td { font-size: .875rem; }
+  .home-pass-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-control); font-size: .75rem; }
+  .home-panel-pass > [data-slot="card-content"] { grid-template-rows: auto auto auto auto; align-content: space-between; }
+  .home-panel > [data-slot="card-content"]:has(> [data-slot="empty"]) { display: flex; align-items: center; justify-content: center; }
+  .home-panel-pass .home-pass-count-table th { padding-block: var(--home-pass-section-gap); color: var(--secondary-foreground); background: var(--accent); font-size: .75rem; font-weight: 600; }
+  .home-panel-pass .home-pass-count-table td { padding-block: var(--home-pass-section-gap); font-size: .9375rem; }
+  .home-panel-pass .home-pass-balance { gap: var(--space-tight); }
+  .home-panel-pass .home-pass-balance [data-slot="progress"] { margin-top: var(--space-tight); }
+}

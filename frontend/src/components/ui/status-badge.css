@@ -1,0 +1,22 @@
+@layer utilities {
+  .status-badge-success {
+    color: var(--success);
+    background: var(--success-soft);
+    border-color: transparent;
+  }
+  .status-badge-warning {
+    color: var(--warning-foreground);
+    background: var(--warning-soft);
+    border-color: transparent;
+  }
+  .status-badge-destructive {
+    color: var(--destructive);
+    background: var(--destructive-soft);
+    border-color: transparent;
+  }
+  .status-badge-neutral {
+    color: var(--muted-foreground);
+    background: var(--muted);
+    border-color: var(--border);
+  }
+}

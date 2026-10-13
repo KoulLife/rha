@@ -1,0 +1,3 @@
+@layer utilities {
+  .member-wait-button { color: var(--warning-foreground); background: var(--warning-soft); border-color: var(--warning-border); }
+  .member-wait-button:hover { background: var(--warning-hover); } }

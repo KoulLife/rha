@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { cva } from "class-variance-authority";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import "@/features/member/member.css";
 
 const panelVariants = cva("menu-panel", { variants: { variant: {
   default: "menu-panel-default", filter: "menu-panel-filter", lesson: "menu-panel-lesson",

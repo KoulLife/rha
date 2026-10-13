@@ -1,0 +1,6 @@
+@layer utilities {
+  .menu-dialog-overlay { position: fixed; inset: 0; z-index: 60; background: var(--overlay); }
+  .menu-dialog { position: fixed; top: 50%; left: 50%; translate: none; transform: translate(-50%, -50%); z-index: 61; display: grid; gap: var(--menu-gap); width: min(var(--menu-dialog-width), calc(100vw - var(--menu-dialog-margin) * 2)); max-height: calc(100dvh - var(--menu-dialog-margin) * 2); padding: var(--space-panel); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); }
+  .menu-dialog-title { margin: 0; font-size: 1.125rem; font-weight: 600; }
+  .menu-dialog-body { white-space: pre-line; color: var(--muted-foreground); font-size: var(--font-size-body); line-height: 1.8; overflow-y: auto; min-height: 0; }
+  .menu-dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-control); } }

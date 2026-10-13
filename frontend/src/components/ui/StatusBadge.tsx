@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import "./status-badge.css";
 
 const statuses = {
   lesson: { AVAILABLE: ["예약 가능", "success"], WAITING: ["대기 신청 가능", "warning"], CLOSED: ["예약 마감", "destructive"], PUBLISHED: ["공개", "success"], CANCELED: ["수업 취소", "destructive"] },

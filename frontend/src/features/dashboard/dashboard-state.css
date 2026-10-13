@@ -1,0 +1,9 @@
+@layer utilities {
+  .dashboard-state { display: grid; width: 100%; min-width: 0; gap: var(--menu-gap); align-content: start; }
+  .dashboard-state [data-slot="card"] { --card-spacing: var(--menu-panel-padding); border: 1px solid var(--border); box-shadow: var(--shadow-panel); border-radius: var(--radius-panel); }
+  .dashboard-state h1 { font-size: 1.5rem; font-weight: 700; }
+  .dashboard-state-lines { display: grid; gap: var(--space-detail); }
+  .dashboard-state-lines [data-slot="skeleton"] { min-height: var(--dashboard-skeleton-line-height); }
+  .dashboard-state-lines .dashboard-state-row { min-height: var(--dashboard-skeleton-row-height); }
+  .dashboard-state-title { width: 40%; height: var(--dashboard-skeleton-line-height); }
+  .dashboard-state-side { display: grid; gap: var(--menu-gap); } }

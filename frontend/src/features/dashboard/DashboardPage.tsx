@@ -11,6 +11,7 @@ import { dashboardPreviewTime } from "./preview";
 import { MemberHomePage } from "./MemberHomePage";
 import { ReservationRoster } from "./ReservationRoster";
 import { NotificationsPage } from "@/features/member/pages/NotificationsPage";
+import "./dashboard.css";
 
 type Props = {
   user: DashboardUser; data: DashboardData; screen?: Screen;
