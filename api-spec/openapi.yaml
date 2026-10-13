@@ -233,7 +233,12 @@ paths:
       tags: [Auth]
       operationId: logout
       summary: 로그아웃
-      description: 서버에서 Refresh Token을 폐기하고, 쿠키를 만료시킨다(Max-Age=0).
+      description: |
+        쿠키로 받은 Refresh Token을 서버에서 폐기하고, 쿠키를 만료시킨다(Max-Age=0).
+        - 현재 기기(쿠키의 토큰)만 로그아웃된다. 다른 기기의 Refresh Token은 유지된다.
+        - 본인의 토큰만 폐기한다. 다른 회원의 토큰이 담겨 와도 폐기하지 않는다.
+        - 쿠키가 없거나, 알 수 없거나 이미 폐기된 토큰이어도 오류 없이 204로 응답한다(멱등).
+        - 인증이 필요하다. Access Token이 없거나 유효하지 않으면 401 (UNAUTHENTICATED)이며 토큰은 폐기되지 않는다.
       parameters:
         - name: refreshToken
           in: cookie
