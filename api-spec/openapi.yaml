@@ -403,6 +403,9 @@ paths:
         - 현재 비밀번호가 틀리면 400 (INVALID_CURRENT_PASSWORD).
           401을 쓰지 않는 이유는 토큰 만료로 오인되어 재발급 로직이 동작하는 것을 막기 위함이다.
         - 새 비밀번호가 현재 비밀번호와 같으면 400 (SAME_AS_CURRENT_PASSWORD)
+        - 검증은 요청 형식(INVALID_INPUT), 현재 비밀번호(INVALID_CURRENT_PASSWORD), 새 비밀번호 동일 여부(SAME_AS_CURRENT_PASSWORD) 순서로 한다. 현재 비밀번호가 틀리면 새 비밀번호가 같은지는 알려주지 않는다.
+        - 실패하면 Refresh Token은 폐기되지 않는다.
+        - 이미 발급된 Access Token은 만료될 때까지 유효하다 (서버가 Access Token을 추적하지 않는다). 다만 Refresh Token이 모두 폐기되어 재발급은 할 수 없다.
       requestBody:
         required: true
         content:
