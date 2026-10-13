@@ -69,6 +69,27 @@ public class Member {
         return member;
     }
 
+    /**
+     * 본인 정보를 부분 수정한다. null인 필드는 바꾸지 않는다.
+     * 주소는 null이 삭제를 뜻하므로 {@code changeAddress}로 변경 여부를 따로 받는다.
+     */
+    public void updateProfile(String name, String phoneNumber, LocalDate birthDate,
+            boolean changeAddress, String address, Instant now) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (phoneNumber != null) {
+            this.phoneNumber = phoneNumber;
+        }
+        if (birthDate != null) {
+            this.birthDate = birthDate;
+        }
+        if (changeAddress) {
+            this.address = address;
+        }
+        this.updatedAt = now;
+    }
+
     public Long getId() {
         return id;
     }
