@@ -12,4 +12,10 @@ class TestMailerConfig {
     RecordingEmailVerificationMailer recordingMailer() {
         return new RecordingEmailVerificationMailer();
     }
+
+    @Bean
+    @Primary
+    RecordingPasswordResetMailer recordingPasswordResetMailer() {
+        return new RecordingPasswordResetMailer();
+    }
 }
