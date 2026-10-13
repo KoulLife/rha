@@ -1,6 +1,10 @@
 spring:
   application:
     name: rha
+  autoconfigure:
+    exclude:
+      # 계정은 members 테이블이 기준이다. 기본 사용자(임시 비밀번호)가 만들어지지 않게 한다.
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/rha}
     username: ${DB_USERNAME:rha}

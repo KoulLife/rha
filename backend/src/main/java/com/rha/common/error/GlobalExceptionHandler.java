@@ -1,8 +1,6 @@
 package com.rha.common.error;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.net.URI;
-import java.time.Instant;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
@@ -50,11 +48,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private ProblemDetail problem(ErrorCode errorCode, String detail, String instance) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(errorCode.status(), detail);
-        problem.setInstance(URI.create(instance));
-        problem.setProperty("code", errorCode.name());
-        problem.setProperty("timestamp", Instant.now());
-        return problem;
+        return ProblemDetails.of(errorCode, detail, instance);
     }
 
     private String requestUri(WebRequest request) {
