@@ -18,13 +18,13 @@ jobs:
           fetch-depth: 0
 
       - name: Prepare base spec
-        run: git show "origin/${{ github.base_ref }}:api-spec/openapi.yaml" > /tmp/base.yaml
+        run: git show "origin/${{ github.base_ref }}:api-spec/openapi.yaml" > .oasdiff-base.yaml
 
       - name: Generate changelog
         id: changelog
         uses: oasdiff/oasdiff-action/changelog@main
         with:
-          base: /tmp/base.yaml
+          base: .oasdiff-base.yaml
           revision: api-spec/openapi.yaml
           format: markdown
 
@@ -32,7 +32,7 @@ jobs:
         id: breaking
         uses: oasdiff/oasdiff-action/breaking@main
         with:
-          base: /tmp/base.yaml
+          base: .oasdiff-base.yaml
           revision: api-spec/openapi.yaml
           fail-on: ERR
         continue-on-error: true
