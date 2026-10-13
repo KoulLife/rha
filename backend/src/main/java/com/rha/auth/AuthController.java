@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,13 +23,16 @@ public class AuthController {
     private final EmailVerificationService emailVerificationService;
     private final SignUpService signUpService;
     private final LoginService loginService;
+    private final RefreshTokenService refreshTokenService;
     private final String refreshCookiePath;
 
     public AuthController(EmailVerificationService emailVerificationService, SignUpService signUpService,
-            LoginService loginService, @Value("${server.servlet.context-path:}") String contextPath) {
+            LoginService loginService, RefreshTokenService refreshTokenService,
+            @Value("${server.servlet.context-path:}") String contextPath) {
         this.emailVerificationService = emailVerificationService;
         this.signUpService = signUpService;
         this.loginService = loginService;
+        this.refreshTokenService = refreshTokenService;
         this.refreshCookiePath = contextPath + "/auth";
     }
 
@@ -52,8 +56,16 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
-        LoginResult result = loginService.login(request.email(), request.password());
+        return withRefreshTokenCookie(loginService.login(request.email(), request.password()));
+    }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenResponse> refreshToken(
+            @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
+        return withRefreshTokenCookie(refreshTokenService.refresh(refreshToken));
+    }
+
+    private ResponseEntity<TokenResponse> withRefreshTokenCookie(AuthTokens result) {
         ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, result.refreshToken())
                 .httpOnly(true)
                 .secure(true)
