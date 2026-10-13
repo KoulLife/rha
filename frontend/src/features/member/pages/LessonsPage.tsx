@@ -1,76 +1,68 @@
-import { lessons } from "../../../mocks/member";
-import type { DialogState } from "../../../app/routes";
-import { PageTitle } from "../../../components/ui/PageTitle";
-import { Pagination } from "../../../components/ui/Pagination";
+import { useState } from "react";
+import { lessons } from "@/mocks/member";
+import type { DialogState } from "@/app/routes";
+import { PageTitle } from "@/components/ui/PageTitle";
+import { Pagination } from "@/components/ui/Pagination";
+import { MenuPanel, MenuEmpty } from "@/components/layout/MenuPanel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 type Lesson = (typeof lessons)[number];
+const initialFilters = { from: "2026-10-12", to: "2026-10-18", type: "all", room: "all" };
+const lessonStatus = (lesson: Lesson) => lesson.status === "예약 가능" ? "AVAILABLE" : lesson.status === "대기 신청 가능" ? "WAITING" : "CLOSED";
 
-export function LessonsPage({
-  onOpen,
-  canReserve,
-  canWaitlist,
-}: {
-  onOpen: (id: number) => void;
-  canReserve: boolean;
-  canWaitlist: boolean;
-}) {
-  return (
-    <>
-      <PageTitle title="수업 목록" description="공개된 수업을 확인하고 나에게 맞는 수업을 예약하세요." />
-      <form className="filter-bar">
-        <label>시작일<input type="date" defaultValue="2026-10-12" /></label>
-        <label>종료일<input type="date" defaultValue="2026-10-18" /></label>
-        <label>수업 유형<select defaultValue="all"><option value="all">전체 유형</option><option>기구 필라테스</option><option>리포머 그룹</option></select></label>
-        <label>룸<select defaultValue="all"><option value="all">전체 룸</option><option>룸 A</option><option>룸 B</option></select></label>
-        <button className="button outline" type="button">조회</button>
-        <button className="button ghost" type="button">초기화</button>
-      </form>
-      <div className="result-line"><strong>수업 {lessons.length}개</strong><span>공개 수업만 표시 · 서울 시간 기준</span></div>
-      <div className="lesson-list">
-        {lessons.map((lesson) => (
-          <LessonCard key={lesson.id} lesson={lesson} onOpen={onOpen} canReserve={canReserve} canWaitlist={canWaitlist} />
-        ))}
-      </div>
-      <Pagination />
-    </>
-  );
+export function LessonsPage({ onOpen, canReserve, canWaitlist }: { onOpen: (id: number) => void; canReserve: boolean; canWaitlist: boolean }) {
+  const [draft, setDraft] = useState(initialFilters);
+  const [filters, setFilters] = useState(initialFilters);
+  const rows = lessons.filter(lesson => {
+    const date = lesson.startAt.slice(0, 10);
+    return (!filters.from || date >= filters.from) && (!filters.to || date <= filters.to) && (filters.type === "all" || lesson.type === filters.type) && (filters.room === "all" || lesson.room === filters.room);
+  });
+  return <div className="menu-page">
+    <PageTitle title="수업 목록" description="공개된 수업을 확인하고 나에게 맞는 수업을 예약하세요." />
+    <MenuPanel variant="filter"><form className="menu-filters" onSubmit={event => { event.preventDefault(); setFilters(draft); }}>
+      <Field><FieldLabel htmlFor="lesson-from">시작일</FieldLabel><Input id="lesson-from" type="date" value={draft.from} max={draft.to || undefined} onChange={event => setDraft({ ...draft, from: event.target.value })} /></Field>
+      <Field><FieldLabel htmlFor="lesson-to">종료일</FieldLabel><Input id="lesson-to" type="date" value={draft.to} min={draft.from || undefined} onChange={event => setDraft({ ...draft, to: event.target.value })} /></Field>
+      <Field><FieldLabel htmlFor="lesson-type">수업 유형</FieldLabel><Select value={draft.type} onValueChange={type => setDraft({ ...draft, type })}><SelectTrigger id="lesson-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 유형</SelectItem>{[...new Set(lessons.map(item => item.type))].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></Field>
+      <Field><FieldLabel htmlFor="lesson-room">룸</FieldLabel><Select value={draft.room} onValueChange={room => setDraft({ ...draft, room })}><SelectTrigger id="lesson-room"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 룸</SelectItem>{[...new Set(lessons.map(item => item.room))].map(room => <SelectItem key={room} value={room}>{room}</SelectItem>)}</SelectContent></Select></Field>
+      <div className="menu-actions"><Button variant="outline" type="submit">조회</Button><Button variant="outline" type="button" onClick={() => { setDraft(initialFilters); setFilters(initialFilters); }}>초기화</Button></div>
+    </form></MenuPanel>
+    <div className="menu-results"><strong>수업 {rows.length}개</strong><span>공개 수업만 표시 · 서울 시간 기준</span></div>
+    <div className="menu-list">{rows.length ? rows.map(lesson => <LessonCard key={lesson.id} lesson={lesson} onOpen={onOpen} canReserve={canReserve} canWaitlist={canWaitlist} />) : <MenuPanel><MenuEmpty title="조건에 맞는 수업이 없습니다" description="조회 조건을 변경하거나 초기화해 주세요." /></MenuPanel>}</div>
+    <Pagination total={rows.length} />
+  </div>;
 }
 
 function LessonCard({ lesson, onOpen, canReserve, canWaitlist }: { lesson: Lesson; onOpen: (id: number) => void; canReserve: boolean; canWaitlist: boolean }) {
-  const canAct = lesson.status === "예약 가능" ? canReserve : lesson.status === "대기 신청 가능" ? canWaitlist : false;
-  const actionLabel = lesson.status === "예약 가능" ? "수업 예약하기" : "대기 신청하기";
-
-  return (
-    <article className={`card lesson-card ${lesson.status === "예약 마감" ? "is-closed" : ""}`}>
-      <div className="lesson-date"><strong>{lesson.date}</strong><span>{lesson.time}</span></div>
-      <div><span className="eyebrow">{lesson.type}</span><h2>{lesson.type}</h2><p>{lesson.teacher} · {lesson.room}</p></div>
-      <div className="lesson-meta"><strong>예약 {lesson.booked}</strong><span className={`badge ${lesson.status === "예약 가능" ? "success" : lesson.status === "예약 마감" ? "danger" : "warning"}`}>{lesson.status}</span></div>
-      <div className="card-actions">
-        <button className="button outline" type="button" onClick={() => onOpen(lesson.id)}>상세 보기</button>
-        <button className={`button reservation-action ${lesson.status === "예약 마감" ? "outline" : lesson.status === "대기 신청 가능" ? "wait-button" : "primary"}`} type="button" disabled={lesson.status === "예약 마감" || !canAct} onClick={() => onOpen(lesson.id)}>
-          {lesson.status === "예약 마감" ? "수업 마감" : canAct ? actionLabel : "권한 없음"}
-        </button>
-      </div>
-    </article>
-  );
+  const status = lessonStatus(lesson);
+  const canAct = status === "AVAILABLE" ? canReserve : status === "WAITING" && canWaitlist;
+  return <MenuPanel variant={status === "CLOSED" ? "closed" : "lesson"}>
+    <div className="menu-lesson-row">
+      <div className="menu-lesson-date"><strong>{lesson.date}</strong><span>{lesson.time}</span></div>
+      <div className="menu-lesson-info"><h2>{lesson.type}</h2><p>{lesson.teacher} · {lesson.room}</p></div>
+      <div className="menu-lesson-meta"><StatusBadge domain="lesson" status={status} /><span>예약 {lesson.booked}</span></div>
+      <div className="menu-actions"><Button variant="outline" onClick={() => onOpen(lesson.id)}>상세 보기</Button><Button variant={status === "WAITING" ? "waiting" : status === "CLOSED" ? "outline" : "default"} disabled={!canAct} onClick={() => onOpen(lesson.id)}>{status === "CLOSED" ? "수업 마감" : status === "WAITING" ? "대기 신청하기" : "수업 예약하기"}</Button></div>
+    </div>
+  </MenuPanel>;
 }
 
 export function LessonDetailPage({ lessonId, onBack, onDialog, canReserve, canWaitlist }: { lessonId: number; onBack: () => void; onDialog: (dialog: DialogState) => void; canReserve: boolean; canWaitlist: boolean }) {
-  const lesson = lessons.find((item) => item.id === lessonId) ?? lessons[0];
-  const full = lesson.status === "예약 마감";
-  const canAct = full ? canWaitlist : canReserve;
-
-  return (
-    <>
-      <PageTitle title="수업 상세" description={`${lesson.date} · ${lesson.type}`} action={<button className="button outline" type="button" onClick={onBack}>목록으로</button>} />
-      <div className="detail-grid">
-        <section className="card">
-          <div className="detail-hero"><span className={`badge ${full ? "danger" : "success"}`}>{full ? "예약 마감" : "공개"}</span><h2>{lesson.type}</h2><p>{lesson.teacher} · {lesson.room}</p></div>
-          <dl className="facts"><div><dt>수업 유형</dt><dd>{lesson.type}</dd></div><div><dt>담당 강사</dt><dd>{lesson.teacher}</dd></div><div><dt>룸</dt><dd>{lesson.room}</dd></div><div><dt>수업 일시</dt><dd>2026.{lesson.date} {lesson.time}</dd></div><div><dt>정원 / 예약 인원</dt><dd>{lesson.booked}</dd></div></dl>
-        </section>
-        <aside className="card side-card application-card"><div className="panel-heading"><h2>내 신청 상태</h2><span className="badge neutral">미신청</span></div><div className="application-body"><p>{full ? "정원이 마감되었습니다. 대기를 신청할 수 있습니다." : "아직 예약하지 않은 수업입니다."}</p><p className="hint">예약 시 사용 가능한 이용권에서 1회가 차감됩니다.</p><button className={`button ${full ? "wait-button" : "primary"} full`} type="button" disabled={lesson.id === 103 || !canAct} onClick={() => onDialog({ title: full ? "대기 신청 확인" : "수업 예약 확인", body: `${lesson.type} · ${lesson.date} ${lesson.time}`, action: full ? "대기 신청하기" : "수업 예약하기" })}>{!canAct ? "권한 없음" : full ? "대기 신청하기" : "수업 예약하기"}</button></div></aside>
-      </div>
-    </>
-  );
+  const lesson = lessons.find(item => item.id === lessonId) ?? lessons[0];
+  const status = lessonStatus(lesson);
+  const canAct = status === "AVAILABLE" ? canReserve : status === "WAITING" && canWaitlist;
+  const waiting = status === "WAITING";
+  return <div className="menu-page">
+    <PageTitle title="수업 상세" description={`${lesson.date} · ${lesson.type}`} action={<Button variant="outline" onClick={onBack}>목록으로</Button>} />
+    <div className="menu-detail-columns">
+      <MenuPanel title={lesson.type} action={<StatusBadge domain="lesson" status={status} />}>
+        <dl className="menu-facts">{[["수업 유형", lesson.type], ["담당 강사", lesson.teacher], ["룸", lesson.room], ["수업 일시", `2026.${lesson.date} ${lesson.time}`], ["예약 / 정원", lesson.booked]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+      </MenuPanel>
+      <MenuPanel title="내 신청 상태">
+        <div className="menu-stack"><p>{status === "CLOSED" ? "예약이 마감된 수업입니다." : waiting ? "정원이 찬 수업입니다. 대기를 신청할 수 있습니다." : "아직 예약하지 않은 수업입니다."}</p><p className="menu-note">예약 시 사용 가능한 이용권에서 1회가 차감됩니다.</p><Button variant={waiting ? "waiting" : status === "CLOSED" ? "outline" : "default"} disabled={!canAct} onClick={() => onDialog({ title: waiting ? "대기 신청 확인" : "수업 예약 확인", body: `${lesson.type} · ${lesson.date} ${lesson.time}`, action: waiting ? "대기 신청하기" : "수업 예약하기" })}>{status === "CLOSED" ? "수업 마감" : waiting ? "대기 신청하기" : "수업 예약하기"}</Button></div>
+      </MenuPanel>
+    </div>
+  </div>;
 }
-
