@@ -326,6 +326,15 @@
     border-radius: var(--radius-panel);
   }
 }
+
+:root {
+  --admin-choice-width: 20rem;
+  --admin-choice-height: 16rem;
+  --admin-textarea-height: 6rem;
+  --admin-form-width: 48rem;
+  --admin-filter-width: 10rem;
+  --admin-filter-search-width: 18rem;
+}
 @media (max-width: 767px) {
   :root {
     --page-padding-inline: 1rem;

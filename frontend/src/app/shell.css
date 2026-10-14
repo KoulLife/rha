@@ -259,3 +259,11 @@
 @layer utilities {
   .brand-home-link { display: flex; height: auto; padding: 0; }
 }
+
+@layer utilities {
+  .navigation-disclosure { color: var(--muted-foreground); }
+  [data-sidebar="menu-button"][data-state="open"] > .navigation-disclosure { transform: rotate(90deg); }
+  .member-subnavigation { border: 0; margin: 0; padding: var(--space-control) 0 var(--space-control) var(--space-panel); gap: var(--space-tight); }
+  .member-subnavigation-button { width: 100%; height: var(--control-height); padding-inline: var(--space-detail); border-radius: var(--radius-lg); color: var(--muted-foreground); }
+  .member-subnavigation-button[data-active="true"] { background: var(--secondary); color: var(--secondary-foreground); font-weight: 600; }
+}
