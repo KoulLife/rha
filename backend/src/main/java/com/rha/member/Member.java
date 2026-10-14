@@ -43,6 +43,8 @@ public class Member {
     @Column(nullable = false)
     private MemberStatus status;
 
+    private LocalDate resignationDate;
+
     private Instant withdrawnAt;
 
     @Column(nullable = false)
@@ -154,6 +156,10 @@ public class Member {
 
     public boolean isRole(MemberRole role) {
         return this.role == role;
+    }
+
+    public LocalDate getResignationDate() {
+        return resignationDate;
     }
 
     public MemberRole getRole() {
