@@ -14,6 +14,7 @@ public enum ErrorCode {
     ACCOUNT_DISABLED(HttpStatus.UNAUTHORIZED, "로그인할 수 없는 계정입니다."),
     INVALID_RESET_TOKEN(HttpStatus.BAD_REQUEST, "비밀번호 재설정 토큰이 유효하지 않거나 만료되었습니다."),
     FORBIDDEN_ROLE(HttpStatus.FORBIDDEN, "강사와 관리자는 직접 탈퇴할 수 없습니다."),
+    PERMISSION_DENIED(HttpStatus.FORBIDDEN, "해당 작업을 할 수 있는 권한이 없습니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "Refresh Token이 유효하지 않습니다."),
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
 

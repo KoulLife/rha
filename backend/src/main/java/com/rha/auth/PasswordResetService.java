@@ -50,14 +50,24 @@ public class PasswordResetService {
             return;
         }
 
+        mailer.sendResetToken(member.getEmail(), issueToken(member));
+    }
+
+    /** 관리자가 등록한 계정에 최초 비밀번호 설정용 토큰을 발급해 초대 메일로 보낸다. 호출한 쪽의 트랜잭션에 참여한다. */
+    @Transactional
+    public void invite(Member member) {
+        mailer.sendInvitationToken(member.getEmail(), issueToken(member));
+    }
+
+    /** 회원의 이전 미사용 토큰을 지우고 새 토큰을 발급해 평문을 반환한다. 저장되는 것은 해시뿐이다. */
+    private String issueToken(Member member) {
         tokenRepository.deleteUnusedByMemberId(member.getId());
 
         String token = TOKEN_PREFIX + newRandomToken();
         Instant now = Instant.now();
         tokenRepository.save(
                 new PasswordResetToken(member.getId(), TokenHasher.sha256(token), now.plus(tokenTtl), now));
-
-        mailer.sendResetToken(member.getEmail(), token);
+        return token;
     }
 
     /**

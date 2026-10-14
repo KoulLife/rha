@@ -69,6 +69,22 @@ public class Member {
         return member;
     }
 
+    /** 관리자가 등록한 계정. 비밀번호 없이 ACTIVE 상태로 생성되며, 초대 메일로 비밀번호를 설정한다. */
+    public static Member invite(String email, String name, String phoneNumber, LocalDate birthDate,
+            String address, MemberRole role, Instant now) {
+        Member member = new Member();
+        member.email = email;
+        member.name = name;
+        member.phoneNumber = phoneNumber;
+        member.birthDate = birthDate;
+        member.address = address;
+        member.role = role;
+        member.status = MemberStatus.ACTIVE;
+        member.createdAt = now;
+        member.updatedAt = now;
+        return member;
+    }
+
     /**
      * 본인 정보를 부분 수정한다. null인 필드는 바꾸지 않는다.
      * 주소는 null이 삭제를 뜻하므로 {@code changeAddress}로 변경 여부를 따로 받는다.
