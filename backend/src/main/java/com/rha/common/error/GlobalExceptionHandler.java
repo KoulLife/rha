@@ -1,6 +1,7 @@
 package com.rha.common.error;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
@@ -28,6 +29,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ErrorCode errorCode = e.errorCode();
         ProblemDetail problem = problem(errorCode, e.getMessage(), request.getRequestURI());
         return ResponseEntity.status(errorCode.status()).body(problem);
+    }
+
+    /** 서비스에서 직접 Bean Validation을 수행한 경우(권한 확인 뒤에 입력을 검증해야 하는 API). */
+    @ExceptionHandler(ConstraintViolationException.class)
+    ResponseEntity<ProblemDetail> handleConstraintViolation(ConstraintViolationException e,
+            HttpServletRequest request) {
+        List<InvalidParam> invalidParams = e.getConstraintViolations().stream()
+                .map(v -> new InvalidParam(v.getPropertyPath().toString(), v.getMessage()))
+                .toList();
+        ProblemDetail problem = problem(ErrorCode.INVALID_INPUT, ErrorCode.INVALID_INPUT.defaultMessage(),
+                request.getRequestURI());
+        problem.setProperty("invalidParams", invalidParams);
+        return ResponseEntity.status(ErrorCode.INVALID_INPUT.status()).body(problem);
     }
 
     @Override

@@ -122,6 +122,23 @@ public class Member {
         this.updatedAt = now;
     }
 
+    public void changeRole(MemberRole role, Instant now) {
+        this.role = role;
+        this.updatedAt = now;
+    }
+
+    /**
+     * ACTIVE 또는 INACTIVE로 바꾼다. 탈퇴나 퇴사한 계정이 ACTIVE로 복구되면 탈퇴일과 퇴사일을 지운다.
+     */
+    public void changeStatus(MemberStatus status, Instant now) {
+        if (status == MemberStatus.ACTIVE) {
+            this.withdrawnAt = null;
+            this.resignationDate = null;
+        }
+        this.status = status;
+        this.updatedAt = now;
+    }
+
     public Long getId() {
         return id;
     }

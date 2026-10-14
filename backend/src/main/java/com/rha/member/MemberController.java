@@ -68,6 +68,19 @@ public class MemberController {
         return memberAdminService.getMember(me.id(), memberId);
     }
 
+    /** 본문 검증은 관리자 여부를 확인한 뒤에 하므로 `@Valid`를 붙이지 않는다. */
+    @PatchMapping("/{memberId}")
+    public MemberResponse updateMember(@AuthenticationPrincipal AuthenticatedMember me,
+            @PathVariable Long memberId, @RequestBody MemberAdminUpdateRequest request) {
+        return memberAdminService.updateMember(me.id(), memberId, request);
+    }
+
+    @PutMapping("/{memberId}/status")
+    public MemberResponse changeMemberStatus(@AuthenticationPrincipal AuthenticatedMember me,
+            @PathVariable Long memberId, @RequestBody MemberStatusChangeRequest request) {
+        return memberAdminService.changeMemberStatus(me.id(), memberId, request);
+    }
+
     @GetMapping("/me")
     public MemberResponse getMyProfile(@AuthenticationPrincipal AuthenticatedMember me) {
         return memberService.getMyProfile(me.id());

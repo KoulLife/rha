@@ -1,15 +1,20 @@
 package com.rha.member;
 
 import com.rha.auth.PasswordResetService;
+import com.rha.auth.RefreshTokenRepository;
 import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.PageInfo;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validator;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,13 +32,19 @@ public class MemberAdminService {
     private final MemberRepository memberRepository;
     private final MemberPermissionRepository permissionRepository;
     private final PasswordResetService passwordResetService;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final Validator validator;
 
     public MemberAdminService(MemberRepository memberRepository,
             MemberPermissionRepository permissionRepository,
-            PasswordResetService passwordResetService) {
+            PasswordResetService passwordResetService,
+            RefreshTokenRepository refreshTokenRepository,
+            Validator validator) {
         this.memberRepository = memberRepository;
         this.permissionRepository = permissionRepository;
         this.passwordResetService = passwordResetService;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.validator = validator;
     }
 
     /**
@@ -65,11 +76,91 @@ public class MemberAdminService {
     public MemberResponse getMember(Long callerId, Long memberId) {
         requireMemberReader(callerId);
 
-        Member member = memberRepository.findById(memberId)
+        Member member = findMember(memberId);
+        return MemberResponse.from(member, permissionsOf(memberId));
+    }
+
+    /**
+     * 회원 정보를 부분 수정한다. 역할이 실제로 바뀌면 부여된 권한을 회수하고 Refresh Token을 폐기한다.
+     * 확인 순서는 관리자 여부(403) → 입력(400) → 회원 존재(404) → 본인 역할 변경(403)이다.
+     * 강사의 시작 전 담당 수업 확인은 수업 기능이 구현될 때 추가한다.
+     */
+    @Transactional
+    public MemberResponse updateMember(Long callerId, Long memberId, MemberAdminUpdateRequest request) {
+        requireAdmin(callerId);
+        validate(request);
+        if (!request.hasAnyField()) {
+            throw new ApiException(ErrorCode.INVALID_INPUT);
+        }
+        Member member = findMember(memberId);
+
+        MemberRole requestedRole = request.getRole() == null ? null : MemberRole.valueOf(request.getRole());
+        boolean roleChanged = requestedRole != null && !member.isRole(requestedRole);
+        if (roleChanged && callerId.equals(memberId)) {
+            throw new ApiException(ErrorCode.CANNOT_CHANGE_OWN_ROLE);
+        }
+
+        Instant now = Instant.now();
+        member.updateProfile(request.getName(), request.getPhoneNumber(), request.getBirthDate(),
+                request.isAddressSpecified(), request.getAddress(), now);
+        if (roleChanged) {
+            member.changeRole(requestedRole, now);
+            permissionRepository.deleteAllOf(memberId);
+            refreshTokenRepository.revokeAllOf(memberId, now);
+        }
+        return MemberResponse.from(member, permissionsOf(memberId));
+    }
+
+    /**
+     * 계정을 ACTIVE 또는 INACTIVE로 바꾼다. 비활성화하면 Refresh Token을 모두 폐기한다.
+     * 시작 전 담당 수업과 예약 확인은 수업·예약 기능이 구현될 때 추가한다.
+     */
+    @Transactional
+    public MemberResponse changeMemberStatus(Long callerId, Long memberId, MemberStatusChangeRequest request) {
+        requireAdmin(callerId);
+        validate(request);
+        Member member = findMember(memberId);
+        if (callerId.equals(memberId)) {
+            throw new ApiException(ErrorCode.CANNOT_CHANGE_OWN_STATUS);
+        }
+
+        MemberStatus requested = MemberStatus.valueOf(request.status());
+        if (member.getStatus() == requested) {
+            return MemberResponse.from(member, permissionsOf(memberId));
+        }
+        if (requested == MemberStatus.INACTIVE) {
+            if (member.getStatus() == MemberStatus.WITHDRAWN) {
+                throw new ApiException(ErrorCode.MEMBER_WITHDRAWN);
+            }
+            if (member.getStatus() == MemberStatus.RESIGNED) {
+                throw new ApiException(ErrorCode.MEMBER_RESIGNED);
+            }
+        }
+
+        Instant now = Instant.now();
+        member.changeStatus(requested, now);
+        if (requested == MemberStatus.INACTIVE) {
+            refreshTokenRepository.revokeAllOf(memberId, now);
+        }
+        return MemberResponse.from(member, permissionsOf(memberId));
+    }
+
+    /** 관리자 여부를 확인한 뒤에 입력을 검증하기 위해, 컨트롤러가 아니라 서비스에서 검증한다. */
+    private void validate(Object request) {
+        Set<ConstraintViolation<Object>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
+        }
+    }
+
+    private Member findMember(Long memberId) {
+        return memberRepository.findById(memberId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
-        List<String> permissions = permissionRepository.findByMemberIdInOrderByPermissionCode(List.of(memberId))
+    }
+
+    private List<String> permissionsOf(Long memberId) {
+        return permissionRepository.findByMemberIdInOrderByPermissionCode(List.of(memberId))
                 .stream().map(MemberPermission::getPermissionCode).toList();
-        return MemberResponse.from(member, permissions);
     }
 
     /** 최신 가입순(같으면 id 역순)으로 회원 목록을 조회한다. {@code page}는 1부터 시작한다. */
