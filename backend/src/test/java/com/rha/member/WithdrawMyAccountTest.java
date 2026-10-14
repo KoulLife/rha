@@ -64,6 +64,19 @@ class WithdrawMyAccountTest extends IntegrationTestSupport {
     }
 
     @Test
+    void 탈퇴하면_탈퇴_시각이_기록된다() throws Exception {
+        insertMember(EMAIL, "MEMBER");
+        Session session = login(EMAIL);
+        assertThat(jdbc.queryForObject("SELECT withdrawn_at FROM members WHERE email = ?", Timestamp.class, EMAIL))
+                .isNull();
+
+        withdraw(session.accessToken()).andExpect(status().isNoContent());
+
+        assertThat(jdbc.queryForObject("SELECT withdrawn_at FROM members WHERE email = ?", Timestamp.class, EMAIL))
+                .isNotNull();
+    }
+
+    @Test
     void 탈퇴하면_수정_시각이_갱신된다() throws Exception {
         insertMember(EMAIL, "MEMBER");
         Session session = login(EMAIL);

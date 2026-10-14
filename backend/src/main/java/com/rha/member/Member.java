@@ -43,6 +43,8 @@ public class Member {
     @Column(nullable = false)
     private MemberStatus status;
 
+    private Instant withdrawnAt;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -114,6 +116,7 @@ public class Member {
     /** 본인 탈퇴. 데이터는 지우지 않고 상태만 WITHDRAWN으로 바꾼다. */
     public void withdraw(Instant now) {
         this.status = MemberStatus.WITHDRAWN;
+        this.withdrawnAt = now;
         this.updatedAt = now;
     }
 
