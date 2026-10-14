@@ -3,9 +3,12 @@ package com.rha.member;
 import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.validation.RequestValidator;
+import com.rha.lessontype.LessonType;
+import com.rha.lessontype.LessonTypeRepository;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
@@ -19,21 +22,20 @@ public class PermissionService {
 
     private final MemberRepository memberRepository;
     private final MemberPermissionRepository permissionRepository;
+    private final LessonTypeRepository lessonTypeRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
     public PermissionService(MemberRepository memberRepository, MemberPermissionRepository permissionRepository,
-            AdminGuard adminGuard, RequestValidator requestValidator) {
+            LessonTypeRepository lessonTypeRepository, AdminGuard adminGuard, RequestValidator requestValidator) {
         this.memberRepository = memberRepository;
         this.permissionRepository = permissionRepository;
+        this.lessonTypeRepository = lessonTypeRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
     }
 
-    /**
-     * 부여 가능한 권한 목록. 수업 유형별 권한(LESSON_CREATE, LESSON_UPDATE)은
-     * 수업 유형 기능이 구현될 때 활성 유형으로부터 만들어 추가한다.
-     */
+    /** 부여 가능한 권한 목록. 활성 수업 유형마다 LESSON_CREATE, LESSON_UPDATE 권한이 더해진다. */
     @Transactional(readOnly = true)
     public PermissionListResponse getPermissions(Long callerId) {
         adminGuard.requireAdmin(callerId);
@@ -84,7 +86,14 @@ public class PermissionService {
     }
 
     private List<PermissionResponse> availablePermissions() {
-        return BASE_PERMISSIONS.stream().sorted(Comparator.comparing(PermissionResponse::code)).toList();
+        List<PermissionResponse> permissions = new ArrayList<>(BASE_PERMISSIONS);
+        for (LessonType type : lessonTypeRepository.findByActiveTrueOrderByCodeAsc()) {
+            permissions.add(new PermissionResponse("LESSON_CREATE:" + type.getCode(), type.getName() + " 수업 개설",
+                    type.getName() + " 유형의 수업을 개설할 수 있다."));
+            permissions.add(new PermissionResponse("LESSON_UPDATE:" + type.getCode(), type.getName() + " 수업 수정",
+                    type.getName() + " 유형의 수업을 수정하고 공개 상태를 바꾸거나 취소할 수 있다."));
+        }
+        return permissions.stream().sorted(Comparator.comparing(PermissionResponse::code)).toList();
     }
 
     private Set<String> availableCodes() {

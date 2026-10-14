@@ -35,5 +35,8 @@ public abstract class IntegrationTestSupport {
         cleanerJdbc.update("DELETE FROM refresh_tokens");
         cleanerJdbc.update("DELETE FROM email_verifications");
         cleanerJdbc.update("DELETE FROM members");
+        cleanerJdbc.update("DELETE FROM rooms");
+        cleanerJdbc.update("DELETE FROM lesson_types");
+        cleanerJdbc.update("UPDATE business_hours SET closed = true, open_time = NULL, close_time = NULL");
     }
 }
