@@ -1,7 +1,10 @@
 name: API Spec Diff
 
+# 포크에서 온 PR도 코멘트와 Slack 알림이 동작하도록 pull_request_target을 쓴다.
+# 이 이벤트는 base 저장소의 권한과 secret으로 실행되므로, PR의 코드는 절대 실행하지 않는다.
+# PR에서 가져오는 것은 openapi.yaml 파일뿐이며 oasdiff로 읽기만 한다.
 on:
-  pull_request:
+  pull_request_target:
     paths:
       - api-spec/openapi.yaml
 
@@ -13,16 +16,20 @@ jobs:
   diff:
     runs-on: ubuntu-latest
     steps:
+      # pull_request_target의 기본 체크아웃은 base 브랜치이므로 PR의 머지 결과를 명시해서 받는다.
       - uses: actions/checkout@v4
         with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Prepare base spec
         run: git show "origin/${{ github.base_ref }}:api-spec/openapi.yaml" > .oasdiff-base.yaml
 
+      # secret이 있는 환경에서 실행되므로 제3자 액션은 커밋 SHA로 고정한다 (v0.1.18).
       - name: Generate changelog
         id: changelog
-        uses: oasdiff/oasdiff-action/changelog@main
+        uses: oasdiff/oasdiff-action/changelog@b9325c9e0a27ab65b0da3b766522cedec6be81dc
         with:
           base: .oasdiff-base.yaml
           revision: api-spec/openapi.yaml
@@ -30,7 +37,7 @@ jobs:
 
       - name: Detect breaking changes
         id: breaking
-        uses: oasdiff/oasdiff-action/breaking@main
+        uses: oasdiff/oasdiff-action/breaking@b9325c9e0a27ab65b0da3b766522cedec6be81dc
         with:
           base: .oasdiff-base.yaml
           revision: api-spec/openapi.yaml
