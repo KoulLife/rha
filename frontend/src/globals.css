@@ -45,7 +45,7 @@
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-xl: var(--radius-panel);
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
@@ -61,8 +61,8 @@
   --control-height: 2.75rem;
   --control-height-compact: 2.5rem;
   --panel-padding: 1.25rem;
-  --radius-panel: 1rem;
-  --radius-panel-compact: .25rem;
+  --radius-panel: .75rem;
+  --radius-panel-compact: var(--radius-panel);
   --page-padding-block: 2.25rem;
   --page-padding-inline: 2.5rem;
   --table-radius: var(--radius-panel-compact);
@@ -75,6 +75,7 @@
   --table-divider: var(--border);
   --table-header-height: 3rem;
   --table-cell-padding: .875rem;
+  --table-scroll-max-height: min(18rem, 60dvh);
   --background: #F7F8F6;
   --foreground: #292E2B;
   --card: #FFFFFF;
@@ -197,6 +198,12 @@
     --warning-soft: color-mix(in srgb, var(--warning) 10%, var(--card));
     --warning-hover: color-mix(in srgb, var(--warning) 16%, var(--card));
     --warning-border: color-mix(in srgb, var(--warning) 28%, var(--card));
+    --button-cancel-background: var(--muted);
+    --button-cancel-foreground: var(--foreground);
+    --button-warning-foreground: color-mix(in srgb, var(--warning) 70%, var(--foreground));
+    --button-destructive-foreground: color-mix(in srgb, var(--destructive) 90%, var(--foreground));
+    --button-cancel-hover: color-mix(in srgb, var(--foreground) 10%, var(--card));
+    --destructive-hover: color-mix(in srgb, var(--destructive) 16%, var(--card));
     --destructive-soft: color-mix(in srgb, var(--destructive) 9%, var(--card));
     --destructive-border: color-mix(in srgb, var(--destructive) 25%, var(--card));
     --border-hover: color-mix(in srgb, var(--primary) 35%, var(--card));
@@ -319,10 +326,35 @@
     border-radius: var(--radius-panel);
   }
 }
+
+:root {
+  --admin-choice-width: 20rem;
+  --admin-choice-height: 16rem;
+  --admin-textarea-height: 6rem;
+  --admin-form-width: 48rem;
+  --admin-filter-width: 10rem;
+  --admin-filter-search-width: 18rem;
+}
 @media (max-width: 767px) {
   :root {
     --page-padding-inline: 1rem;
     --page-padding-block: 1.5rem;
     --panel-padding: 1rem;
   }
+}
+
+:root {
+  --timetable-month-width: 11rem;
+  --timetable-filter-width: 9rem;
+  --timetable-preview-width: 20rem;
+  --timetable-fact-width: 5rem;
+  --timetable-height: 34rem;
+  --timetable-mobile-height: 32rem;
+  --timetable-hour-height: 3rem;
+  --timetable-header-height: 2.5rem;
+  --timetable-time-width: 3.5rem;
+  --timetable-day-width: 5.5rem;
+  --timetable-nav-radius: 999px;
+  --timetable-event-padding: .25rem;
+  --timetable-event-accent: .25rem;
 }

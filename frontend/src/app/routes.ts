@@ -5,5 +5,8 @@ export type DialogState = {
   body: string;
   action?: string;
   destructive?: boolean;
+  actionVariant?: "default" | "warning" | "destructive";
+  details?: { label: string; value: string }[];
+  notice?: string;
 } | null;
 

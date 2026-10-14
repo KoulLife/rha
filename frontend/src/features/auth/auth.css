@@ -28,7 +28,7 @@
   .auth-card[data-slot="card"] {
     --card-spacing: var(--auth-card-padding);
     gap: var(--auth-field-gap);
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-panel);
     box-shadow: var(--shadow-auth);
   }
   .auth-title {

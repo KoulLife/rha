@@ -1,4 +1,16 @@
 @layer utilities {
+  [data-slot="table-container"] {
+    max-height: var(--table-scroll-max-height);
+  }
+  [data-slot="table-container"]:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: var(--space-tight);
+  }
+  [data-slot="table-container"] [data-slot="table-header"] [data-slot="table-head"] {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
   .menu-panel-table[data-slot="card"],
   .dashboard-page .dashboard-panel-table[data-slot="card"] {
     border-radius: var(--table-radius);

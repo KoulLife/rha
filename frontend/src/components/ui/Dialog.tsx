@@ -11,15 +11,19 @@ export function Dialog({ dialog, onClose, onConfirm, children }: { dialog: NonNu
   const confirm = () => { onConfirm?.(); onClose(); };
   if (dialog.destructive) return <AlertDialog open onOpenChange={open => { if (!open) onClose(); }}><AlertDialogContent className="menu-dialog" onCloseAutoFocus={restoreFocus}>
     <AlertDialogHeader><AlertDialogTitle>{dialog.title}</AlertDialogTitle><AlertDialogDescription className="menu-dialog-body">{dialog.body}</AlertDialogDescription></AlertDialogHeader>
-    <AlertDialogFooter><AlertDialogCancel onClick={onClose}>취소</AlertDialogCancel><AlertDialogAction variant="destructive" onClick={confirm}>{dialog.action ?? "확인"}</AlertDialogAction></AlertDialogFooter>
+    <AlertDialogFooter><AlertDialogCancel onClick={onClose}>취소</AlertDialogCancel><AlertDialogAction variant={dialog.actionVariant ?? "destructive"} onClick={confirm}>{dialog.action ?? "확인"}</AlertDialogAction></AlertDialogFooter>
   </AlertDialogContent></AlertDialog>;
   return <DialogPrimitive.Root open onOpenChange={open => { if (!open) onClose(); }}><DialogPrimitive.Portal>
     <DialogPrimitive.Overlay className="menu-dialog-overlay" />
-    <DialogPrimitive.Content className="menu-dialog" onCloseAutoFocus={restoreFocus}>
+    <DialogPrimitive.Content className={`menu-dialog${dialog.details ? " menu-dialog-confirmation" : ""}`} onCloseAutoFocus={restoreFocus}>
       <DialogPrimitive.Title className="menu-dialog-title">{dialog.title}</DialogPrimitive.Title>
-      <DialogPrimitive.Description className={children ? "sr-only" : "menu-dialog-body"}>{dialog.body}</DialogPrimitive.Description>
-      {children && <div className="menu-dialog-content">{children}</div>}
-      <div className="menu-dialog-actions"><Button variant="outline" onClick={onClose}>닫기</Button>{dialog.action && <Button onClick={confirm}>{dialog.action}</Button>}</div>
+      <DialogPrimitive.Description className={children || dialog.details ? "sr-only" : "menu-dialog-body"}>{dialog.body}</DialogPrimitive.Description>
+      {(children || dialog.details) && <div className="menu-dialog-content">
+        {dialog.details && <dl className="confirm-dialog-details">{dialog.details.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>}
+        {dialog.notice && <p className="confirm-dialog-notice">{dialog.notice}</p>}
+        {children}
+      </div>}
+      <div className="menu-dialog-actions"><Button variant="cancel" onClick={onClose}>닫기</Button>{dialog.action && <Button variant={dialog.actionVariant ?? "default"} onClick={confirm}>{dialog.action}</Button>}</div>
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal></DialogPrimitive.Root>;
 }

@@ -10,7 +10,8 @@ function Table({ className, variant = "default", ...props }: React.ComponentProp
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className="table-container relative w-full overflow-auto"
+      tabIndex={0}
     >
       <table
         data-slot="table"

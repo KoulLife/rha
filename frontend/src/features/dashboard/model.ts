@@ -3,7 +3,7 @@ import type { UserRole } from "../../config/access";
 export type DashboardUser = { id: number; name: string; role: UserRole };
 export type DashboardLesson = {
   id: number; title: string; instructorId: number; instructor: string; room: string;
-  startAt: string; endAt: string; capacity: number; status: "PUBLISHED" | "CANCELED";
+  startAt: string; endAt: string; capacity: number; status: "CREATED" | "SCHEDULED" | "UNPUBLISHED" | "PUBLISHED" | "CANCELED";
 };
 export type DashboardReservation = {
   id: number; lessonId: number; memberId: number; member: string;

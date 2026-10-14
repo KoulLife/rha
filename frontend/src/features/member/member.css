@@ -70,6 +70,8 @@
   .menu-pass-list .menu-stack { flex: 1; grid-template-rows: auto auto 1fr; }
   .menu-pass-list .menu-actions { align-self: end; justify-content: flex-end; }
   .menu-pass-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: var(--space-panel); }
+  .menu-pass-detail > .menu-stack { gap: 0; }
+  .menu-pass-detail .menu-info-table + .menu-note { margin-top: var(--space-detail); }
   .menu-pass-balance { display: grid; gap: var(--space-detail); min-width: 0; }
   .menu-pass-balance > p { font-size: 1.125rem; font-weight: 600; }
   .menu-pass-balance > p strong { font-size: var(--menu-pass-number-size); line-height: 1.1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }

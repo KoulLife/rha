@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { App as MemberApp } from "./app/App";
 import { Toaster } from "@/components/ui/sonner";
@@ -12,6 +13,7 @@ import type { HomeView } from "@/features/dashboard/viewState";
 
 type Screen = "login" | "verify" | "signup" | "reset-request" | "new-password" | "member";
 export function App() {
+  const queryClient = useQueryClient();
   const [screen, setScreen] = useState<Screen>("login");
   const [verified, setVerified] = useState<VerifiedEmail | null>(null);
   const [resetToken, setResetToken] = useState("");
@@ -26,7 +28,7 @@ export function App() {
   };
   const loginScreen = () => { setVerified(null); setResetToken(""); setScreen("login"); window.scrollTo(0, 0); };
   const navigate = (next: Screen) => { setScreen(next); window.scrollTo(0, 0); };
-  const showMember = (user: PreviewMember, view: HomeView = "normal") => { setHomeView(view); setMember(user); navigate("member"); };
+  const showMember = (user: PreviewMember, view: HomeView = "normal") => { authPreview.session = user; queryClient.clear(); setHomeView(view); setMember(user); navigate("member"); };
   let page;
   if (screen === "member" && member) {
     page = <div className="member-preview">
