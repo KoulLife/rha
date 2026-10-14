@@ -53,9 +53,9 @@ export function App() {
         if (logoutOpener.current?.isConnected) { event.preventDefault(); logoutOpener.current.focus(); }
       }}>
         <AlertDialogHeader><AlertDialogTitle>로그아웃하시겠어요?</AlertDialogTitle><AlertDialogDescription>로그인 화면으로 돌아갑니다. 다시 이용하려면 로그인해 주세요.</AlertDialogDescription></AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>취소</AlertDialogCancel>
+        <AlertDialogFooter variant="equal">
           <AlertDialogAction onClick={() => { authPreview.logout(); setMember(null); loginScreen(); toast.success("로그아웃되었습니다."); }}>로그아웃</AlertDialogAction>
+          <AlertDialogCancel>취소</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

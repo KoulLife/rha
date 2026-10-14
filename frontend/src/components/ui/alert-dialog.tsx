@@ -3,6 +3,7 @@ import { cn } from "cn"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
+import "./alert-dialog.css"
 
 function AlertDialog({
   ...props
@@ -83,11 +84,13 @@ function AlertDialogHeader({
 
 function AlertDialogFooter({
   className,
+  variant = "default",
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { variant?: "default" | "equal" }) {
   return (
     <div
       data-slot="alert-dialog-footer"
+      data-variant={variant}
       className={cn(
         "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
         className

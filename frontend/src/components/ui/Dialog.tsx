@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import "./dialog.css";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-export function Dialog({ dialog, onClose, onConfirm, children }: { dialog: NonNullable<DialogState>; onClose: () => void; onConfirm?: () => void; children?: ReactNode }) {
+export function Dialog({ dialog, onClose, onConfirm, children, formId }: { dialog: NonNullable<DialogState>; onClose: () => void; onConfirm?: () => void; children?: ReactNode; formId?: string }) {
   const opener = useRef(document.activeElement as HTMLElement | null);
   const restoreFocus = (event: Event) => { if (opener.current?.isConnected) { event.preventDefault(); opener.current.focus(); } };
   const confirm = () => { onConfirm?.(); onClose(); };
@@ -23,7 +23,7 @@ export function Dialog({ dialog, onClose, onConfirm, children }: { dialog: NonNu
         {dialog.notice && <p className="confirm-dialog-notice">{dialog.notice}</p>}
         {children}
       </div>}
-      <div className="menu-dialog-actions"><Button variant="cancel" onClick={onClose}>닫기</Button>{dialog.action && <Button variant={dialog.actionVariant ?? "default"} onClick={confirm}>{dialog.action}</Button>}</div>
+      <div className="menu-dialog-actions"><Button variant="cancel" onClick={onClose}>닫기</Button>{dialog.action && <Button variant={dialog.actionVariant ?? "default"} type={formId ? "submit" : "button"} form={formId} onClick={formId ? undefined : confirm}>{dialog.action}</Button>}</div>
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal></DialogPrimitive.Root>;
 }

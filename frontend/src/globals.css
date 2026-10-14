@@ -228,19 +228,18 @@
   --navigation-control-height: var(--control-height);
   --home-metric-gap: .75rem;
   --home-column-gap: .875rem;
-  --home-panel-padding: 1rem;
 }
 :root {
   --app-header-height: 4rem;
   --home-footer-height: 1.75rem;
   --home-gap: 1rem;
-  --home-panel-padding: .75rem;
-  --home-content-padding: .75rem;
-  --home-metric-padding: .5rem;
+  --home-panel-padding: var(--panel-padding);
+  --home-content-padding: var(--page-padding-block);
+  --home-metric-padding: var(--panel-padding);
   --home-public-slot-height: 4rem;
-  --home-reservation-slot-height: 3rem;
+  --home-reservation-slot-height: 4.5rem;
   --home-pass-height: 17rem;
-  --home-inline-action-height: 1.25rem;
+  --home-inline-action-height: var(--control-height-compact);
   --space-tight: .125rem;
   --header-background: var(--secondary);
   --header-foreground: var(--secondary-foreground);
@@ -248,37 +247,22 @@
 }
 :root {
   --dashboard-gap: 1rem;
-  --dashboard-panel-padding: 1rem;
-  --dashboard-metric-padding: .75rem;
+  --dashboard-panel-padding: var(--panel-padding);
+  --dashboard-metric-padding: var(--panel-padding);
   --dashboard-row-padding: .75rem;
   --dashboard-dialog-width: 30rem;
   --dashboard-dialog-margin: 1rem;
   --dashboard-dialog-padding: 1.5rem;
   --dashboard-page-width: 75rem;
-  --dashboard-control-height: 2rem;
-  --dashboard-metric-value-size: 1.75rem;
+  --dashboard-control-height: var(--control-height);
+  --dashboard-metric-value-size: var(--font-size-metric);
   --dashboard-lessons-table-width: 34rem;
   --dashboard-lesson-row-height: 4rem;
   --dashboard-roster-table-width: 42rem;
   --dashboard-roster-number-width: 7rem;
 }
-@media (min-width: 1100px) and (min-height: 720px) and (max-height: 900px) {
-  :root {
-    --dashboard-gap: .75rem;
-    --dashboard-panel-padding: .75rem;
-    --dashboard-row-padding: .5rem;
-    --dashboard-metric-padding: .5rem;
-  }
-}
-@media (min-width: 1100px) and (min-height: 720px) and (max-height: 900px) {
-  :root {
-    --dashboard-metric-gap: .25rem;
-    --dashboard-table-cell-padding: .5rem;
-  }
-}
-
 :root {
-  --home-pass-balance-size: 2.25rem;
+  --home-pass-balance-size: var(--font-size-metric);
   --home-pass-section-gap: .25rem;
   --home-pass-legend-size: .5rem;
   --home-pass-legend-radius: .125rem;

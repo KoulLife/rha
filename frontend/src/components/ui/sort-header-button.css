@@ -1,0 +1,11 @@
+@layer utilities {
+  .sort-header-button[data-slot="button"] {
+    height: var(--table-action-height);
+    padding-inline: var(--space-control);
+    gap: var(--space-tight);
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  .sort-header-button[data-direction] svg { color: var(--primary); }
+}

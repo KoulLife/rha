@@ -4,6 +4,7 @@
   .menu-dialog-title { margin: 0; font-size: 1.125rem; font-weight: 600; }
   .menu-dialog-confirmation .menu-dialog-title { font-size: 1.25rem; font-weight: 700; }
   .menu-dialog-body { white-space: pre-line; color: var(--muted-foreground); font-size: var(--font-size-body); line-height: 1.8; overflow-y: auto; min-height: 0; }
+  .menu-dialog-content { overflow-y: auto; min-height: 0; }
   .menu-dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-control); } }
 @layer utilities {
   .menu-dialog:has(> .menu-dialog-content) { grid-template-rows: auto minmax(0, 1fr) auto; }

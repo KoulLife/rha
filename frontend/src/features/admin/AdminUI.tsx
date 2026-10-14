@@ -5,6 +5,7 @@ import { Dialog as DialogPrimitive, Popover } from 'radix-ui';
 import { toast } from 'sonner';
 import { ApiError } from '@/api/client';
 import type { PageInfo } from '@/api/generated/api';
+import { SortHeaderButton } from '@/components/ui/SortHeaderButton';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -42,8 +43,8 @@ export function QueryState({ query, children }: { query: { isPending: boolean; i
   if (query.isError) return <Alert variant="destructive"><AlertTitle>정보를 불러오지 못했습니다</AlertTitle><AlertDescription>{errorMessage(query.error)}<Button variant="outline" onClick={() => query.refetch()}>다시 시도</Button></AlertDescription></Alert>;
   return <>{children}</>;
 }
-export function DataTable<T extends { id: number }>({ rows, columns, pageInfo, onPage, action, empty = '조회 결과가 없습니다' }: { rows: T[]; columns: { label: string; render: (row: T) => ReactNode; money?: boolean }[]; pageInfo?: PageInfo; onPage?: (page: number) => void; action?: ReactNode; empty?: string }) {
-  const panel = <MenuPanel variant="table">{rows.length ? <Table variant="management"><TableHeader><TableRow>{columns.map(c => <TableHead key={c.label}>{c.label}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map(row => <TableRow key={row.id}>{columns.map(c => <TableCell key={c.label} className={c.money ? 'admin-money' : undefined}>{c.render(row)}</TableCell>)}</TableRow>)}</TableBody></Table> : <MenuEmpty title={empty} description="조회 조건을 변경하거나 새 항목을 등록해 주세요." />}</MenuPanel>;
+export function DataTable<T extends { id: number }>({ rows, columns, pageInfo, onPage, action, empty = '조회 결과가 없습니다' }: { rows: T[]; columns: { label: string; render: (row: T) => ReactNode; money?: boolean; sort?: { direction: "asc" | "desc"; onToggle: () => void } }[]; pageInfo?: PageInfo; onPage?: (page: number) => void; action?: ReactNode; empty?: string }) {
+  const panel = <MenuPanel variant="table">{rows.length ? <Table variant="management"><TableHeader><TableRow>{columns.map(c => <TableHead key={c.label} aria-sort={c.sort ? c.sort.direction === "asc" ? "ascending" : "descending" : undefined}>{c.sort ? <SortHeaderButton label={c.label} direction={c.sort.direction} onClick={c.sort.onToggle} /> : c.label}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.map(row => <TableRow key={row.id}>{columns.map(c => <TableCell key={c.label} className={c.money ? 'admin-money' : undefined}>{c.render(row)}</TableCell>)}</TableRow>)}</TableBody></Table> : <MenuEmpty title={empty} description="조회 조건을 변경하거나 새 항목을 등록해 주세요." />}</MenuPanel>;
   return action || pageInfo ? <div className="admin-table-area">{action && <div className="admin-table-toolbar">{action}</div>}{panel}{pageInfo && <Pagination total={pageInfo.totalElements} page={pageInfo.page} totalPages={pageInfo.totalPages} onPageChange={onPage} />}</div> : panel;
 }
 export function SearchChoice({ id, value, onChange, choices, disabled }: { id: string; value: string; onChange: (value: string) => void; choices: Option[]; disabled?: boolean }) {

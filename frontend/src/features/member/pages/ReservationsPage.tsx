@@ -4,6 +4,7 @@ import type { DialogState } from "@/app/routes";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { Pagination, PAGE_SIZE } from "@/components/ui/Pagination";
 import { MenuPanel, MenuEmpty } from "@/components/layout/MenuPanel";
+import { SortHeaderButton } from "@/components/ui/SortHeaderButton";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { seoulDate, seoulTime } from "@/features/dashboard/model";
@@ -19,8 +20,10 @@ export function reservationDialog(id: number): NonNullable<DialogState> {
 
 export function ReservationsPage({ onDialog, canCancel }: { onDialog: (dialog: DialogState) => void; canCancel: boolean }) {
   const [tab, setTab] = useState("reserved");
+  const [sort, setSort] = useState<{ key: "date" | "createdAt"; direction: "asc" | "desc" }>({ key: "date", direction: "asc" });
+  const toggleSort = (key: "date" | "createdAt") => { setSort(current => ({ key, direction: current.key === key && current.direction === "asc" ? "desc" : "asc" })); setPage(1); };
   const [page, setPage] = useState(1);
-  const rows = reservations.filter(item => tab === "reserved" ? item.state === "예약 완료" : tab === "history" ? item.state !== "예약 완료" : false);
+  const rows = reservations.filter(item => tab === "reserved" ? item.state === "예약 완료" : tab === "history" ? item.state !== "예약 완료" : false).sort((a, b) => (a[sort.key].localeCompare(b[sort.key]) || a.id - b.id) * (sort.direction === "asc" ? 1 : -1));
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   return <div className="menu-page"><PageTitle title="내 예약·출결" description="예약 완료와 대기 신청, 지난 수업의 출결 내역을 확인합니다." />
@@ -29,7 +32,7 @@ export function ReservationsPage({ onDialog, canCancel }: { onDialog: (dialog: D
         <div className="menu-stack">
           <MenuPanel variant="table">
             {rows.length ? <Table variant="management">
-              <TableHeader><TableRow><TableHead>수업</TableHead><TableHead>수업 일시</TableHead><TableHead>예약 일시</TableHead><TableHead>강사</TableHead><TableHead>상태</TableHead><TableHead>사용 이용권</TableHead>{value === "reserved" && canCancel && <TableHead>예약 취소</TableHead>}</TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>수업</TableHead>{([{ key: "date", label: "수업 일시" }, { key: "createdAt", label: "예약 일시" }] as const).map(column => <TableHead key={column.key} aria-sort={sort.key === column.key ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><SortHeaderButton label={column.label} direction={sort.key === column.key ? sort.direction : undefined} onClick={() => toggleSort(column.key)} /></TableHead>)}<TableHead>강사</TableHead><TableHead>상태</TableHead><TableHead>사용 이용권</TableHead>{value === "reserved" && canCancel && <TableHead>예약 취소</TableHead>}</TableRow></TableHeader>
               <TableBody>{rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map(item => <TableRow key={item.id}>
                 <TableCell><strong>{item.lesson}</strong><p className="menu-muted">예약 #{item.id}</p></TableCell>
                 <TableCell>{item.date}</TableCell>

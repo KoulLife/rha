@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SortHeaderButton } from "@/components/ui/SortHeaderButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/Dialog";
 import { getStatusLabel, StatusBadge } from "@/components/ui/StatusBadge";
@@ -49,11 +50,10 @@ export function ReservationRoster({ reservations, lessons, memberActionLabel = "
     const comparison = typeof left === "number" && typeof right === "number" ? left - right : collator.compare(String(left), String(right));
     return comparison * (sort.direction === "asc" ? 1 : -1) || a.number - b.number;
   });
-  return <Table variant="centered" className="dashboard-lessons-table dashboard-roster-table">
-    <TableHeader><TableRow>{columns.map(column => <TableHead key={column.key} scope="col" aria-sort={sort.key === column.key ? sort.direction === "asc" ? "ascending" : "descending" : "none"}>
-      <Button variant="ghost" size="sm" className="table-sort-button" aria-label={`${column.label} ${sort.key === column.key && sort.direction === "asc" ? "내림차순" : "오름차순"} 정렬`} onClick={() => setSort(current => ({ key: column.key, direction: current.key === column.key && current.direction === "asc" ? "desc" : "asc" }))}>
-        {column.label}{sort.key === column.key && <span className="table-sort-direction">{sort.direction === "asc" ? "오름차순" : "내림차순"}</span>}
-      </Button>
+  const sortable = (key: SortKey) => key === "member" || (new Set(reservations.map(item => item.lessonId)).size > 1 && (key === "lessonTitle" || key === "time"));
+  return <Table variant="management" className="dashboard-lessons-table dashboard-roster-table">
+    <TableHeader><TableRow>{columns.map(column => <TableHead key={column.key} scope="col" aria-sort={sortable(column.key) ? sort.key === column.key ? sort.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
+      {sortable(column.key) ? <SortHeaderButton label={column.label} direction={sort.key === column.key ? sort.direction : undefined} onClick={() => setSort(current => ({ key: column.key, direction: current.key === column.key && current.direction === "asc" ? "desc" : "asc" }))} /> : column.label}
     </TableHead>)}<TableHead scope="col">상세</TableHead></TableRow></TableHeader>
     <TableBody>{rows.map(row => <TableRow key={row.reservation.id}>
       <TableCell>{row.number}</TableCell><TableCell><strong>{row.member}</strong></TableCell><TableCell>{row.lessonTitle}</TableCell><TableCell>{seoulTime(row.lesson.startAt)}</TableCell>

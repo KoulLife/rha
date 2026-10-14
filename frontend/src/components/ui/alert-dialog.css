@@ -1,0 +1,11 @@
+@layer utilities {
+  [data-slot="alert-dialog-footer"][data-variant="equal"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-detail);
+  }
+  [data-slot="alert-dialog-footer"][data-variant="equal"] > button {
+    width: 100%;
+    min-width: 0;
+  }
+}
