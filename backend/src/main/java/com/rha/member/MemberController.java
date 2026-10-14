@@ -1,5 +1,6 @@
 package com.rha.member;
 
+import com.rha.auth.AccountWithdrawalService;
 import com.rha.auth.AuthenticatedMember;
 import com.rha.auth.PasswordChangeRequest;
 import com.rha.auth.PasswordChangeService;
@@ -8,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -21,12 +23,14 @@ public class MemberController {
 
     private final MemberService memberService;
     private final PasswordChangeService passwordChangeService;
+    private final AccountWithdrawalService accountWithdrawalService;
     private final RefreshTokenCookieFactory cookies;
 
     public MemberController(MemberService memberService, PasswordChangeService passwordChangeService,
-            RefreshTokenCookieFactory cookies) {
+            AccountWithdrawalService accountWithdrawalService, RefreshTokenCookieFactory cookies) {
         this.memberService = memberService;
         this.passwordChangeService = passwordChangeService;
+        this.accountWithdrawalService = accountWithdrawalService;
         this.cookies = cookies;
     }
 
@@ -39,6 +43,14 @@ public class MemberController {
     public MemberResponse updateMyProfile(@AuthenticationPrincipal AuthenticatedMember me,
             @Valid @RequestBody MemberUpdateRequest request) {
         return MemberResponse.from(memberService.updateMyProfile(me.id(), request));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> withdrawMyAccount(@AuthenticationPrincipal AuthenticatedMember me) {
+        accountWithdrawalService.withdraw(me.id());
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, cookies.expire().toString())
+                .build();
     }
 
     @PutMapping("/me/password")
