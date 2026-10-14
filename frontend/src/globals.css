@@ -64,6 +64,7 @@
   --radius-panel: .75rem;
   --radius-panel-compact: var(--radius-panel);
   --page-padding-block: 2.25rem;
+  --page-list-padding-block: 1rem;
   --page-padding-inline: 2.5rem;
   --table-radius: var(--radius-panel-compact);
   --table-header-background: var(--muted);
@@ -74,8 +75,12 @@
   --table-row-hover: var(--accent);
   --table-divider: var(--border);
   --table-header-height: 3rem;
-  --table-cell-padding: .875rem;
-  --table-scroll-max-height: min(18rem, 60dvh);
+  --table-cell-padding: .5rem;
+  --table-row-height: 3.875rem;
+  --table-action-width: 6.75rem;
+  --table-action-height: 2rem;
+  --table-visible-rows: 5;
+  --table-scroll-max-height: calc(var(--table-header-height) + var(--table-row-height) * var(--table-visible-rows) + 1px);
   --background: #F7F8F6;
   --foreground: #292E2B;
   --card: #FFFFFF;

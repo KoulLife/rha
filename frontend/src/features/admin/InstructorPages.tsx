@@ -1,9 +1,11 @@
-import { PAGE_SIZE } from '@/components/ui/Pagination';
+import { PAGE_SIZE, Pagination } from '@/components/ui/Pagination';
 import { useState } from 'react';
 import * as api from '@/api/generated/api';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { MenuPanel } from '@/components/layout/MenuPanel';
+import { MenuPanel, MenuEmpty } from '@/components/layout/MenuPanel';
+import { Dialog } from '@/components/ui/Dialog';
 import { AdminPage, AdminLinks, DataTable, QueryState, Filters, Facts, ActionDialog, ALL, options, filterValue, dateTime, dayStart, dayEnd, textValue, numValue, type Values, type Action } from './AdminUI';
 import type { Navigate } from './MemberPages';
 
@@ -29,7 +31,48 @@ export function AbsenceDetail({id,onNavigate}:{id:number;onNavigate:Navigate}) {
 }
 export function ResignationsPage({onNavigate}:{onNavigate:Navigate}) {
   const [page,setPage]=useState(1),[action,setAction]=useState<Action|null>(null);
+  const [historyInstructor,setHistoryInstructor]=useState<{id:number;name:string}|null>(null);
   const query=api.useGetMembers({role:'INSTRUCTOR',page,size:PAGE_SIZE}), candidates=api.useGetInstructors({size:100});
   const register=api.useRegisterResignation(),cancel=api.useCancelResignation(),complete=api.useCompleteResignation(),reassign=api.useReassignLessons();
-  return <AdminPage title="퇴사 관리" description="퇴사일 등록, 시작 전 수업 인계, 퇴사 처리와 정산을 진행합니다." action={<Button variant="ghost" onClick={()=>onNavigate('admin-instructors')}>강사 목록으로</Button>}><p className="menu-note">수업 인계 시 담당 이용권은 자동으로 변경되지 않습니다. 회원 이용권에서 담당 강사를 별도로 조정해 주세요.</p><QueryState query={query}><DataTable rows={query.data?.content??[]} pageInfo={query.data?.pageInfo} onPage={setPage} columns={[{label:'강사',render:r=>r.name},{label:'상태',render:r=><StatusBadge domain="member" status={r.status}/>},{label:'퇴사일',render:r=>r.resignationDate??'미등록'},{label:'처리',render:r=><div className="menu-actions">{r.status==='ACTIVE'&&<><Button variant="outline" onClick={()=>setAction({title:'퇴사일 등록',description:'퇴사일 당일부터 새 수업 배정이 제한됩니다. 계정은 퇴사 처리 전까지 유지됩니다.',submitLabel:'퇴사일 저장',fields:[{name:'resignationDate',label:'퇴사일',type:'date',required:true,min:'2026-10-13'}],initial:{resignationDate:r.resignationDate??'2026-10-13'},onSubmit:v=>register.mutateAsync({memberId:r.id,data:{resignationDate:textValue(v,'resignationDate')}})})}>퇴사일 {r.resignationDate?'변경':'등록'}</Button><Button variant="outline" disabled={!candidates.data} onClick={()=>setAction({title:'미래 수업 인계',description:'이후의 시작 전 수업을 모두 인계합니다. 담당 이용권은 유지됩니다.',submitLabel:'수업 인계',danger:true,fields:[{name:'toInstructorId',label:'인계받을 강사',type:'search',required:true,options:options(candidates.data?.content.filter(m=>m.id!==r.id))}],onSubmit:v=>reassign.mutateAsync({memberId:r.id,data:{toInstructorId:numValue(v,'toInstructorId')}})})}>수업 인계</Button>{r.resignationDate&&<><Button variant="warning" onClick={()=>setAction({title:'퇴사일 취소',description:'등록된 퇴사일을 제거합니다.',submitLabel:'퇴사일 취소',submitVariant:'warning',danger:true,onSubmit:()=>cancel.mutateAsync({memberId:r.id})})}>퇴사일 취소</Button><Button variant="destructive" onClick={()=>setAction({title:'퇴사 처리',description:'퇴사일 도래 및 시작 전 수업이 없어야 합니다. 계정 로그인과 권한이 해제되고 대기·미래 부재가 취소됩니다.',submitLabel:'퇴사 처리',submitVariant:'destructive',danger:true,onSubmit:()=>complete.mutateAsync({memberId:r.id})})}>퇴사 처리</Button></>}</>}<Button variant="ghost" onClick={()=>onNavigate('admin-instructor-settlements',r.id)}>정산 보기</Button></div>}]}/></QueryState>{action&&<ActionDialog action={action} onClose={()=>setAction(null)}/>}</AdminPage>;
+  return <AdminPage title="퇴사 관리" description="퇴사일 등록, 시작 전 수업 인계, 퇴사 처리와 정산을 진행합니다." action={<Button variant="ghost" onClick={()=>onNavigate('admin-instructors')}>강사 목록으로</Button>}>
+    <p className="menu-note">수업 인계 시 담당 이용권은 자동으로 변경되지 않습니다. 회원 이용권에서 담당 강사를 별도로 조정해 주세요.</p>
+    <QueryState query={query}><DataTable rows={query.data?.content??[]} pageInfo={query.data?.pageInfo} onPage={setPage} columns={[
+      {label:'강사',render:r=>r.name},
+      {label:'상태',render:r=><StatusBadge domain="member" status={r.status}/>},
+      {label:'퇴사일',render:r=>r.resignationDate??'미등록'},
+      {label:'처리',render:r=><div className="menu-actions">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild><Button variant="outline" aria-label={`${r.name} 퇴사 관리`}>관리</Button></DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="admin-resignation-menu">
+            {r.status==='ACTIVE'&&<>
+            <DropdownMenuItem onSelect={()=>setAction({title:'퇴사일 등록',description:'퇴사일 당일부터 새 수업 배정이 제한됩니다. 계정은 퇴사 처리 전까지 유지됩니다.',submitLabel:'퇴사일 저장',fields:[{name:'resignationDate',label:'퇴사일',type:'date',required:true,min:'2026-10-13'}],initial:{resignationDate:r.resignationDate??'2026-10-13'},onSubmit:v=>register.mutateAsync({memberId:r.id,data:{resignationDate:textValue(v,'resignationDate')}})})}>퇴사일 {r.resignationDate?'변경':'등록'}</DropdownMenuItem>
+            <DropdownMenuItem disabled={!candidates.data} onSelect={()=>setAction({title:'미래 수업 인계',description:'이후의 시작 전 수업을 모두 인계합니다. 담당 이용권은 유지됩니다.',submitLabel:'수업 인계',danger:true,fields:[{name:'toInstructorId',label:'인계받을 강사',type:'search',required:true,options:options(candidates.data?.content.filter(m=>m.id!==r.id))}],onSubmit:v=>reassign.mutateAsync({memberId:r.id,data:{toInstructorId:numValue(v,'toInstructorId')}})})}>수업 인계</DropdownMenuItem>
+            {r.resignationDate&&<>
+              <DropdownMenuSeparator/>
+              <DropdownMenuItem className="admin-resignation-warning" onSelect={()=>setAction({title:'퇴사일 취소',description:'등록된 퇴사일을 제거합니다.',submitLabel:'퇴사일 취소',submitVariant:'warning',danger:true,onSubmit:()=>cancel.mutateAsync({memberId:r.id})})}>퇴사일 취소</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={()=>setAction({title:'퇴사 처리',description:'퇴사일 도래 및 시작 전 수업이 없어야 합니다. 계정 로그인과 권한이 해제되고 대기·미래 부재가 취소됩니다.',submitLabel:'퇴사 처리',submitVariant:'destructive',danger:true,onSubmit:()=>complete.mutateAsync({memberId:r.id})})}>퇴사 처리</DropdownMenuItem>
+            </>}
+            <DropdownMenuSeparator/>
+            </>}
+            <DropdownMenuItem onSelect={()=>setHistoryInstructor({id:r.id,name:r.name})}>수업 인계 정보</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="ghost" onClick={()=>onNavigate('admin-instructor-settlements',r.id)}>정산 보기</Button>
+      </div>}
+    ]}/></QueryState>
+    {action&&<ActionDialog action={action} onClose={()=>setAction(null)}/>}
+    {historyInstructor&&<Dialog dialog={{title:`${historyInstructor.name} · 수업 인계 정보`,body:'인계받은 강사와 수업별 변경 내역'}} onClose={()=>setHistoryInstructor(null)}><ReassignmentHistory instructorId={historyInstructor.id}/></Dialog>}
+  </AdminPage>;
+}
+
+function ReassignmentHistory({instructorId}:{instructorId:number}) {
+  const [page,setPage]=useState(1);
+  const query=api.useGetActivityLogs({targetType:'MEMBER',targetId:instructorId,action:'INSTRUCTOR_LESSONS_REASSIGNED',page,size:PAGE_SIZE});
+  return <QueryState query={query}>{query.data?.content.length ? <div className="menu-stack">
+    {query.data.content.map(log=><details className="admin-detail-section" key={log.id}>
+      <summary>{dateTime(log.occurredAt)} · {log.summary}</summary>
+      <ul className="admin-reassignment-lessons">{log.changes.map((change,index)=><li key={index}><strong>{change.field}</strong><span>{change.before} → {change.after}</span></li>)}</ul>
+    </details>)}
+    <Pagination total={query.data.pageInfo.totalElements} page={query.data.pageInfo.page} totalPages={query.data.pageInfo.totalPages} onPageChange={setPage}/>
+  </div> : <MenuEmpty title="수업 인계 기록이 없습니다" description="이 강사의 수업을 인계하면 이곳에 내역이 표시됩니다."/>}</QueryState>;
 }

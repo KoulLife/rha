@@ -71,7 +71,7 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onReadN
         const recorded = roster.filter(item => item.status === "ATTENDED" || item.status === "NO_SHOW").length;
         return <TableRow key={lesson.id}><TableCell>{lesson.room}</TableCell><TableCell>{seoulTime(lesson.startAt)}–{seoulTime(lesson.endAt)}</TableCell>
           <TableCell><strong>{lesson.title}</strong></TableCell><TableCell>{lesson.instructor}</TableCell><TableCell>{roster.length} / {lesson.capacity}명</TableCell>
-          <TableCell>{recorded} / {roster.length}명</TableCell><TableCell><Button variant="outline" size="sm" onClick={() => { setSelectedLessonId(lesson.id); onNavigate("today-lessons"); }} aria-label={`${lesson.title} 예약자 보기`}>예약자 보기</Button></TableCell></TableRow>;
+          <TableCell>{recorded} / {roster.length}명</TableCell><TableCell><Button variant="outline" size="sm" onClick={() => { if (admin) onNavigate("admin-lesson-detail", lesson.id); else { setSelectedLessonId(lesson.id); onNavigate("today-lessons"); } }} aria-label={`${lesson.title} 예약자 보기`}>예약자 보기</Button></TableCell></TableRow>;
       })}{preview && Array.from({ length: Math.max(0, 5 - items.length) }, (_, index) => <TableRow key={`empty-${index}`} aria-hidden="true" className="dashboard-lesson-placeholder"><TableCell colSpan={7} /></TableRow>)}</TableBody>
     </Table>;
 

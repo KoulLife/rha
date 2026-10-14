@@ -106,11 +106,13 @@ export const adminHandlers = [http.all('*/v1/*', async ({ request }) => {
       } else if (method === 'DELETE') { if (row.status === 'RESIGNED') fail('MEMBER_RESIGNED', '퇴사 완료 후에는 취소할 수 없습니다.'); result = update(row, { resignationDate: null }, 'INSTRUCTOR', '퇴사일 취소', id, row); }
       else { const input = payload<API.ResignationRequest>(); if (row.status !== 'ACTIVE' || input.resignationDate < previewToday) fail('INVALID_INPUT', '활성 강사의 오늘 이후 날짜를 입력해 주세요.', 400); result = update(row, input, 'INSTRUCTOR', '퇴사일 등록', id, row); }
     } else if (parts[0] === 'members' && parts[2] === 'lesson-reassignments') {
-      const input = payload<API.LessonReassignmentRequest>(), target = find(db.members, input.toInstructorId);
+      const input = payload<API.LessonReassignmentRequest>(), source = find(db.members, id), target = find(db.members, input.toInstructorId);
       if (id === target.id || target.role !== 'INSTRUCTOR') fail('INVALID_INPUT', '다른 강사를 선택해 주세요.', 400);
       const lessons = futureLessons(id).filter(l => l.startAt >= (input.from ?? previewNow));
       lessons.forEach(l => validateLesson({ ...l, instructor: summary(target) }, lessons.map(l => l.id)));
-      lessons.forEach(l => update(l, { instructor: summary(target) }, 'LESSON', '수업 인계', l.id)); result = { reassignedCount: lessons.length };
+      lessons.forEach(l => update(l, { instructor: summary(target) }, 'LESSON', '수업 인계', l.id));
+      if (lessons.length) db.logs.unshift({ id: nextId(), occurredAt: previewNow, category: 'INSTRUCTOR', action: 'INSTRUCTOR_LESSONS_REASSIGNED', actionName: '수업 인계', actor: { id: 3, name: '센터 관리자', role: 'ADMIN' }, targetType: 'MEMBER', targetId: id, subjectMember: summary(source), summary: `${source.name} → ${target.name} · ${lessons.length}개 수업`, changes: lessons.map(l => ({ field: `${l.title} · ${new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(l.startAt))}`, before: source.name, after: target.name })) });
+      result = { reassignedCount: lessons.length };
     } else if (path === '/instructors') result = page(db.members.filter(m => m.role === 'INSTRUCTOR' && m.status === 'ACTIVE').map(summary), url);
     else if (path === '/absences' && method === 'GET') result = page(db.absences.filter(a => match('instructorId', a.instructor.id) && match('status', a.status) && (!q.get('from') || a.endAt > q.get('from')!) && (!q.get('to') || a.startAt < q.get('to')!)), url);
     else if (parts[0] === 'absences' && id) {

@@ -11,6 +11,12 @@
     top: 0;
     z-index: 1;
   }
+  [data-slot="table"] [data-slot="table-header"] [data-slot="table-row"] {
+    height: var(--table-header-height);
+  }
+  [data-slot="table"] [data-slot="table-body"] [data-slot="table-row"] {
+    height: var(--table-row-height);
+  }
   .menu-panel-table[data-slot="card"],
   .dashboard-page .dashboard-panel-table[data-slot="card"] {
     border-radius: var(--table-radius);
@@ -44,6 +50,13 @@
   }
   [data-slot="table"][data-variant="management"] .menu-actions {
     justify-content: center;
+    flex-wrap: nowrap;
+  }
+  [data-slot="table"][data-variant="management"] [data-slot="table-cell"]:last-child [data-slot="button"] {
+    inline-size: var(--table-action-width);
+    block-size: var(--table-action-height);
+    padding-inline: var(--space-control);
+    font-size: var(--font-size-caption);
   }
 }
 @layer utilities {

@@ -119,7 +119,7 @@
 }
 @media (max-width: 767px) {
   .member-preview .content {
-    padding: var(--space-panel) var(--home-panel-padding);
+    padding: var(--page-padding-block) var(--home-panel-padding);
   }
   .app-header-location [aria-label="현재 위치"] {
     display: none;
@@ -266,4 +266,8 @@
   .member-subnavigation { border: 0; margin: 0; padding: var(--space-control) 0 var(--space-control) var(--space-panel); gap: var(--space-tight); }
   .member-subnavigation-button { width: 100%; height: var(--control-height); padding-inline: var(--space-detail); border-radius: var(--radius-lg); color: var(--muted-foreground); }
   .member-subnavigation-button[data-active="true"] { background: var(--secondary); color: var(--secondary-foreground); font-weight: 600; }
+}
+
+.member-preview .main-content:not(.home-main) .content:has(> .admin-page > .admin-table-area, > .admin-page > .menu-stack > .admin-table-area) {
+  padding-block: var(--page-list-padding-block);
 }

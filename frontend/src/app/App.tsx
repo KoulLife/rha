@@ -44,7 +44,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   const go = (next: Screen, id?: number) => {
     if (user.role === "ADMIN") {
       if (next === "today-lessons") next = "admin-lessons";
-      if (next === "attendance-overview") next = "admin-reservations";
+      if (next === "attendance-overview") next = "admin-lessons";
       if (next === "absence-requests") next = "admin-absences";
     }
     if (!canAccessScreen(next, user.role, currentUser.permissions)) return;
