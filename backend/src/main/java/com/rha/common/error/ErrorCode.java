@@ -17,6 +17,8 @@ public enum ErrorCode {
     PERMISSION_DENIED(HttpStatus.FORBIDDEN, "해당 작업을 할 수 있는 권한이 없습니다."),
     NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "Refresh Token이 유효하지 않습니다."),
+    INVALID_PERMISSION(HttpStatus.BAD_REQUEST, "권한 코드가 목록에 없거나 중복되었습니다."),
+    PERMISSION_TARGET_INVALID(HttpStatus.BAD_REQUEST, "권한은 강사에게만 부여할 수 있습니다."),
     CANNOT_CHANGE_OWN_ROLE(HttpStatus.FORBIDDEN, "본인의 역할은 변경할 수 없습니다."),
     CANNOT_CHANGE_OWN_STATUS(HttpStatus.FORBIDDEN, "본인 계정의 상태는 변경할 수 없습니다."),
     MEMBER_WITHDRAWN(HttpStatus.CONFLICT, "탈퇴한 회원은 ACTIVE로만 되돌릴 수 있습니다."),
