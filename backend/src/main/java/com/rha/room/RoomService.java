@@ -1,0 +1,98 @@
+package com.rha.room;
+
+import com.rha.common.error.ApiException;
+import com.rha.common.error.ErrorCode;
+import com.rha.common.paging.PageInfo;
+import com.rha.common.validation.RequestValidator;
+import com.rha.member.AdminGuard;
+import java.time.Instant;
+import java.util.List;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class RoomService {
+
+    private final RoomRepository roomRepository;
+    private final AdminGuard adminGuard;
+    private final RequestValidator requestValidator;
+
+    public RoomService(RoomRepository roomRepository, AdminGuard adminGuard, RequestValidator requestValidator) {
+        this.roomRepository = roomRepository;
+        this.adminGuard = adminGuard;
+        this.requestValidator = requestValidator;
+    }
+
+    /** 이름 오름차순(같으면 id 오름차순). 삭제된 룸은 제외한다. {@code page}는 1부터 시작한다. */
+    @Transactional(readOnly = true)
+    public RoomPageResponse getRooms(int page, int size) {
+        PageRequest pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id")));
+        Page<Room> result = roomRepository.findByDeletedAtIsNull(pageable);
+        List<RoomResponse> content = result.getContent().stream().map(RoomResponse::from).toList();
+        return new RoomPageResponse(content, PageInfo.of(result));
+    }
+
+    @Transactional(readOnly = true)
+    public RoomResponse getRoom(Long roomId) {
+        return RoomResponse.from(findActive(roomId));
+    }
+
+    @Transactional
+    public RoomResponse createRoom(Long callerId, RoomCreateRequest request) {
+        adminGuard.requireAdmin(callerId);
+        requestValidator.validate(request);
+
+        String name = request.name().strip();
+        if (roomRepository.existsByNameAndDeletedAtIsNull(name)) {
+            throw new ApiException(ErrorCode.ROOM_NAME_DUPLICATED);
+        }
+        Room room = Room.create(name, request.capacity(), Instant.now());
+        return RoomResponse.from(saveUnique(room));
+    }
+
+    @Transactional
+    public RoomResponse updateRoom(Long callerId, Long roomId, RoomUpdateRequest request) {
+        adminGuard.requireAdmin(callerId);
+        requestValidator.validate(request);
+        if (!request.hasAnyField()) {
+            throw new ApiException(ErrorCode.INVALID_INPUT);
+        }
+        Room room = findActive(roomId);
+
+        String name = request.name() == null ? null : request.name().strip();
+        if (name != null && roomRepository.existsByNameAndIdNotAndDeletedAtIsNull(name, roomId)) {
+            throw new ApiException(ErrorCode.ROOM_NAME_DUPLICATED);
+        }
+        room.update(name, request.capacity(), Instant.now());
+        return RoomResponse.from(saveUnique(room));
+    }
+
+    /**
+     * 룸을 삭제 처리한다. 시작 전 수업이 있는 룸의 삭제 거절(ROOM_IN_USE)은
+     * 수업 기능이 구현될 때 추가한다.
+     */
+    @Transactional
+    public void deleteRoom(Long callerId, Long roomId) {
+        adminGuard.requireAdmin(callerId);
+        Room room = findActive(roomId);
+        room.delete(Instant.now());
+    }
+
+    private Room findActive(Long roomId) {
+        return roomRepository.findByIdAndDeletedAtIsNull(roomId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+    }
+
+    /** 같은 이름이 동시에 등록·수정된 경우 유일 인덱스 위반을 409로 바꾼다. */
+    private Room saveUnique(Room room) {
+        try {
+            return roomRepository.saveAndFlush(room);
+        } catch (DataIntegrityViolationException e) {
+            throw new ApiException(ErrorCode.ROOM_NAME_DUPLICATED);
+        }
+    }
+}
