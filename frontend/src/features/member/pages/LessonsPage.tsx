@@ -44,9 +44,9 @@ export function LessonsPage({ onOpen, onDialog, canReserve, canWaitlist }: { onO
       <Field><FieldLabel htmlFor="lesson-to">종료일</FieldLabel><Input id="lesson-to" type="date" value={draft.to} min={draft.from || undefined} onChange={event => setDraft({ ...draft, to: event.target.value })} /></Field>
       <Field><FieldLabel htmlFor="lesson-type">수업 유형</FieldLabel><Select value={draft.type} onValueChange={type => setDraft({ ...draft, type })}><SelectTrigger id="lesson-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 유형</SelectItem>{[...new Set(lessons.map(item => item.type))].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></Field>
       <Field><FieldLabel htmlFor="lesson-room">룸</FieldLabel><Select value={draft.room} onValueChange={room => setDraft({ ...draft, room })}><SelectTrigger id="lesson-room"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 룸</SelectItem>{[...new Set(lessons.map(item => item.room))].map(room => <SelectItem key={room} value={room}>{room}</SelectItem>)}</SelectContent></Select></Field>
-      <div className="menu-actions"><Button variant="outline" type="submit">조회</Button><Button variant="outline" type="button" onClick={() => { setDraft(initialFilters); setFilters(initialFilters); setPage(1); }}>초기화</Button></div>
+      <div className="menu-actions"><Button variant="outline" type="submit">조회</Button></div>
     </form></MenuPanel>
-    <div className="menu-list">{rows.length ? rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map(lesson => <LessonCard key={lesson.id} lesson={lesson} onOpen={onOpen} onDialog={onDialog} canReserve={canReserve} canWaitlist={canWaitlist} />) : <MenuPanel><MenuEmpty title="조건에 맞는 수업이 없습니다" description="조회 조건을 변경하거나 초기화해 주세요." /></MenuPanel>}</div>
+    <div className="menu-list">{rows.length ? rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map(lesson => <LessonCard key={lesson.id} lesson={lesson} onOpen={onOpen} onDialog={onDialog} canReserve={canReserve} canWaitlist={canWaitlist} />) : <MenuPanel><MenuEmpty title="조건에 맞는 수업이 없습니다" description="조회 조건을 변경해 주세요." /></MenuPanel>}</div>
     <Pagination total={rows.length} page={currentPage} totalPages={totalPages} onPageChange={setPage} />
   </div>;
 }

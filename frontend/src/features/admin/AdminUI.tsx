@@ -50,7 +50,7 @@ export function SearchChoice({ id, value, onChange, choices, disabled }: { id: s
   const [open,setOpen] = useState(false), [term,setTerm] = useState('');
   return <Popover.Root open={open} onOpenChange={setOpen}><Popover.Trigger asChild><Button id={id} type="button" variant="outline" role="combobox" aria-expanded={open} disabled={disabled} className="admin-choice">{choices.find(o => o.value === value)?.label ?? '검색하여 선택'}</Button></Popover.Trigger><Popover.Portal><Popover.Content className="admin-choice-popup" align="start"><Input autoFocus aria-label="선택 항목 검색" value={term} onChange={e => setTerm(e.target.value)} /><div role="listbox" aria-label="검색 결과">{choices.filter(o => o.label.includes(term)).map(o => <Button key={o.value} role="option" aria-selected={o.value === value} variant="ghost" onClick={() => { onChange(o.value); setOpen(false); }}>{o.label}</Button>)}{!choices.some(o => o.label.includes(term)) && <p>검색 결과가 없습니다.</p>}</div></Popover.Content></Popover.Portal></Popover.Root>;
 }
-export function AdminForm({ fields, initial = {}, submitLabel = '저장', submitVariant = 'default', variant = 'default', primaryFilterCount, onReset, onSubmit, onCancel, children }: { fields: FormField[]; initial?: Values; submitLabel?: string; submitVariant?: ComponentProps<typeof Button>['variant']; variant?: 'default' | 'filter'; primaryFilterCount?: number; onReset?: () => void; onSubmit: (values: Values) => Promise<unknown>; onCancel?: () => void; children?: ReactNode }) {
+export function AdminForm({ fields, initial = {}, submitLabel = '저장', submitVariant = 'default', variant = 'default', primaryFilterCount, onSubmit, onCancel, toolbarAction, children }: { fields: FormField[]; initial?: Values; submitLabel?: string; submitVariant?: ComponentProps<typeof Button>['variant']; variant?: 'default' | 'filter'; primaryFilterCount?: number; onSubmit: (values: Values) => Promise<unknown>; onCancel?: () => void; toolbarAction?: ReactNode; children?: ReactNode }) {
   const uid = useId();
   const { register, control, handleSubmit, watch, formState: { errors, isSubmitting }, setError } = useForm<Values>({ defaultValues: initial });
   const client = useQueryClient();
@@ -72,7 +72,13 @@ export function AdminForm({ fields, initial = {}, submitLabel = '저장', submit
   return <form className="admin-form" data-variant={variant} data-expanded={expanded} aria-label={variant === 'filter' ? '목록 조회 조건' : undefined} onSubmit={submit}>
     {fields.map(renderField)}
     {children}{errors.root && <Alert variant="destructive"><AlertDescription>{errors.root.message}</AlertDescription></Alert>}
-    <div className="menu-actions admin-form-actions">{hasAdvanced && <Button type="button" variant="ghost" className="admin-filter-toggle" data-desktop-visible={hasDesktopAdvanced} aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? '상세 조건 접기' : '상세 조건'}{advancedCount > 0 ? ` (${advancedCount})` : ''}</Button>}{onCancel && <Button type="button" variant="cancel" disabled={isSubmitting} onClick={onCancel}>취소</Button>}<Button type="submit" variant={submitVariant} disabled={isSubmitting}>{isSubmitting ? '처리 중…' : submitLabel}</Button>{onReset && <Button type="button" variant="ghost" disabled={isSubmitting} onClick={onReset}>초기화</Button>}</div>
+    {variant === 'filter' ? <>
+      <div className="menu-actions admin-filter-submit">
+        {hasAdvanced && <Button type="button" variant="ghost" className="admin-filter-toggle" data-desktop-visible={hasDesktopAdvanced} aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? '상세 조건 접기' : '상세 조건'}{advancedCount > 0 ? ` (${advancedCount})` : ''}</Button>}
+        <Button type="submit" variant={submitVariant} disabled={isSubmitting}>{isSubmitting ? '처리 중…' : submitLabel}</Button>
+      </div>
+      {toolbarAction && <div className="menu-actions admin-form-actions admin-filter-actions">{toolbarAction}</div>}
+    </> : <div className="menu-actions admin-form-actions">{toolbarAction}{onCancel && <Button type="button" variant="cancel" disabled={isSubmitting} onClick={onCancel}>취소</Button>}<Button type="submit" variant={submitVariant} disabled={isSubmitting}>{isSubmitting ? '처리 중…' : submitLabel}</Button></div>}
   </form>;
 }
 export type Action = { title: string; description: string; submitLabel: string; fields?: FormField[]; initial?: Values; danger?: boolean; submitVariant?: ComponentProps<typeof Button>['variant']; content?: ReactNode; onSubmit: (values: Values) => Promise<unknown> };
@@ -85,10 +91,9 @@ export function ActionDialog({ action, onClose }: { action: Action; onClose: () 
   if (action.danger) return <AlertDialog open onOpenChange={open => { if (!open) close(); }}><AlertDialogContent className="menu-dialog admin-dialog" onCloseAutoFocus={restore}><AlertDialogTitle>{action.title}</AlertDialogTitle><AlertDialogDescription>{action.description}</AlertDialogDescription>{form}</AlertDialogContent></AlertDialog>;
   return <DialogPrimitive.Root open onOpenChange={open => { if (!open) close(); }}><DialogPrimitive.Portal><DialogPrimitive.Overlay className="menu-dialog-overlay" /><DialogPrimitive.Content className="menu-dialog admin-dialog" onCloseAutoFocus={restore} onInteractOutside={e => { if (busy) e.preventDefault(); }}><DialogPrimitive.Title className="menu-dialog-title">{action.title}</DialogPrimitive.Title><DialogPrimitive.Description className="menu-dialog-body">{action.description}</DialogPrimitive.Description>{form}</DialogPrimitive.Content></DialogPrimitive.Portal></DialogPrimitive.Root>;
 }
-export function Filters({ fields, initial = {}, primaryFilterCount, onApply }: { fields: FormField[]; initial?: Values; primaryFilterCount?: number; onApply: (values: Values) => void }) {
-  const [reset,setReset] = useState(0);
+export function Filters({ fields, initial = {}, primaryFilterCount, action, onApply }: { fields: FormField[]; initial?: Values; primaryFilterCount?: number; action?: ReactNode; onApply: (values: Values) => void }) {
   const defaults: Values = { ...Object.fromEntries(fields.filter(field => field.options?.some(option => option.value === 'ALL')).map(field => [field.name, 'ALL'])), ...initial };
-  return <AdminForm key={reset} variant="filter" fields={fields} initial={defaults} primaryFilterCount={primaryFilterCount} submitLabel="조회" submitVariant="outline" onSubmit={async v => onApply(v)} onReset={() => { onApply(defaults); setReset(r => r + 1); }} />;
+  return <AdminForm variant="filter" fields={fields} initial={defaults} primaryFilterCount={primaryFilterCount} toolbarAction={action} submitLabel="조회" submitVariant="outline" onSubmit={async v => onApply(v)} />;
 }
 export const ALL: Option = { value: 'ALL', label: '전체' };
 export const filterValue = (v: Values, key: string) => v[key] && v[key] !== 'ALL' ? String(v[key]) : undefined;
