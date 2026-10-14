@@ -342,3 +342,19 @@
     --panel-padding: 1rem;
   }
 }
+
+:root {
+  --timetable-month-width: 11rem;
+  --timetable-filter-width: 9rem;
+  --timetable-preview-width: 20rem;
+  --timetable-fact-width: 5rem;
+  --timetable-height: 34rem;
+  --timetable-mobile-height: 32rem;
+  --timetable-hour-height: 3rem;
+  --timetable-header-height: 2.5rem;
+  --timetable-time-width: 3.5rem;
+  --timetable-day-width: 5.5rem;
+  --timetable-nav-radius: 999px;
+  --timetable-event-padding: .25rem;
+  --timetable-event-accent: .25rem;
+}

@@ -25,6 +25,7 @@ type MenuDefinition = {
 // 배열 순서가 사이드바 순서다. 현재 구현된 화면만 등록한다.
 export const menuItems = [
   { screen: "home", label: "홈", roles: ["MEMBER", "INSTRUCTOR", "ADMIN"], permission: "lesson.read" },
+  { screen: "timetable", label: "시간표", roles: ["MEMBER", "INSTRUCTOR", "ADMIN"], permission: "lesson.read" },
   { screen: "classes", label: "수업", pageLabel: "수업 목록", roles: ["MEMBER"], permission: "lesson.read" },
   { screen: "passes", label: "내 이용권", roles: ["MEMBER"], permission: "pass.read" },
   { screen: "reservations", label: "내 예약·출결", roles: ["MEMBER"], permission: "reservation.read" },

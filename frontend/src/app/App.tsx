@@ -24,6 +24,7 @@ import { DashboardError, DashboardLoading } from "@/features/dashboard/Dashboard
 import type { HomeView } from "@/features/dashboard/viewState";
 import { AdminWorkspace, useAdminDashboard } from "@/features/admin/AdminWorkspace";
 import { QueryState } from "@/features/admin/AdminUI";
+import { TimetablePage } from "@/features/timetable/TimetablePage";
 import "./legacy.css";
 import "./shell.css";
 
@@ -68,7 +69,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
           onLogout={onLogout}
         />
         <div className="content">
-          {screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} onReadNotification={admin.read} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || screen === "notifications" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onReadNotification={onReadNotification} /> : <MemberScreen
+          {screen === "timetable" ? <TimetablePage user={user} onNavigate={go} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} onReadNotification={admin.read} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || screen === "notifications" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onReadNotification={onReadNotification} /> : <MemberScreen
             screen={screen}
             selectedId={selectedId}
             onNavigate={go}
