@@ -654,6 +654,7 @@ paths:
         - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 403 (PERMISSION_DENIED)이다.
         - 권한 코드 오름차순으로 정렬한다.
         - 활성 수업 유형이 없으면 `MEMBER_READ`만 반환한다. `MEMBER_READ`의 `name`은 "회원 조회"이다.
+        - 활성 수업 유형마다 `LESSON_CREATE:{code}`(`name`은 "{유형명} 수업 개설")와 `LESSON_UPDATE:{code}`(`name`은 "{유형명} 수업 수정")가 포함된다. 유형명을 바꾸면 이름도 따라 바뀐다.
       responses:
         '200':
           description: 조회 성공
@@ -741,7 +742,9 @@ paths:
       tags: [LessonType]
       operationId: getLessonTypes
       summary: 수업 유형 목록 조회
-      description: 등록 순으로 정렬된다. `active`를 지정하지 않으면 활성/비활성 유형을 모두 반환한다.
+      description: |
+        등록 순(`id` 오름차순)으로 정렬된다. `active`를 지정하지 않으면 활성/비활성 유형을 모두 반환한다.
+        - 로그인한 모든 역할이 조회할 수 있다.
       parameters:
         - $ref: '#/components/parameters/PageQuery'
         - $ref: '#/components/parameters/SizeQuery'
@@ -772,7 +775,10 @@ paths:
       description: |
         관리자 전용. 등록하면 해당 유형의 권한(`LESSON_CREATE:{code}`, `LESSON_UPDATE:{code}`)이 권한 목록에 추가된다.
         수업의 `capacity`는 개설 시점의 유형 정원이 복사된다.
-        - 이미 같은 `code`가 있으면 409 (LESSON_TYPE_CODE_DUPLICATED)
+        - 이미 같은 `code`가 있으면 409 (LESSON_TYPE_CODE_DUPLICATED). 비활성 유형의 `code`도 포함한다.
+        - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 코드 중복이면 409 (LESSON_TYPE_CODE_DUPLICATED).
+        - 새로 등록한 유형은 활성(`active: true`)이다.
       requestBody:
         required: true
         content:
@@ -809,6 +815,9 @@ paths:
         - `code`는 변경할 수 없다 (권한 코드에 쓰이기 때문).
         - 정원(`capacity`)을 바꿔도 이미 개설된 수업의 정원은 바뀌지 않는다.
         - `active`를 false로 하면 새 수업을 개설할 수 없고, 권한 목록에서도 제외된다. 기존 수업과 부여된 권한은 유지된다.
+        - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없는 유형이면 404.
+        - 비활성 유형도 수정할 수 있으며, 다시 활성화하면 권한 목록에 되돌아온다.
       requestBody:
         required: true
         content:
@@ -3118,7 +3127,10 @@ paths:
       tags: [Room]
       operationId: getRooms
       summary: 룸 목록 조회
-      description: 이름 오름차순으로 정렬된다.
+      description: |
+        이름 오름차순으로 정렬되며, 이름이 같으면 `id` 오름차순이다.
+        - 로그인한 모든 역할이 조회할 수 있다.
+        - 삭제된 룸은 포함하지 않는다.
       parameters:
         - $ref: '#/components/parameters/PageQuery'
         - $ref: '#/components/parameters/SizeQuery'
@@ -3142,7 +3154,10 @@ paths:
       summary: 룸 등록 (관리자)
       description: |
         관리자 전용.
-        - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED)
+        - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED). 삭제된 룸의 이름은 다시 사용할 수 있다.
+        - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 이름 중복이면 409 (ROOM_NAME_DUPLICATED).
+        - 이름의 앞뒤 공백은 제거해 저장한다.
       requestBody:
         required: true
         content:
@@ -3174,6 +3189,8 @@ paths:
       tags: [Room]
       operationId: getRoom
       summary: 룸 상세 조회
+      description: |
+        로그인한 모든 역할이 조회할 수 있다. 없거나 삭제된 룸이면 404이다.
       responses:
         '200':
           description: 조회 성공
@@ -3194,7 +3211,10 @@ paths:
       summary: 룸 수정 (관리자)
       description: |
         관리자 전용. 전달한 필드만 수정한다 (부분 수정). 최소 1개 필드가 필요하다.
-        - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED)
+        - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED). 자기 자신과 같은 이름으로 수정하는 것은 허용한다.
+        - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없거나 삭제된 룸이면 404 → 이름 중복이면 409 (ROOM_NAME_DUPLICATED).
+        - 이름의 앞뒤 공백은 제거해 저장한다.
       requestBody:
         required: true
         content:
@@ -3228,6 +3248,9 @@ paths:
       description: |
         관리자 전용.
         - 시작 전이고 취소되지 않은 수업이 있는 룸은 삭제할 수 없다 (409, ROOM_IN_USE). 취소된 수업은 포함하지 않는다.
+        - 지난 수업이 참조하므로 데이터는 지우지 않고 삭제 처리만 한다. 삭제된 룸은 조회, 수정, 삭제 모두 404이다.
+        - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 403 (PERMISSION_DENIED)이다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없거나 이미 삭제된 룸이면 404 → 시작 전 수업이 있으면 409 (ROOM_IN_USE).
       responses:
         '204':
           description: 삭제 성공
@@ -3251,6 +3274,8 @@ paths:
       description: |
         요일별 영업시간을 조회한다. 항상 7개 요일이 모두 반환되므로(고정 크기) 페이징을 사용하지 않는다.
         아직 설정한 적이 없으면 모든 요일이 휴무(`closed: true`)로 반환된다.
+        - 로그인한 모든 역할이 조회할 수 있다.
+        - 월요일(`MON`)부터 일요일(`SUN`) 순으로 반환한다.
       responses:
         '200':
           description: 조회 성공
@@ -3272,6 +3297,12 @@ paths:
         - 요일이 누락되거나 중복되면 400 (INVALID_BUSINESS_HOURS)
         - `closed`가 false인 요일은 `openTime`이 `closeTime`보다 빨라야 한다 (400, INVALID_BUSINESS_HOURS)
         - 이미 개설된 수업에는 영향을 주지 않는다. 이후 수업 개설 시 검증에만 적용된다.
+        - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식이 올바르지 않으면 400 (INVALID_INPUT) → 요일 구성이나 시각이 올바르지 않으면 400 (INVALID_BUSINESS_HOURS).
+        - 요일은 `MON`~`SUN` 7개가 정확히 한 번씩 있어야 한다. 개수가 7개가 아니거나 중복되면 400 (INVALID_BUSINESS_HOURS)이다.
+        - `closed`가 true인 요일에 `openTime` 또는 `closeTime`을 보내면 400 (INVALID_BUSINESS_HOURS)이다. `closed`가 false인 요일은 두 시각이 모두 있어야 한다.
+        - 형식이 올바르지 않은 값(`HH:mm`이 아닌 시각, 정의되지 않은 요일 등)은 400 (INVALID_INPUT)이다.
+        - 응답은 월요일부터 일요일 순이다.
       requestBody:
         required: true
         content:
