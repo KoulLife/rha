@@ -492,7 +492,12 @@ paths:
         - 비밀번호 없이 등록하며, 입력한 이메일로 비밀번호 설정 링크(초대 메일)가 발송된다.
         - 설정 링크는 `resetPassword`(POST /auth/password-resets)로 처리한다. 링크가 만료되면 `requestPasswordReset`으로 다시 받을 수 있다.
         - 비밀번호를 설정하기 전까지는 로그인할 수 없다.
-        - 이미 가입된 이메일이면 409 (EMAIL_ALREADY_EXISTS)
+        - 설정 링크의 토큰은 `requestPasswordReset`이 발급하는 것과 같은 형식(`prt_`)이며 유효 시간은 30분이다.
+        - 관리자(`ADMIN`)가 아닌 호출자는 403 (PERMISSION_DENIED)
+        - 이미 가입된 이메일이면 409 (EMAIL_ALREADY_EXISTS). 탈퇴, 비활성화, 퇴사한 계정의 이메일도 포함한다.
+        - 계정 생성과 초대 메일 발송은 하나의 작업으로 처리한다. 메일 발송에 실패하면 계정도 생성되지 않는다.
+        - 성공하면 201과 함께 `ACTIVE` 상태의 회원 정보를 반환한다. 권한은 비어 있고 비밀번호는 없다.
+        - 요청 형식이 올바르지 않으면 400 (INVALID_INPUT)
       requestBody:
         required: true
         content:
