@@ -7,9 +7,12 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -44,6 +47,34 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         ProblemDetail problem = problem(ErrorCode.INVALID_INPUT, ErrorCode.INVALID_INPUT.defaultMessage(),
                 requestUri(request));
+        return ResponseEntity.status(ErrorCode.INVALID_INPUT.status()).body(problem);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException e,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        List<InvalidParam> invalidParams = e.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream()
+                        .map(error -> new InvalidParam(result.getMethodParameter().getParameterName(),
+                                error.getDefaultMessage())))
+                .toList();
+        ProblemDetail problem = problem(ErrorCode.INVALID_INPUT, ErrorCode.INVALID_INPUT.defaultMessage(),
+                requestUri(request));
+        problem.setProperty("invalidParams", invalidParams);
+        return ResponseEntity.status(ErrorCode.INVALID_INPUT.status()).body(problem);
+    }
+
+    /** 숫자가 아닌 경로 변수, 정의되지 않은 enum 값 등 파라미터 타입이 맞지 않는 경우. */
+    @Override
+    protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException e, HttpHeaders headers,
+            HttpStatusCode status, WebRequest request) {
+        String field = e instanceof MethodArgumentTypeMismatchException mismatch ? mismatch.getName()
+                : e.getPropertyName();
+        ProblemDetail problem = problem(ErrorCode.INVALID_INPUT, ErrorCode.INVALID_INPUT.defaultMessage(),
+                requestUri(request));
+        if (field != null) {
+            problem.setProperty("invalidParams", List.of(new InvalidParam(field, "값의 형식이 올바르지 않습니다.")));
+        }
         return ResponseEntity.status(ErrorCode.INVALID_INPUT.status()).body(problem);
     }
 
