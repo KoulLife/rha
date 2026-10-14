@@ -83,7 +83,7 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onReadN
   const absenceList = !snapshot.absences.length ? <DashboardEmpty title="승인 대기 중인 부재 신청이 없습니다" description={admin ? "새 부재 신청이 접수되면 표시됩니다." : "내 부재 신청의 승인 대기 상태를 확인할 수 있습니다."} /> :
     <ul className="dashboard-short-list dashboard-dated-list">{snapshot.absences.map(item => <li key={item.id}><h3>{item.instructor} · {item.reason}</h3><div className="dashboard-list-date"><time dateTime={item.from}>{item.from}</time>{item.from !== item.to && <time dateTime={item.to}>~ {item.to}</time>}</div><StatusBadge domain="absence" status={item.status} /></li>)}</ul>;
 
-  if (screen === "notifications") return <NotificationsPage items={snapshot.notifications} onRead={onReadNotification} />;
+  if (screen === "notifications") return <NotificationsPage role={user.role} onNavigate={onNavigate} />;
 
   if (screen !== "home") {
     const titles = { "today-lessons": admin ? "오늘 전체 수업" : "오늘 담당 수업", "attendance-overview": "오늘 예약·출결 현황", "absence-requests": admin ? "부재 승인 대기" : "내 부재 승인 대기", notifications: "내 알림" };
@@ -105,8 +105,8 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onReadN
 
   const metrics = [
     { label: admin ? "오늘 전체 수업" : "오늘 담당 수업", value: `${snapshot.todayLessons.length}개`, target: lessonsScreen },
-    { label: "오늘 예약", value: `${snapshot.reservations.length}명`, attendance: true, target: admin ? "attendance-overview" as const : "attendees" as const },
-    { label: admin ? "부재 승인 대기" : "출결 처리 대기", value: `${admin ? snapshot.absences.length : snapshot.attendancePending}건`, target: admin ? "absence-requests" as const : "attendance" as const },
+    { label: "오늘 예약", value: `${snapshot.reservations.length}명`, attendance: true, target: "attendance-overview" as const },
+    { label: admin ? "부재 승인 대기" : "출결 처리 대기", value: `${admin ? snapshot.absences.length : snapshot.attendancePending}건`, target: "absence-requests" as const },
     { label: "읽지 않은 알림", value: `${snapshot.unread}건`, target: "notifications" as const },
   ];
   return <div className="dashboard-page">
@@ -117,7 +117,7 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onReadN
     <div className="dashboard-columns">
       <div className="dashboard-column">
         <DashboardPanel title={admin ? "오늘 전체 수업" : "오늘 담당 수업"} variant="table" action={<Button variant="ghost" onClick={() => onNavigate(lessonsScreen)}>전체 보기</Button>}>{lessonList(snapshot.todayLessons, true)}</DashboardPanel>
-        <DashboardPanel title={admin ? "부재 승인 대기" : "내 부재 승인 대기"} action={<Button variant="ghost" onClick={() => onNavigate(admin ? "absence-requests" : "absences")}>전체 보기</Button>}>{absenceList}</DashboardPanel>
+        <DashboardPanel title={admin ? "부재 승인 대기" : "내 부재 승인 대기"} action={<Button variant="ghost" onClick={() => onNavigate("absence-requests")}>전체 보기</Button>}>{absenceList}</DashboardPanel>
       </div>
       <div className="dashboard-column">
         <DashboardPanel title="최근 알림" action={notificationAction}><NotificationList items={snapshot.notifications.slice(0, 6)} onRead={onReadNotification} /></DashboardPanel>

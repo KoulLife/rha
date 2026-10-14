@@ -2,10 +2,14 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { LessonEditor } from '@/features/admin/LessonPages';
 import type { Values } from '@/features/admin/AdminUI';
 import { useEffect, useState, type CSSProperties } from 'react';
-import { useGetLessons, type Lesson, type LessonPageResponse } from '@/api/generated/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { useCreateReservation, useGetLessons, useGetMyReservations, getGetMyReservationsQueryKey, type Lesson, type LessonPageResponse } from '@/api/generated/api';
 import type { Screen } from '@/config/access';
 import type { DashboardUser } from '@/features/dashboard/model';
 import { MenuEmpty, MenuPanel } from '@/components/layout/MenuPanel';
+import { Dialog } from '@/components/ui/Dialog';
+import type { DialogState } from '@/app/routes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field, FieldLabel } from '@/components/ui/field';
@@ -19,7 +23,7 @@ import './timetable.css';
 
 const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
-export function TimetablePage({ user, onNavigate }: { user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void }) {
+export function TimetablePage({ user, onNavigate, canReserve = false }: { user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void; canReserve?: boolean }) {
   const today = dateInSeoul();
   const [date, setDate] = useState(today);
   const [room, setRoom] = useState('all');
@@ -54,11 +58,11 @@ export function TimetablePage({ user, onNavigate }: { user: DashboardUser; onNav
         {canEdit && (editing ? <><Button variant="outline" onClick={() => openCreate()}>수업 추가</Button><Button onClick={() => setEditing(false)}>편집 완료</Button></> : <Button onClick={() => setEditing(true)}>시간표 편집</Button>)}
       </div>
     </div>
-    <WeekSchedule key={`${user.role}-${user.id}-${start}`} start={start} today={today} user={user} onNavigate={onNavigate} room={room} setRoom={setRoom} lessonType={lessonType} setLessonType={setLessonType} scope={scope} setScope={setScope} editing={editing && canEdit} onCreate={openCreate} onEdit={id => { if (canEdit) setEditor({ id }); }} selectedId={selectedId} onSelect={setSelectedId} />
+    <WeekSchedule key={`${user.role}-${user.id}-${start}`} start={start} today={today} user={user} onNavigate={onNavigate} canReserve={canReserve} room={room} setRoom={setRoom} lessonType={lessonType} setLessonType={setLessonType} scope={scope} setScope={setScope} editing={editing && canEdit} onCreate={openCreate} onEdit={id => { if (canEdit) setEditor({ id }); }} selectedId={selectedId} onSelect={setSelectedId} />
   </section>;
 }
 
-type ScheduleProps = { lessonType: string; setLessonType: (value: string) => void; editing: boolean; onCreate: (day: string, hour: number) => void; onEdit: (id: number) => void; selectedId: number | null; onSelect: (id: number) => void; start: string; today: string; user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void; room: string; setRoom: (value: string) => void; scope: string; setScope: (value: string) => void };
+type ScheduleProps = { lessonType: string; setLessonType: (value: string) => void; editing: boolean; onCreate: (day: string, hour: number) => void; onEdit: (id: number) => void; selectedId: number | null; onSelect: (id: number) => void; start: string; today: string; user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void; canReserve: boolean; room: string; setRoom: (value: string) => void; scope: string; setScope: (value: string) => void };
 
 function WeekSchedule({ start, today, user, onNavigate, ...filters }: ScheduleProps) {
   const [pages, setPages] = useState<LessonPageResponse[]>([]);
@@ -82,7 +86,12 @@ function WeekSchedule({ start, today, user, onNavigate, ...filters }: SchedulePr
   return <Schedule lessons={lessons} start={start} today={today} user={user} onNavigate={onNavigate} {...filters} />;
 }
 
-function Schedule({ lessons, start, today, user, onNavigate, room, setRoom, lessonType, setLessonType, scope, setScope, editing, onCreate, onEdit, selectedId, onSelect }: ScheduleProps & { lessons: Lesson[] }) {
+function Schedule({ lessons, start, today, user, onNavigate, canReserve, room, setRoom, lessonType, setLessonType, scope, setScope, editing, onCreate, onEdit, selectedId, onSelect }: ScheduleProps & { lessons: Lesson[] }) {
+  const client = useQueryClient();
+  const reserve = useCreateReservation();
+  const [reservationDialog, setReservationDialog] = useState<DialogState>(null);
+  const range = weekRange(start);
+  const myReservations = useGetMyReservations({ lessonFrom: range.from, lessonTo: range.to, status: 'RESERVED', page: 1, size: 100 }, { query: { enabled: user.role === 'MEMBER' } });
   const rows = lessons.filter(lesson => (lessonType === 'all' || String(lesson.lessonType.id) === lessonType) && (room === 'all' || String(lesson.room.id) === room) && (scope === 'all' || lesson.instructor.id === user.id));
   const selected = rows.find(lesson => lesson.id === selectedId);
   const dates = Array.from({ length: 7 }, (_, i) => shiftDate(start, i));
@@ -123,10 +132,28 @@ function Schedule({ lessons, start, today, user, onNavigate, room, setRoom, less
           <div className="menu-stack"><h3>{selected.title}</h3><StatusBadge domain="lesson" status={selected.status} /></div>
           <dl className="menu-facts">{[['날짜', dateInSeoul(selected.startAt)], ['시간', `${timeInSeoul(selected.startAt)} – ${dateInSeoul(selected.endAt) !== dateInSeoul(selected.startAt) ? `${dateInSeoul(selected.endAt)} ` : ''}${timeInSeoul(selected.endAt)}`], ['수업 유형', selected.lessonType.name], ['담당 강사', selected.instructor.name], ['룸', selected.room.name], ['예약 / 정원', `${selected.reservedCount} / ${selected.capacity}명`]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
           {selected.status === 'PUBLISHED' && <p className="menu-note">{Date.parse(selected.endAt) <= Date.now() ? '종료된 수업입니다.' : selected.reservedCount >= selected.capacity ? '정원이 찬 수업입니다.' : `남은 자리 ${selected.capacity - selected.reservedCount}석`}</p>}
+          {user.role === 'MEMBER' && selected.status === 'PUBLISHED' && Date.parse(selected.startAt) > Date.now() && (() => {
+            const alreadyReserved = myReservations.data?.content.some(reservation => reservation.lesson.id === selected.id && reservation.status === 'RESERVED');
+            if (alreadyReserved) return <p className="menu-note">이미 신청한 수업입니다.</p>;
+            if (selected.reservedCount >= selected.capacity) return null;
+            if (!canReserve) return <p className="menu-note">수업 신청 권한이 없습니다.</p>;
+            return <Button disabled={myReservations.isPending || reserve.isPending} onClick={() => setReservationDialog({ title: '수업 신청 확인', body: `${selected.title} · ${dateInSeoul(selected.startAt)} ${timeInSeoul(selected.startAt)}`, action: '신청하기', details: [['수업', selected.title], ['일시', `${dateInSeoul(selected.startAt)} ${timeInSeoul(selected.startAt)}`], ['담당 강사', selected.instructor.name], ['룸', selected.room.name]].map(([label, value]) => ({ label, value })), notice: '신청이 완료되면 사용 가능한 이용권에서 1회가 차감됩니다.' })}>수업 신청하기</Button>;
+          })()}
           {editing && selected.status !== 'CANCELED' && Date.parse(selected.startAt) > Date.now() && <Button onClick={() => onEdit(selected.id)}>수업 수정</Button>}
           {user.role === 'ADMIN' && <Button variant="outline" onClick={() => onNavigate('admin-lesson-detail', selected.id)}>수업 상세 보기</Button>}
         </div> : <p className="timetable-empty-preview">{editing ? '빈 시간칸을 선택해 수업을 등록하세요.' : '수업을 선택해 주세요.'}</p>}</MenuPanel>
       </aside>
     </div>}
+    {reservationDialog && <Dialog dialog={reservationDialog} onClose={() => setReservationDialog(null)} onConfirm={() => {
+      const selectedLesson = selected;
+      if (!selectedLesson) return;
+      void reserve.mutateAsync({ data: { lessonId: selectedLesson.id } }).then(async () => {
+        await Promise.all([
+          client.invalidateQueries({ queryKey: ['timetable', user.role, user.id] }),
+          client.invalidateQueries({ queryKey: getGetMyReservationsQueryKey() }),
+        ]);
+        toast.success('수업 신청이 완료되었습니다.');
+      }).catch(error => toast.error(error instanceof Error ? error.message : '수업 신청에 실패했습니다.'));
+    }} />}
   </>;
 }

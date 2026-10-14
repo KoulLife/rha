@@ -27,8 +27,25 @@
   .admin-choice-popup [role="option"] { justify-content: start; }
   .admin-choice-popup [aria-selected="true"] { background: var(--accent); }
   .admin-resignation-menu .admin-resignation-warning { color: var(--button-warning-foreground); }
+  .admin-absence-detail-card > [data-slot="card-content"] { display: flex; flex-direction: column; gap: var(--space-panel); }
+  .admin-absence-actions { justify-content: flex-end; margin-top: auto; padding-top: var(--space-detail); border-top: 1px solid var(--border); }
   .admin-money { text-align: right; font-variant-numeric: tabular-nums; }
   .admin-loading { display: grid; gap: var(--space-detail); }
+  .admin-notification-controls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-detail); min-width: 0; }
+  .admin-notification-type-filters { flex: 1 1 auto; min-width: 0; margin: 0; padding: 0; border: 0; }
+  .admin-notification-controls > [data-slot="button"] { margin-left: auto; }
+  .admin-notification-summary { display: flex; align-items: flex-start; gap: var(--space-control); min-width: 0; text-align: left; }
+  .admin-notification-summary > div { min-width: 0; }
+  .admin-notification-summary strong { font-weight: var(--font-weight-heading); }
+  .admin-notification-summary p { display: -webkit-box; overflow: hidden; margin: var(--space-control) 0 0; color: var(--muted-foreground); font-size: var(--font-size-caption); line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .admin-notification-indicator { flex: 0 0 var(--space-control); width: var(--space-control); height: var(--space-control); margin-top: var(--space-control); border-radius: 50%; background: transparent; }
+  .admin-notification-summary.is-unread .admin-notification-indicator { background: var(--warning); }
+  .admin-notification-type-filters legend { margin-bottom: 0; }
+  .admin-notification-radio-group { display: flex; flex-wrap: wrap; gap: var(--space-control); width: fit-content; max-width: 100%; }
+  .admin-notification-type-option { position: relative; display: inline-flex; flex: 0 1 auto; align-items: center; justify-content: center; min-height: var(--control-height); padding: 0 var(--space-panel); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--muted-foreground); font-size: var(--font-size-caption); white-space: nowrap; cursor: pointer; }
+  .admin-notification-type-option:has(input:checked) { background: var(--primary); color: var(--primary-foreground); font-weight: var(--font-weight-heading); }
+  .admin-notification-type-option:has(input:focus-visible) { position: relative; z-index: 1; outline: 2px solid var(--ring); outline-offset: -2px; }
+  .admin-notification-type-option input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .admin-skeleton { height: var(--menu-table-row-height); }
   .admin-detail-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--menu-gap); }
   .admin-full-form { max-width: var(--admin-form-width); }

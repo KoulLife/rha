@@ -1,13 +1,6 @@
-import { PAGE_SIZE } from '@/components/ui/Pagination';
-import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import * as api from '@/api/generated/api';
 import { Button } from '@/components/ui/button';
-import { Dialog } from '@/components/ui/Dialog';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Field,FieldLabel } from '@/components/ui/field';
-import { MenuPanel } from '@/components/layout/MenuPanel';
 import type { Screen } from '@/app/routes';
 import type { DashboardData } from '@/features/dashboard/model';
 import { MembersPage,MemberDetail,type Navigate } from './MemberPages';
@@ -15,9 +8,9 @@ import { AbsencesPage,AbsenceDetail,ResignationsPage } from './InstructorPages';
 import { LessonsPage,LessonDetail,LessonEditor } from './LessonPages';
 import { PassesPage,PassDetail,PaymentsPage } from './PassPages';
 import { SettingsPage,ProductsPage,LessonTypesPage,RoomsPage,HoursPage,PolicyPage } from './SettingsPages';
-import { SettlementsPage,SettlementCreate,SettlementDetail,PayRatesPage } from './SettlementPages';
+import { SettlementsPage,SettlementCreate,SettlementDetail } from './SettlementPages';
 import { ActivityPage } from './ActivityPages';
-import { AdminPage,PendingFeature,QueryState,DataTable,ActionDialog,dateTime,type Action } from './AdminUI';
+import { AdminPage,PendingFeature } from './AdminUI';
 
 export function useAdminDashboard(enabled:boolean) {
   const lessons=api.useGetLessons({from:'2026-10-12T15:00:00Z',to:'2026-10-13T15:00:00Z',size:100},{query:{enabled}});
@@ -59,15 +52,8 @@ export function AdminWorkspace({screen,id,onNavigate}:{screen:Screen;id:number;o
     case 'admin-instructor-settlements':content=<SettlementsPage instructorId={id} onNavigate={onNavigate}/>;break;
     case 'admin-settlement-create':content=<SettlementCreate instructorId={id||undefined} onNavigate={onNavigate}/>;break;
     case 'admin-settlement-detail':content=<SettlementDetail id={id} onNavigate={onNavigate}/>;break;
-    case 'admin-pay-rates':content=<PayRatesPage initialInstructorId={id} onNavigate={onNavigate}/>;break;
     case 'activity-logs':content=<ActivityPage onNavigate={onNavigate}/>;break;
-    case 'notifications':content=<AdminNotifications/>;break;
     default:content=null;
   }
   return content;
-}
-function AdminNotifications() {
-  const [page,setPage]=useState(1),[unreadOnly,setUnreadOnly]=useState(false),[action,setAction]=useState<Action|null>(null),[selected,setSelected]=useState<api.Notification|null>(null);
-  const query=api.useGetMyNotifications({page,size:PAGE_SIZE,...(unreadOnly?{read:false}:{})}),unread=api.useGetMyUnreadNotificationCount(),read=api.useReadNotification(),readAll=api.useReadAllNotifications();
-  return <AdminPage title="내 알림" description="관리자 본인에게 도착한 알림을 확인합니다." action={<Button variant="outline" disabled={!unread.data?.unreadCount} onClick={()=>setAction({title:'모든 알림 읽음으로 표시',description:'내 계정의 읽지 않은 알림을 모두 읽음으로 표시합니다.',submitLabel:'모두 읽음 처리',onSubmit:()=>readAll.mutateAsync()})}>모든 알림 읽음으로 표시</Button>}><div className="menu-results"><strong>읽지 않은 알림 {unread.data?.unreadCount??0}건</strong><Field orientation="horizontal" className="menu-checkbox-field"><Checkbox id="admin-unread" checked={unreadOnly} onCheckedChange={v=>{setUnreadOnly(v===true);setPage(1);}}/><FieldLabel htmlFor="admin-unread">읽지 않은 알림만 보기</FieldLabel></Field></div><QueryState query={query}><DataTable rows={query.data?.content??[]} pageInfo={query.data?.pageInfo} onPage={setPage} columns={[{label:'알림',render:n=><><strong>{n.title}</strong><p className="menu-muted">{n.message}</p></>},{label:'분류',render:n=>({ABSENCE_REQUESTED:'부재 신청',ABSENCE_APPROVED:'부재 승인',ABSENCE_REJECTED:'부재 반려',LESSON_CANCELED:'수업 취소',RESERVATION_CANCELED:'예약 취소'} as Record<string,string>)[n.type]??'안내'},{label:'받은 시간',render:n=>dateTime(n.createdAt)},{label:'상태',render:n=><StatusBadge domain="notification" status={n.read?'READ':'UNREAD'}/>},{label:'상세',render:n=><Button variant="ghost" onClick={()=>{if(n.read)setSelected(n);else setAction({title:n.title,description:n.message,submitLabel:'읽음으로 표시',onSubmit:()=>read.mutateAsync({notificationId:n.id})});}}>상세 보기</Button>}]}/></QueryState>{action&&<ActionDialog action={action} onClose={()=>setAction(null)}/>} {selected&&<Dialog dialog={{title:selected.title,body:`${selected.message}\n\n${dateTime(selected.createdAt)}`}} onClose={()=>setSelected(null)}/>}</AdminPage>;
 }

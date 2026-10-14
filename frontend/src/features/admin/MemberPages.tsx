@@ -3,38 +3,47 @@ import { useState } from 'react';
 import * as api from '@/api/generated/api';
 import type { Screen } from '@/app/routes';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/Dialog';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { MenuPanel } from '@/components/layout/MenuPanel';
-import { AdminPage, AdminLinks, AdminForm, DataTable, QueryState, Filters, Facts, ActionDialog, ALL, options, filterValue, dateTime, textValue, money, type Values, type FormField, type Action } from './AdminUI';
+import { AdminPage, AdminLinks, AdminForm, DataTable, QueryState, Filters, Facts, ActionDialog, ALL, options, filterValue, dateTime, textValue, numValue, money, type Values, type FormField, type Action } from './AdminUI';
 import { PassList, PaymentsList } from './PassPages';
 import { ReservationsList } from './LessonPages';
 import { AbsenceList } from './InstructorPages';
 export type Navigate = (screen: Screen, id?: number) => void;
 const memberStates = [ALL, { value:'ACTIVE',label:'활성' }, { value:'INACTIVE',label:'비활성' }, { value:'WITHDRAWN',label:'탈퇴' }, { value:'RESIGNED',label:'퇴사' }];
+const instructorStates = [ALL, { value:'ACTIVE',label:'재직' }, { value:'INACTIVE',label:'비활성' }, { value:'RESIGNED',label:'퇴사' }];
 const personFields: FormField[] = [{name:'name',label:'이름',required:true,maxLength:50},{name:'phoneNumber',label:'휴대전화',type:'tel',required:true,pattern:'01[0-9]{8,9}',description:'하이픈 없이 입력해 주세요.'},{name:'birthDate',label:'생년월일',type:'date',required:true,max:'2026-10-13'},{name:'address',label:'주소',maxLength:200}];
 
 export function MembersPage({ instructor = false, onNavigate }: { instructor?: boolean; onNavigate: Navigate }) {
-  const [filters,setFilters] = useState<Values>({}), [page,setPage] = useState(1), [action,setAction] = useState<Action | null>(null);
+  const [filters,setFilters] = useState<Values>({}), [page,setPage] = useState(1), [action,setAction] = useState<Action | null>(null), [rateInstructorId,setRateInstructorId]=useState<number|null>(null);
   const query = api.useGetMembers({role:instructor?'INSTRUCTOR':'MEMBER',keyword:filterValue(filters,'keyword'),status:filterValue(filters,'status') as api.MemberStatus|undefined,page,size:PAGE_SIZE});
   const create = api.useCreateMember();
   const label = instructor ? '강사' : '회원';
   const registerInstructor = () => setAction({title:'강사 등록',description:'비밀번호 설정 링크를 받을 이메일과 기본 정보를 입력해 주세요.',submitLabel:'강사 등록',fields:[{name:'email',label:'이메일',type:'email',required:true},...personFields],onSubmit:async v => {const created = await create.mutateAsync({data:{email:textValue(v,'email'),name:textValue(v,'name').trim(),phoneNumber:textValue(v,'phoneNumber'),birthDate:textValue(v,'birthDate'),address:textValue(v,'address'),role:'INSTRUCTOR'}});onNavigate('admin-instructor-detail',created.id);}});
   return <AdminPage title={`${label} 관리`} description={`${label}의 계정 정보와 이용 현황을 한곳에서 확인합니다.`}>
-    <Filters fields={[{name:'keyword',label:'이름·이메일 검색'},{name:'status',label:'상태',type:'select',options:memberStates}]} action={instructor?<Button onClick={registerInstructor}>강사 등록</Button>:undefined} onApply={v=>{setFilters(v);setPage(1);}} />
-    <QueryState query={query}><DataTable rows={query.data?.content??[]} pageInfo={query.data?.pageInfo} onPage={setPage} columns={[{label:'이름',render:r=><strong>{r.name}</strong>},{label:'이메일',render:r=>r.email},{label:'휴대전화',render:r=>r.phoneNumber},{label:'상태',render:r=><StatusBadge domain="member" status={r.status}/>},{label:'등록일',render:r=>dateTime(r.createdAt)},{label:'상세',render:r=><Button variant="ghost" onClick={()=>onNavigate(instructor?'admin-instructor-detail':'admin-member-detail',r.id)} aria-label={`${r.name} 상세 보기`}>상세 보기</Button>}]} /></QueryState>
+    <Filters fields={[{name:'keyword',label:'이름·이메일 검색'},{name:'status',label:instructor?'강사 구분':'상태',type:'select',options:instructor?instructorStates:memberStates}]} action={instructor?<Button onClick={registerInstructor}>강사 등록</Button>:undefined} onApply={v=>{setFilters(v);setPage(1);}} />
+    <QueryState query={query}><DataTable rows={query.data?.content??[]} pageInfo={query.data?.pageInfo} onPage={setPage} columns={[{label:'이름',render:r=><strong>{r.name}</strong>},{label:'이메일',render:r=>r.email},{label:'휴대전화',render:r=>r.phoneNumber},{label:instructor?'구분':'상태',render:r=><StatusBadge domain="member" status={r.status}/>},{label:'등록일',render:r=>dateTime(r.createdAt)},{label:instructor?'관리':'상세',render:r=>instructor?<div className="menu-actions"><Button variant="outline" onClick={()=>setRateInstructorId(r.id)}>수당 기준</Button><Button variant="ghost" onClick={()=>onNavigate('admin-instructor-settlements',r.id)}>정산 내역</Button></div>:<Button variant="ghost" onClick={()=>onNavigate('admin-member-detail',r.id)} aria-label={`${r.name} 상세 보기`}>상세 보기</Button>}]} /></QueryState>
     {action&&<ActionDialog action={action} onClose={()=>setAction(null)}/>}
+    {rateInstructorId!==null&&<InstructorPayRatesDialog instructorId={rateInstructorId} onClose={()=>setRateInstructorId(null)}/>}
   </AdminPage>;
+}
+function InstructorPayRatesDialog({instructorId,onClose}:{instructorId:number;onClose:()=>void}) {
+  const query=api.useGetPayRates(instructorId),types=api.useGetLessonTypes({size:100}),save=api.useUpdatePayRates();
+  return <Dialog dialog={{title:query.data?`${query.data.instructor.name} · 수당 기준`:'강사 수당 기준',body:'수업 유형별 한 회당 단가를 등록하거나 수정합니다.'}} onClose={onClose}>
+    <QueryState query={query}><QueryState query={types}>{query.data&&<AdminForm key={`${instructorId}-${JSON.stringify(query.data)}-${JSON.stringify(types.data)}`} fields={(types.data?.content??[]).flatMap(type=>[{name:`enabled-${type.id}`,label:`${type.name} 단가 사용`,type:'checkbox' as const},{name:`price-${type.id}`,label:`${type.name} 단가 (원)`,type:'number' as const,min:0}])} initial={Object.fromEntries((types.data?.content??[]).flatMap(type=>{const rate=query.data!.payRates.find(item=>item.lessonType.id===type.id);return [[`enabled-${type.id}`,!!rate],[`price-${type.id}`,String(rate?.unitPrice??0)]];}))} submitLabel={query.data.payRates.length?'수당 기준 수정':'수당 기준 등록'} onSubmit={async values=>{const payRates=(types.data?.content??[]).filter(type=>values[`enabled-${type.id}`]).map(type=>({lessonTypeId:type.id,unitPrice:numValue(values,`price-${type.id}`)}));await save.mutateAsync({memberId:instructorId,data:{payRates}});onClose();}}/>}</QueryState></QueryState>
+  </Dialog>;
 }
 export function MemberDetail({ id, instructor = false, onNavigate }: { id: number; instructor?: boolean; onNavigate: Navigate }) {
   const query = api.useGetMember(id), update = api.useUpdateMember(), change = api.useChangeMemberStatus();
-  const [action,setAction] = useState<Action|null>(null);
+  const [action,setAction] = useState<Action|null>(null),[showPayRateDialog,setShowPayRateDialog]=useState(false);
   const p = query.data;
   return <AdminPage title={p ? `${p.name} · ${instructor?'강사':'회원'} 상세` : '정보 불러오는 중'} description="기본 정보와 관련 업무를 확인합니다." action={<Button variant="ghost" onClick={()=>onNavigate(instructor?'admin-instructors':'admin-members')}>목록으로</Button>}>
     <QueryState query={query}>{p&&<>
       <MenuPanel title="계정 정보" action={<div className="menu-actions"><Button variant="outline" onClick={()=>setAction({title:'기본 정보 수정',description:'이메일은 변경할 수 없습니다.',submitLabel:'정보 저장',fields:personFields,initial:{name:p.name,phoneNumber:p.phoneNumber,birthDate:p.birthDate,address:p.address??''},onSubmit:v=>update.mutateAsync({memberId:id,data:{name:textValue(v,'name').trim(),phoneNumber:textValue(v,'phoneNumber'),birthDate:textValue(v,'birthDate'),address:textValue(v,'address')||null}})})}>정보 수정</Button><Button variant={p.status==='ACTIVE'?'warning':'outline'} onClick={()=>setAction({title:'계정 상태 변경',description:p.status==='ACTIVE'?'비활성 계정은 로그인할 수 없습니다. 강사는 시작 전 수업을 먼저 인계해야 합니다.':'계정을 활성화합니다. 퇴사했던 강사의 권한은 자동으로 복구되지 않습니다.',submitLabel:p.status==='ACTIVE'?'비활성화':'활성화',submitVariant:p.status==='ACTIVE'?'warning':'default',danger:true,onSubmit:()=>change.mutateAsync({memberId:id,data:{status:p.status==='ACTIVE'?'INACTIVE':'ACTIVE'}})})}>상태 변경</Button></div>}><Facts items={[["이름",p.name],["이메일",p.email],["휴대전화",p.phoneNumber],["생년월일",p.birthDate],["주소",p.address],["등록 시각",dateTime(p.createdAt)],["계정 상태",<StatusBadge domain="member" status={p.status}/>],...(instructor?[["퇴사일",p.resignationDate??'미등록'] as [string,string]]:[])]}/></MenuPanel>
-      {instructor&&<AdminLinks items={[{label:'퇴사 관리',onClick:()=>onNavigate('admin-resignations',id)},{label:'정산 내역',onClick:()=>onNavigate('admin-instructor-settlements',id)},{label:'수당 기준',onClick:()=>onNavigate('admin-pay-rates',id)}]}/>}
+      {instructor&&<AdminLinks items={[{label:'퇴사 관리',onClick:()=>onNavigate('admin-resignations',id)},{label:'정산 내역',onClick:()=>onNavigate('admin-instructor-settlements',id)},{label:'수당 기준',onClick:()=>setShowPayRateDialog(true)}]}/>}
       {instructor?<><details className="admin-detail-section"><summary>권한 관리</summary><Permissions member={p}/></details><details className="admin-detail-section"><summary>부재 내역</summary><AbsenceList instructorId={id} onNavigate={onNavigate}/></details><details className="admin-detail-section"><summary>수업 가능시간</summary><Availability id={id}/></details></>:<><details className="admin-detail-section"><summary>이용권</summary><PassList memberId={id} onNavigate={onNavigate}/></details><details className="admin-detail-section"><summary>예약·출결</summary><ReservationsList memberId={id} onNavigate={onNavigate}/></details><details className="admin-detail-section"><summary>결제 내역</summary><PaymentsList memberId={id} onNavigate={onNavigate}/></details></>}
-    </>}</QueryState>{action&&<ActionDialog action={action} onClose={()=>setAction(null)}/>}
+    </>}</QueryState>{action&&<ActionDialog action={action} onClose={()=>setAction(null)}/>} {showPayRateDialog&&<InstructorPayRatesDialog instructorId={id} onClose={()=>setShowPayRateDialog(false)}/>}
   </AdminPage>;
 }
 function Permissions({member}:{member:api.Member}) {
