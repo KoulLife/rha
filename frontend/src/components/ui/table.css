@@ -58,6 +58,13 @@
     padding-inline: var(--space-control);
     font-size: var(--font-size-caption);
   }
+  [data-slot="table"][data-variant="management"] [data-slot="table-cell"]:last-child [data-slot="button"][data-variant="ghost"] {
+    border-color: var(--border);
+    background: var(--card);
+  }
+  [data-slot="table"][data-variant="management"] [data-slot="table-cell"]:last-child [data-slot="button"][data-variant="ghost"]:hover {
+    background: var(--muted);
+  }
 }
 @layer utilities {
   .table-centered [data-slot="table-head"], .table-centered [data-slot="table-cell"] { text-align: center; }

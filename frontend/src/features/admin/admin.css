@@ -15,7 +15,8 @@
   .admin-form[data-variant="filter"] .admin-filter-toggle[data-desktop-visible="false"] { display: none; }
   .admin-form[data-variant="filter"] [data-slot="field-label"] { font-size: var(--font-size-caption); color: var(--muted-foreground); }
   .admin-form[data-variant="filter"] :is([data-slot="input"], [data-slot="select-trigger"], .admin-choice) { height: var(--control-height); min-height: var(--control-height); background: var(--card); }
-  .admin-form[data-variant="filter"] .admin-form-actions { margin: 0; flex-shrink: 0; }
+  .admin-form[data-variant="filter"] .admin-filter-submit { margin: 0; flex-shrink: 0; }
+  .admin-form[data-variant="filter"] .admin-form-actions { margin: 0 0 0 auto; flex-shrink: 0; }
   .admin-form[data-variant="filter"] > [data-slot="alert"] { flex-basis: 100%; }
   .admin-dialog { display: grid; gap: var(--space-detail); grid-template-rows: auto auto minmax(0,1fr); }
   .admin-select-popup { z-index: 100; }
@@ -64,7 +65,7 @@
   .admin-page:has(.admin-form[data-variant="filter"][data-expanded="true"]) .admin-table-area [data-slot="table-container"] { max-height: var(--table-scroll-max-height); }
   .admin-form[data-variant="filter"] > [data-slot="field"] { flex: 1 1 calc((100% - var(--space-detail)) / 2); width: auto; }
   .admin-form[data-variant="filter"] > [data-filter-kind="text"] { flex-basis: 100%; }
-  .admin-form[data-variant="filter"] .admin-form-actions { flex-basis: 100%; justify-content: flex-end; }
+  .admin-form[data-variant="filter"] .admin-form-actions { justify-content: flex-end; }
 
   .admin-detail-grid,.admin-guide { grid-template-columns: minmax(0,1fr); }
   .admin-hours-row { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
