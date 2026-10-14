@@ -43,6 +43,8 @@ public class Member {
     @Column(nullable = false)
     private MemberStatus status;
 
+    private Instant withdrawnAt;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -63,6 +65,22 @@ public class Member {
         member.birthDate = birthDate;
         member.address = address;
         member.role = MemberRole.MEMBER;
+        member.status = MemberStatus.ACTIVE;
+        member.createdAt = now;
+        member.updatedAt = now;
+        return member;
+    }
+
+    /** 관리자가 등록한 계정. 비밀번호 없이 ACTIVE 상태로 생성되며, 초대 메일로 비밀번호를 설정한다. */
+    public static Member invite(String email, String name, String phoneNumber, LocalDate birthDate,
+            String address, MemberRole role, Instant now) {
+        Member member = new Member();
+        member.email = email;
+        member.name = name;
+        member.phoneNumber = phoneNumber;
+        member.birthDate = birthDate;
+        member.address = address;
+        member.role = role;
         member.status = MemberStatus.ACTIVE;
         member.createdAt = now;
         member.updatedAt = now;
@@ -98,6 +116,7 @@ public class Member {
     /** 본인 탈퇴. 데이터는 지우지 않고 상태만 WITHDRAWN으로 바꾼다. */
     public void withdraw(Instant now) {
         this.status = MemberStatus.WITHDRAWN;
+        this.withdrawnAt = now;
         this.updatedAt = now;
     }
 

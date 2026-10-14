@@ -7,14 +7,17 @@ import com.rha.auth.PasswordChangeService;
 import com.rha.auth.RefreshTokenCookieFactory;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -22,16 +25,26 @@ import org.springframework.web.bind.annotation.RestController;
 public class MemberController {
 
     private final MemberService memberService;
+    private final MemberAdminService memberAdminService;
     private final PasswordChangeService passwordChangeService;
     private final AccountWithdrawalService accountWithdrawalService;
     private final RefreshTokenCookieFactory cookies;
 
-    public MemberController(MemberService memberService, PasswordChangeService passwordChangeService,
-            AccountWithdrawalService accountWithdrawalService, RefreshTokenCookieFactory cookies) {
+    public MemberController(MemberService memberService, MemberAdminService memberAdminService,
+            PasswordChangeService passwordChangeService, AccountWithdrawalService accountWithdrawalService,
+            RefreshTokenCookieFactory cookies) {
         this.memberService = memberService;
+        this.memberAdminService = memberAdminService;
         this.passwordChangeService = passwordChangeService;
         this.accountWithdrawalService = accountWithdrawalService;
         this.cookies = cookies;
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public MemberResponse createMember(@AuthenticationPrincipal AuthenticatedMember me,
+            @Valid @RequestBody MemberCreateRequest request) {
+        return MemberResponse.from(memberAdminService.createMember(me.id(), request));
     }
 
     @GetMapping("/me")

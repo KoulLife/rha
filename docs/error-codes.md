@@ -50,7 +50,7 @@
 | `CANNOT_CHANGE_OWN_ROLE` | 본인의 역할은 변경할 수 없음 | `updateMember` |
 | `CANNOT_CHANGE_OWN_STATUS` | 본인 계정의 상태는 변경할 수 없음 | `changeMemberStatus` |
 | `FORBIDDEN_ROLE` | 강사/관리자는 직접 탈퇴할 수 없음 | `withdrawMyAccount` |
-| `PERMISSION_DENIED` | 해당 작업에 필요한 권한이 없음 | `cancelAbsence`, `cancelLesson`, `changeLessonStatus`, `createAbsence`, `createLesson`, `getMember`, `getMembers`, `getReservations`, `updateLesson` |
+| `PERMISSION_DENIED` | 해당 작업에 필요한 권한이 없음 | `cancelAbsence`, `cancelLesson`, `changeLessonStatus`, `createAbsence`, `createLesson`, `createMember`, `getMember`, `getMembers`, `getReservations`, `updateLesson` |
 
 ## 409 상태 충돌
 

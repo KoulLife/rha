@@ -14,4 +14,9 @@ class LoggingPasswordResetMailer implements PasswordResetMailer {
     public void sendResetToken(String email, String token) {
         log.info("비밀번호 재설정 토큰 발송 (개발용 로그): email={}, token={}", email, token);
     }
+
+    @Override
+    public void sendInvitationToken(String email, String token) {
+        log.info("계정 초대 토큰 발송 (개발용 로그): email={}, token={}", email, token);
+    }
 }
