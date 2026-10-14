@@ -359,7 +359,3 @@
   .member-info-facts dt { color: var(--muted-foreground); font-size: var(--font-size-body); }
   .member-info-facts dd { margin: 0; text-align: right; font-size: var(--font-size-body); font-weight: 500; }
 }
-
-.member-preview .main-content:not(.home-main) .content:has(> .dashboard-subpage) {
-  padding-block: var(--page-list-padding-block);
-}

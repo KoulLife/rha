@@ -18,7 +18,3 @@
     .instructor-roster-filters > [data-slot="field"] { flex: 1 1 var(--menu-field-width); }
   }
 }
-
-.member-preview .main-content:not(.home-main) .content:has(> .instructor-page) {
-  padding-block: var(--page-list-padding-block);
-}
