@@ -25,6 +25,8 @@ import type { HomeView } from "@/features/dashboard/viewState";
 import { AdminWorkspace, useAdminDashboard } from "@/features/admin/AdminWorkspace";
 import { QueryState } from "@/features/admin/AdminUI";
 import { TimetablePage } from "@/features/timetable/TimetablePage";
+import { InstructorPage, isInstructorScreen } from "@/features/instructor/InstructorPage";
+import { initialInstructorState, withInstructorPreview } from "@/features/instructor/preview";
 import "./legacy.css";
 import "./shell.css";
 
@@ -32,7 +34,8 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   const [homeView, setHomeView] = useState(initialHomeView);
   const [screen, setScreen] = useState<Screen>("home");
   const [selectedId, setSelectedId] = useState(101);
-  const [data, setData] = useState(() => initialHomeView === "empty" ? { lessons: [], reservations: [], absences: [], notifications: [] } : dashboardPreview);
+  const [data, setData] = useState(() => initialHomeView === "empty" ? { lessons: [], reservations: [], absences: [], notifications: [] } : user.role === "INSTRUCTOR" ? withInstructorPreview(dashboardPreview) : dashboardPreview);
+  const [instructorState, setInstructorState] = useState(initialInstructorState);
   const admin = useAdminDashboard(user.role === "ADMIN");
   const viewData = user.role === "ADMIN" && homeView !== "empty" ? admin.data : data;
   const snapshot = getDashboardSnapshot(viewData, user, dashboardPreviewTime);
@@ -69,7 +72,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
           onLogout={onLogout}
         />
         <div className="content">
-          {screen === "timetable" ? <TimetablePage user={user} onNavigate={go} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} onReadNotification={admin.read} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || screen === "notifications" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onReadNotification={onReadNotification} /> : <MemberScreen
+          {user.role === "INSTRUCTOR" && isInstructorScreen(screen) ? <InstructorPage screen={screen} user={user} data={data} setData={setData} state={instructorState} setState={setInstructorState} selectedId={selectedId} onNavigate={go} /> : screen === "timetable" ? <TimetablePage user={user} onNavigate={go} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} onReadNotification={admin.read} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || screen === "notifications" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onReadNotification={onReadNotification} /> : <MemberScreen
             screen={screen}
             selectedId={selectedId}
             onNavigate={go}

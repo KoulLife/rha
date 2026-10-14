@@ -11,13 +11,14 @@
     gap: var(--home-gap);
   }
   .home-heading h1 {
-    font-size: 1.5rem;
-    font-weight: 650;
+    font-size: var(--font-size-title);
+    font-weight: 500;
+    line-height: 1.4;
   }
   .home-heading p {
     color: var(--muted-foreground);
     margin-top: var(--space-control);
-    font-size: .875rem;
+    font-size: var(--font-size-body);
   }
   .home-heading-actions {
     display: flex;
@@ -26,7 +27,7 @@
   }
   .home-heading-actions > span {
     color: var(--muted-foreground);
-    font-size: .75rem;
+    font-size: var(--font-size-caption);
     white-space: nowrap;
   }
   .home-metrics {
@@ -34,7 +35,7 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--home-gap);
   }
-  .home-metric, .home-panel {
+  .home-metric[data-slot="card"], .home-panel[data-slot="card"] {
     --card-spacing: var(--home-panel-padding);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-panel);
@@ -59,12 +60,12 @@
     background: transparent;
   }
   .home-metric-link strong {
-    font-size: 1.625rem;
-    font-weight: 650;
+    font-size: var(--font-size-metric);
+    font-weight: var(--font-weight-metric);
     line-height: 1.1;
   }
   .home-metric-label, .home-metric-detail {
-    font-size: .75rem;
+    font-size: var(--font-size-caption);
     color: var(--muted-foreground);
   }
   .home-columns {
@@ -83,7 +84,7 @@
   .home-panel {
     display: flex;
     flex-direction: column;
-    gap: var(--space-control);
+    gap: var(--space-detail);
     min-height: 0;
   }
   .home-panel-heading {
@@ -92,15 +93,12 @@
     justify-content: space-between;
     gap: var(--space-control);
     border-bottom: 1px solid var(--border);
-    padding-bottom: var(--space-control);
+    padding-bottom: var(--space-detail);
     flex-shrink: 0;
   }
   .home-panel-heading h2 {
-    font-size: .875rem;
-    font-weight: 650;
-  }
-  .home-panel-heading [data-slot="button"] {
-    font-size: .75rem;
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-heading);
   }
   .home-panel > [data-slot="card-content"] {
     flex: 1;
@@ -137,7 +135,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-tight);
-    font-size: .75rem;
+    font-size: var(--font-size-caption);
     font-variant-numeric: tabular-nums;
   }
   .home-lesson-info {
@@ -155,11 +153,11 @@
     font-variant-numeric: tabular-nums;
   }
   .home-lesson-time span, .home-lesson-info p, .home-lesson-info > span, .home-reservation p {
-    font-size: .75rem;
+    font-size: var(--font-size-caption);
     color: var(--muted-foreground);
   }
   .home-lesson-info h3, .home-reservation h3, .home-pass-heading h3 {
-    font-size: .875rem;
+    font-size: var(--font-size-body);
     font-weight: 600;
   }
   .home-lesson-action, .home-reservation-action {
@@ -169,16 +167,14 @@
     gap: var(--space-control);
   }
   .home-lesson-action [data-slot="button"], .home-reservation-action [data-slot="button"] {
-    font-size: .75rem;
-    height: auto;
-    padding-block: var(--space-control);
+    font-size: var(--font-size-body);
+    height: var(--control-height);
   }
   .home-reservation-action {
     gap: var(--space-tight);
   }
   .home-reservation-action [data-slot="button"] {
-    height: var(--home-inline-action-height);
-    padding-block: 0;
+    height: var(--control-height);
   }
   .home-reservation {
     display: flex;
@@ -205,7 +201,7 @@
   }
   .home-pass-balance {
     align-self: center;
-    font-size: .875rem;
+    font-size: var(--font-size-body);
     margin-block: var(--space-control);
   }
   .home-pass-balance strong {
@@ -219,23 +215,13 @@
     margin-top: var(--space-control);
   }
   .home-pass-counts dt {
-    font-size: .6875rem;
+    font-size: var(--font-size-caption);
     color: var(--muted-foreground);
   }
   .home-pass-counts dd {
     margin: 0;
-    font-size: .75rem;
+    font-size: var(--font-size-caption);
     font-weight: 500;
-  }
-}
-@media (min-width: 1100px) and (min-height: 768px) {
-  .home-main .home-page {
-    flex: 1;
-    min-height: 0;
-    grid-template-rows: auto auto minmax(0, 1fr);
-  }
-  .home-main .home-lesson {
-    padding-block: var(--space-tight);
   }
 }
 @media (max-width: 1099px) {
@@ -284,24 +270,24 @@
     margin: 0;
     padding: 0;
   }
-  .home-pass-total { font-size: .75rem; color: var(--muted-foreground); }
+  .home-pass-total { font-size: var(--font-size-caption); color: var(--muted-foreground); }
   .home-pass-remaining { display: flex; align-items: baseline; gap: var(--space-control); color: var(--foreground); font-size: 1.125rem; font-weight: 600; }
-  .home-pass-remaining strong { color: var(--foreground); font-size: var(--home-pass-balance-size); font-weight: 700; line-height: 1.1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+  .home-pass-remaining strong { color: var(--foreground); font-size: var(--home-pass-balance-size); font-weight: var(--font-weight-metric); line-height: 1.1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
   .home-pass-balance [data-slot="progress"] { height: var(--home-pass-progress-height); margin-top: var(--home-pass-section-gap); }
-  .home-pass-legend { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-detail); color: var(--muted-foreground); font-size: .6875rem; }
+  .home-pass-legend { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-detail); color: var(--muted-foreground); font-size: var(--font-size-caption); }
   .home-pass-legend span { display: inline-flex; align-items: center; gap: var(--space-control); }
   .home-pass-legend i { width: var(--home-pass-legend-size); height: var(--home-pass-legend-size); border-radius: var(--home-pass-legend-radius); }
   .home-pass-legend-used { background: var(--primary); }
   .home-pass-legend-remaining { background: var(--muted); border: 1px solid var(--border); }
   .home-pass-count-table { table-layout: fixed; font-variant-numeric: tabular-nums; }
   .home-panel-pass .home-pass-count-table th, .home-panel-pass .home-pass-count-table td { height: auto; border: 1px solid var(--border); padding: var(--space-tight) var(--space-control); text-align: center; background: var(--card); }
-  .home-pass-count-table th { color: var(--muted-foreground); font-size: .6875rem; font-weight: 500; }
-  .home-pass-count-table td { font-size: .875rem; }
-  .home-pass-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-control); font-size: .75rem; }
+  .home-pass-count-table th { color: var(--muted-foreground); font-size: var(--font-size-caption); font-weight: 500; }
+  .home-pass-count-table td { font-size: var(--font-size-body); }
+  .home-pass-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-control); font-size: var(--font-size-caption); }
   .home-panel-pass > [data-slot="card-content"] { grid-template-rows: auto auto auto auto; align-content: space-between; }
   .home-panel > [data-slot="card-content"]:has(> [data-slot="empty"]) { display: flex; align-items: center; justify-content: center; }
-  .home-panel-pass .home-pass-count-table th { padding-block: var(--home-pass-section-gap); color: var(--secondary-foreground); background: var(--accent); font-size: .75rem; font-weight: 600; }
-  .home-panel-pass .home-pass-count-table td { padding-block: var(--home-pass-section-gap); font-size: .9375rem; }
+  .home-panel-pass .home-pass-count-table th { padding-block: var(--space-detail); color: var(--table-header-foreground); background: var(--table-header-background); font-size: var(--font-size-caption); font-weight: var(--table-header-weight); }
+  .home-panel-pass .home-pass-count-table td { padding-block: var(--space-detail); font-size: var(--font-size-body); }
   .home-panel-pass .home-pass-balance { gap: var(--space-tight); }
   .home-panel-pass .home-pass-balance [data-slot="progress"] { margin-top: var(--space-tight); }
 }

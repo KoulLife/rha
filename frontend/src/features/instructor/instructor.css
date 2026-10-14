@@ -1,0 +1,24 @@
+@layer utilities {
+  .instructor-page { --card-spacing: var(--panel-padding); gap: var(--space-detail); }
+  .instructor-page h2, .instructor-detail-heading h2 { margin: 0; font-size: var(--font-size-body); font-weight: var(--font-weight-heading); }
+  .instructor-roster, .instructor-dialog-stack { display: grid; min-width: 0; gap: var(--menu-gap); }
+  .instructor-lesson-summary, .instructor-roster-toolbar, .instructor-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--menu-gap); flex-wrap: wrap; }
+  .instructor-lesson-summary p { margin-top: var(--space-control); color: var(--muted-foreground); font-size: var(--font-size-caption); }
+  .instructor-summary-counts { display: flex; flex-wrap: wrap; gap: var(--space-panel); color: var(--muted-foreground); font-size: var(--font-size-caption); }
+  .instructor-summary-counts strong { color: var(--foreground); font-size: var(--font-size-body); margin-left: var(--space-control); }
+  .instructor-roster-filters { display: flex; align-items: end; flex-wrap: wrap; gap: var(--space-detail); }
+  .instructor-roster-filters > [data-slot="field"] { width: var(--menu-field-width); }
+  .instructor-page [data-slot="input"], .instructor-page [data-slot="select-trigger"], .instructor-dialog-stack [data-slot="input"] { min-height: var(--control-height); width: 100%; }
+  .instructor-bottom-actions { display: flex; justify-content: flex-end; }
+  .instructor-wrap { display: inline-block; white-space: normal; min-width: var(--menu-field-width); overflow-wrap: anywhere; }
+  .instructor-dialog-stack [data-slot="field-label"] { font-size: var(--font-size-caption); color: var(--muted-foreground); }
+  .instructor-detail-heading { padding: var(--space-detail); background: var(--accent); border-radius: var(--radius-lg); }
+  @media (max-width: 767px) {
+    .instructor-roster-filters { width: 100%; }
+    .instructor-roster-filters > [data-slot="field"] { flex: 1 1 var(--menu-field-width); }
+  }
+}
+
+.member-preview .main-content:not(.home-main) .content:has(> .instructor-page) {
+  padding-block: var(--page-list-padding-block);
+}

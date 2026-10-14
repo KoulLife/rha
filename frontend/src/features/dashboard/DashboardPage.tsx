@@ -64,14 +64,19 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onReadN
         <div className="dashboard-lesson-info"><h3>{lesson.title}</h3><p>{lesson.instructor} · {lesson.room}</p></div>
         <div className="dashboard-row-actions"><StatusBadge domain="reservation" status={reservation.status} /><Button variant="ghost" onClick={() => onNavigate("reservation-detail", reservation.id)}>예약 상세</Button></div>
       </CardContent></Card>;
-    })}</div> : <Table variant="centered" className="dashboard-lessons-table dashboard-lessons-schedule">
+    })}</div> : <Table variant="management" className="dashboard-lessons-table dashboard-lessons-schedule">
       <TableHeader><TableRow><TableHead>룸</TableHead><TableHead>시간</TableHead><TableHead>수업</TableHead><TableHead>강사</TableHead><TableHead>예약 / 정원</TableHead><TableHead>출결</TableHead><TableHead>상세</TableHead></TableRow></TableHeader>
       <TableBody>{(preview ? items.slice(0, 5) : items).map(lesson => {
         const roster = snapshot.reservations.filter(item => item.lessonId === lesson.id);
         const recorded = roster.filter(item => item.status === "ATTENDED" || item.status === "NO_SHOW").length;
-        return <TableRow key={lesson.id}><TableCell>{lesson.room}</TableCell><TableCell>{seoulTime(lesson.startAt)}–{seoulTime(lesson.endAt)}</TableCell>
+        return <TableRow key={lesson.id} data-state={selectedLesson?.id === lesson.id ? "selected" : undefined}><TableCell>{lesson.room}</TableCell><TableCell>{seoulTime(lesson.startAt)}–{seoulTime(lesson.endAt)}</TableCell>
           <TableCell><strong>{lesson.title}</strong></TableCell><TableCell>{lesson.instructor}</TableCell><TableCell>{roster.length} / {lesson.capacity}명</TableCell>
-          <TableCell>{recorded} / {roster.length}명</TableCell><TableCell><Button variant="outline" size="sm" onClick={() => { if (admin) onNavigate("admin-lesson-detail", lesson.id); else { setSelectedLessonId(lesson.id); onNavigate("today-lessons"); } }} aria-label={`${lesson.title} 예약자 보기`}>예약자 보기</Button></TableCell></TableRow>;
+          <TableCell>{recorded} / {roster.length}명</TableCell><TableCell><Button variant="outline" size="sm"
+            onClick={() => { if (admin) { onNavigate("admin-lesson-detail", lesson.id); return; } setSelectedLessonId(lesson.id); if (screen !== "today-lessons") onNavigate("today-lessons"); }}
+            aria-label={`${lesson.title} ${admin ? "예약자 보기" : "상세 보기"}`}
+            aria-expanded={screen === "today-lessons" ? selectedLesson?.id === lesson.id : undefined}
+            aria-controls={selectedLesson?.id === lesson.id ? "today-lesson-roster" : undefined}
+          >{admin ? "예약자 보기" : "상세 보기"}</Button></TableCell></TableRow>;
       })}{preview && Array.from({ length: Math.max(0, 5 - items.length) }, (_, index) => <TableRow key={`empty-${index}`} aria-hidden="true" className="dashboard-lesson-placeholder"><TableCell colSpan={7} /></TableRow>)}</TableBody>
     </Table>;
 
@@ -89,9 +94,9 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onReadN
         {snapshot.absences.length ? <Table variant="management"><TableHeader><TableRow><TableHead>강사</TableHead><TableHead>부재 기간</TableHead><TableHead>사유</TableHead><TableHead>상태</TableHead></TableRow></TableHeader><TableBody>{snapshot.absences.map(item => <TableRow key={item.id}><TableCell>{item.instructor}</TableCell><TableCell>{item.from === item.to ? item.from : `${item.from}–${item.to}`}</TableCell><TableCell>{item.reason}</TableCell><TableCell><StatusBadge domain="absence" status={item.status} /></TableCell></TableRow>)}</TableBody></Table> : absenceList}
       </DashboardPanel> : <>
         {screen === "today-lessons" && <DashboardPanel variant="table">{lessonList(snapshot.todayLessons)}</DashboardPanel>}
-        {(screen === "attendance-overview" || selectedLesson) && <DashboardPanel variant="table" title={selectedLesson ? `${selectedLesson.title} 예약자·출결` : undefined} action={selectedLesson ? <Button variant="ghost" onClick={() => setSelectedLessonId(null)}>선택 해제</Button> : undefined}>
+        {(screen === "attendance-overview" || selectedLesson) && <section id="today-lesson-roster" aria-label={selectedLesson ? `${selectedLesson.title} 예약자·출결` : "오늘 예약·출결"}><DashboardPanel variant="table" title={selectedLesson ? `${selectedLesson.title} 예약자·출결` : undefined} action={selectedLesson ? <Button variant="ghost" onClick={() => setSelectedLessonId(null)}>선택 해제</Button> : undefined}>
           {snapshot.reservations.filter(item => !selectedLesson || item.lessonId === selectedLesson.id).length ? <ReservationRoster reservations={snapshot.reservations.filter(item => !selectedLesson || item.lessonId === selectedLesson.id)} lessons={snapshot.todayLessons} memberActionLabel={screen === "today-lessons" ? "회원정보 보기" : "회원 상세"} /> : <DashboardEmpty title="예약자가 없습니다" description="선택한 범위에 예약된 회원이 없습니다." />}
-        </DashboardPanel>}
+        </DashboardPanel></section>}
       </>}
     </div>;
   }
@@ -100,8 +105,8 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onReadN
 
   const metrics = [
     { label: admin ? "오늘 전체 수업" : "오늘 담당 수업", value: `${snapshot.todayLessons.length}개`, target: lessonsScreen },
-    { label: "오늘 예약", value: `${snapshot.reservations.length}명`, attendance: true, target: "attendance-overview" as const },
-    { label: admin ? "부재 승인 대기" : "출결 처리 대기", value: `${admin ? snapshot.absences.length : snapshot.attendancePending}건`, target: admin ? "absence-requests" as const : "attendance-overview" as const },
+    { label: "오늘 예약", value: `${snapshot.reservations.length}명`, attendance: true, target: admin ? "attendance-overview" as const : "attendees" as const },
+    { label: admin ? "부재 승인 대기" : "출결 처리 대기", value: `${admin ? snapshot.absences.length : snapshot.attendancePending}건`, target: admin ? "absence-requests" as const : "attendance" as const },
     { label: "읽지 않은 알림", value: `${snapshot.unread}건`, target: "notifications" as const },
   ];
   return <div className="dashboard-page">
@@ -112,7 +117,7 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onReadN
     <div className="dashboard-columns">
       <div className="dashboard-column">
         <DashboardPanel title={admin ? "오늘 전체 수업" : "오늘 담당 수업"} variant="table" action={<Button variant="ghost" onClick={() => onNavigate(lessonsScreen)}>전체 보기</Button>}>{lessonList(snapshot.todayLessons, true)}</DashboardPanel>
-        <DashboardPanel title={admin ? "부재 승인 대기" : "내 부재 승인 대기"} action={<Button variant="ghost" onClick={() => onNavigate("absence-requests")}>전체 보기</Button>}>{absenceList}</DashboardPanel>
+        <DashboardPanel title={admin ? "부재 승인 대기" : "내 부재 승인 대기"} action={<Button variant="ghost" onClick={() => onNavigate(admin ? "absence-requests" : "absences")}>전체 보기</Button>}>{absenceList}</DashboardPanel>
       </div>
       <div className="dashboard-column">
         <DashboardPanel title="최근 알림" action={notificationAction}><NotificationList items={snapshot.notifications.slice(0, 6)} onRead={onReadNotification} /></DashboardPanel>

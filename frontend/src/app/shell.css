@@ -112,20 +112,20 @@
     margin: 0;
   }
   .member-preview .content {
-    max-width: 75rem;
+    max-width: none;
     margin-inline: 0;
-    padding: var(--space-panel) var(--auth-card-padding);
+    padding: var(--page-padding-block) var(--page-padding-inline);
   }
 }
 @media (max-width: 767px) {
   .member-preview .content {
-    padding: var(--page-padding-block) var(--home-panel-padding);
+    padding: var(--page-padding-block) var(--page-padding-inline);
   }
   .app-header-location [aria-label="현재 위치"] {
     display: none;
   }
   .member-preview .topbar {
-    padding-inline: var(--home-panel-padding);
+    padding-inline: var(--page-padding-inline);
   }
   .member-sidebar-header {
     padding-top: var(--auth-card-padding);
@@ -153,21 +153,6 @@
     color: var(--header-foreground);
   }
 }
-@media (min-width: 1100px) and (min-height: 768px) {
-  .member-preview .home-main .content {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    max-width: none;
-    padding: var(--home-content-padding) var(--space-panel);
-  }
-  .member-preview .home-main .topbar {
-    padding-inline: var(--space-panel);
-  }
-  .member-preview .home-main .app-footer {
-    padding-inline: var(--space-panel);
-  }
-}
 @layer utilities {
   .member-preview {
     width: 100%;
@@ -175,11 +160,6 @@
   }
   .member-preview .app-footer {
     flex-wrap: wrap;
-  }
-}
-@media (min-width: 1100px) and (min-height: 720px) {
-  .member-preview .home-main .content:has(> .dashboard-page) {
-    flex: 1 0 auto;
   }
 }
 @media (max-width: 767px) {
@@ -190,67 +170,24 @@
     padding-block: var(--space-control);
   }
 }
-@media (min-width: 1100px) and (min-height: 720px) {
-  .member-preview .home-main {
-    display: flex;
-    flex-direction: column;
-    height: auto;
-    min-height: 100dvh;
-  }
-  .member-preview .home-main .content {
-    display: flex;
-    flex: 1 0 auto;
-    max-width: none;
-    padding: var(--home-content-padding) var(--space-panel);
-  }
-  .member-preview .home-main .app-footer {
-    flex-shrink: 0;
-    min-height: var(--home-footer-height);
-    height: auto;
-    padding: var(--space-control) var(--space-panel);
-    max-width: none;
-    width: 100%;
-  }
-}
-@media (min-width: 1100px) and (min-height: 768px) {
-  .home-main {
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-    min-height: 0;
-  }
-  .home-main .topbar {
-    flex-shrink: 0;
-  }
-  .home-main .app-footer {
-    flex-shrink: 0;
-    height: var(--home-footer-height);
-    padding-block: var(--space-control);
-    width: 100%;
-    max-width: none;
-  }
-  .member-preview .home-main.member-home-main { height: 100dvh; min-height: 0; }
-  .member-preview .home-main.member-home-main .content { flex: 1; min-height: 0; }
-  .member-preview .home-main.member-home-main .app-footer { height: var(--home-footer-height); min-height: 0; }
-}
 @layer utilities {
   .member-sidebar-brand { padding-block: var(--space-control) var(--space-detail); }
-  .member-preview .main-content:not(.home-main) { display: flex; flex-direction: column; min-height: 100dvh; }
-  .member-preview .main-content:not(.home-main) .content { flex: 1; width: 100%; max-width: none; padding: var(--home-content-padding) var(--page-padding-inline); }
-  .member-preview .main-content:not(.home-main) .topbar { padding-inline: var(--space-panel); }
-  .member-preview .main-content:not(.home-main) .app-footer { width: 100%; max-width: none; padding: var(--space-control) var(--space-panel); }
+  .member-preview .main-content { display: flex; flex-direction: column; min-height: 100dvh; }
+  .member-preview .main-content .content { flex: 1; width: 100%; max-width: none; padding: var(--page-padding-block) var(--page-padding-inline); }
+  .member-preview .main-content .topbar { padding-inline: var(--space-panel); }
+  .member-preview .main-content .app-footer { width: 100%; max-width: none; padding: var(--space-control) var(--space-panel); }
 }
 @media (max-width: 767px) {
-  .member-preview .main-content:not(.home-main) .content, .member-preview .main-content:not(.home-main) .topbar, .member-preview .main-content:not(.home-main) .app-footer { padding-inline: var(--home-panel-padding); }
+  .member-preview .main-content .content, .member-preview .main-content .topbar, .member-preview .main-content .app-footer { padding-inline: var(--page-padding-inline); }
 }
 @layer utilities {
   .member-preview { font-size: var(--font-size-body); }
   .member-navigation-button { font-size: var(--font-size-body); font-weight: 400; }
-  .member-preview .main-content:not(.home-main) .content {
+  .member-preview .main-content .content {
     padding: var(--page-padding-block) var(--page-padding-inline);
   }
-  .member-preview .main-content:not(.home-main) [data-slot="input"],
-  .member-preview .main-content:not(.home-main) [data-slot="select-trigger"],
+  .member-preview .main-content [data-slot="input"],
+  .member-preview .main-content [data-slot="select-trigger"],
   .auth-page [data-slot="input"] {
     min-height: var(--control-height);
     font-size: var(--font-size-body);
