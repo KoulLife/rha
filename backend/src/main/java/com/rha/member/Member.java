@@ -95,6 +95,12 @@ public class Member {
         this.updatedAt = now;
     }
 
+    /** 본인 탈퇴. 데이터는 지우지 않고 상태만 WITHDRAWN으로 바꾼다. */
+    public void withdraw(Instant now) {
+        this.status = MemberStatus.WITHDRAWN;
+        this.updatedAt = now;
+    }
+
     public Long getId() {
         return id;
     }
@@ -125,6 +131,10 @@ public class Member {
 
     public String getAddress() {
         return address;
+    }
+
+    public boolean isRole(MemberRole role) {
+        return this.role == role;
     }
 
     public MemberRole getRole() {

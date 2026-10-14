@@ -1,0 +1,82 @@
+name: API Spec Diff
+
+on:
+  pull_request:
+    paths:
+      - api-spec/openapi.yaml
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare base spec
+        run: git show "origin/${{ github.base_ref }}:api-spec/openapi.yaml" > .oasdiff-base.yaml
+
+      - name: Generate changelog
+        id: changelog
+        uses: oasdiff/oasdiff-action/changelog@main
+        with:
+          base: .oasdiff-base.yaml
+          revision: api-spec/openapi.yaml
+          format: markdown
+
+      - name: Detect breaking changes
+        id: breaking
+        uses: oasdiff/oasdiff-action/breaking@main
+        with:
+          base: .oasdiff-base.yaml
+          revision: api-spec/openapi.yaml
+          fail-on: ERR
+        continue-on-error: true
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        env:
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
+          BREAKING: ${{ steps.breaking.outcome }}
+        with:
+          script: |
+            const marker = '<!-- api-spec-diff -->';
+            const breaking = process.env.BREAKING === 'failure';
+            const body = [
+              marker,
+              '## API 스펙 변경 요약',
+              breaking ? '> :warning: **Breaking change가 포함되어 있습니다.**' : '> Breaking change 없음',
+              '',
+              process.env.CHANGELOG || '_변경 내역 없음_',
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const prev = comments.find(c => c.body && c.body.includes(marker));
+            if (prev) await github.rest.issues.updateComment({ owner, repo, comment_id: prev.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });
+
+      - name: Notify Slack
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          BREAKING: ${{ steps.breaking.outcome }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          [ -z "$SLACK_WEBHOOK_URL" ] && exit 0
+          flag=""
+          [ "$BREAKING" = "failure" ] && flag=" :warning: *BREAKING*"
+          text=$(printf ':memo: API 스펙 변경 PR%s\n<%s|%s>' "$flag" "$PR_URL" "$PR_TITLE")
+          jq -n --arg t "$text" '{text: $t}' \
+            | curl -fsS -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL"
+
+      - name: Fail on breaking change
+        if: steps.breaking.outcome == 'failure'
+        run: |
+          echo "Breaking change 감지. 의도한 변경이면 PR 설명에 근거를 남기고 리뷰어 승인으로 진행하세요."
+          exit 1
