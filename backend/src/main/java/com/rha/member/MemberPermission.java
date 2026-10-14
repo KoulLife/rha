@@ -32,6 +32,15 @@ public class MemberPermission {
     protected MemberPermission() {
     }
 
+    public static MemberPermission grant(Long memberId, String permissionCode, Long grantedBy, Instant now) {
+        MemberPermission permission = new MemberPermission();
+        permission.memberId = memberId;
+        permission.permissionCode = permissionCode;
+        permission.grantedBy = grantedBy;
+        permission.createdAt = now;
+        return permission;
+    }
+
     public Long getMemberId() {
         return memberId;
     }

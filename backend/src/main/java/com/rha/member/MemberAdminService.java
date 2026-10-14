@@ -5,16 +5,13 @@ import com.rha.auth.RefreshTokenRepository;
 import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.PageInfo;
+import com.rha.common.validation.RequestValidator;
 import jakarta.persistence.criteria.Predicate;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.Validator;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,18 +30,21 @@ public class MemberAdminService {
     private final MemberPermissionRepository permissionRepository;
     private final PasswordResetService passwordResetService;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final Validator validator;
+    private final AdminGuard adminGuard;
+    private final RequestValidator requestValidator;
 
     public MemberAdminService(MemberRepository memberRepository,
             MemberPermissionRepository permissionRepository,
             PasswordResetService passwordResetService,
             RefreshTokenRepository refreshTokenRepository,
-            Validator validator) {
+            AdminGuard adminGuard,
+            RequestValidator requestValidator) {
         this.memberRepository = memberRepository;
         this.permissionRepository = permissionRepository;
         this.passwordResetService = passwordResetService;
         this.refreshTokenRepository = refreshTokenRepository;
-        this.validator = validator;
+        this.adminGuard = adminGuard;
+        this.requestValidator = requestValidator;
     }
 
     /**
@@ -147,10 +147,7 @@ public class MemberAdminService {
 
     /** 관리자 여부를 확인한 뒤에 입력을 검증하기 위해, 컨트롤러가 아니라 서비스에서 검증한다. */
     private void validate(Object request) {
-        Set<ConstraintViolation<Object>> violations = validator.validate(request);
-        if (!violations.isEmpty()) {
-            throw new ConstraintViolationException(violations);
-        }
+        requestValidator.validate(request);
     }
 
     private Member findMember(Long memberId) {
@@ -214,12 +211,8 @@ public class MemberAdminService {
         return "%" + escaped + "%";
     }
 
-    /** 토큰의 역할이 아니라 DB의 현재 역할·상태로 확인한다. 역할이 바뀐 직후의 오래된 토큰을 막기 위함이다. */
     private void requireAdmin(Long callerId) {
-        Member caller = findCaller(callerId);
-        if (!caller.isRole(MemberRole.ADMIN) || !caller.isActive()) {
-            throw new ApiException(ErrorCode.PERMISSION_DENIED);
-        }
+        adminGuard.requireAdmin(callerId);
     }
 
     /** ACTIVE 관리자이거나, MEMBER_READ 권한을 가진 ACTIVE 강사만 통과한다. */
