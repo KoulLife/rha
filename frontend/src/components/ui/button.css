@@ -1,3 +1,8 @@
 @layer utilities {
-  .member-wait-button { color: var(--warning-foreground); background: var(--warning-soft); border-color: var(--warning-border); }
-  .member-wait-button:hover { background: var(--warning-hover); } }
+  .button-warning { color: var(--button-warning-foreground); background: var(--warning-soft); border-color: var(--warning-border); }
+  .button-warning:hover { background: var(--warning-hover); }
+  .button-destructive { color: var(--button-destructive-foreground); background: var(--destructive-soft); border-color: var(--destructive-border); }
+  .button-destructive:hover { background: var(--destructive-hover); }
+  .button-cancel { color: var(--button-cancel-foreground); background: var(--button-cancel-background); border-color: var(--border); }
+  .button-cancel:hover { background: var(--button-cancel-hover); }
+}

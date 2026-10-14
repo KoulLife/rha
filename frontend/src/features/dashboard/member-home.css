@@ -38,7 +38,7 @@
     --card-spacing: var(--home-panel-padding);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-panel);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-panel);
     min-width: 0;
   }
   .home-metric {

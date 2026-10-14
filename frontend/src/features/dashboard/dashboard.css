@@ -44,7 +44,7 @@
   }
   .dashboard-metric, .dashboard-panel, .dashboard-lesson-card {
     --card-spacing: var(--dashboard-panel-padding);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-panel);
     box-shadow: var(--shadow-panel);
     border: 1px solid var(--border);
     min-width: 0;

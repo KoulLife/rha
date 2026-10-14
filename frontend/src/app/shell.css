@@ -70,7 +70,7 @@
     padding: var(--space-control) var(--space-detail) var(--space-panel);
     letter-spacing: -.02em;
     cursor: pointer;
-    border-radius: var(--radius-panel);
+    border-radius: var(--radius-lg);
   }
   .member-sidebar-brand:hover {
     background: color-mix(in srgb, var(--sidebar-foreground) 5%, transparent);
@@ -82,7 +82,7 @@
   .member-navigation-button {
     min-height: var(--navigation-control-height);
     padding-inline: var(--space-detail);
-    border-radius: var(--radius-panel);
+    border-radius: var(--radius-lg);
     box-shadow: none;
     justify-content: space-between;
     color: var(--muted-foreground);

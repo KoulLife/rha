@@ -21,7 +21,6 @@ function PassBalance({ pass }: { pass: Pass }) {
 
 export function PassesPage({ onOpen }: { onOpen: (id: number) => void }) {
   return <div className="menu-page"><PageTitle title="내 이용권" description="보유한 이용권과 남은 횟수, 이용 기간을 확인합니다." />
-    <div className="menu-results"><strong>보유 이용권 {passes.length}개</strong><span>현재 사용 가능한 이용권</span></div>
     <div className="menu-pass-list">{passes.map(pass => <MenuPanel key={pass.id} variant="pass" title={pass.name} action={<StatusBadge domain="pass" status="ACTIVE" />}>
       <div className="menu-stack"><PassBalance pass={pass} /><dl className="menu-facts"><div><dt>담당 강사</dt><dd>{pass.teacher}</dd></div><div><dt>이용 기간</dt><dd>{pass.start} ~ {pass.end}</dd></div></dl><div className="menu-actions"><Button variant="outline" onClick={() => onOpen(pass.id)}>이용권 상세</Button></div></div>
     </MenuPanel>)}</div>

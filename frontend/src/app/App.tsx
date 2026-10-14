@@ -109,7 +109,7 @@ function MobileMenuButton() {
 function MemberScreen({ screen, selectedId, onNavigate, onDialog, canReserve, canWaitlist, canCancel, canUpdate, canChangePassword }: { screen: Screen; selectedId: number; onNavigate: (screen: Screen, id?: number) => void; onDialog: (dialog: DialogState) => void; canReserve: boolean; canWaitlist: boolean; canCancel: boolean; canUpdate: boolean; canChangePassword: boolean }) {
   switch (screen) {
 
-    case "classes": return <LessonsPage onOpen={(id) => onNavigate("lesson-detail", id)} canReserve={canReserve} canWaitlist={canWaitlist} />;
+    case "classes": return <LessonsPage onOpen={(id) => onNavigate("lesson-detail", id)} onDialog={onDialog} canReserve={canReserve} canWaitlist={canWaitlist} />;
     case "lesson-detail": return <LessonDetailPage lessonId={selectedId} onBack={() => onNavigate("classes")} onDialog={onDialog} canReserve={canReserve} canWaitlist={canWaitlist} />;
     case "passes": return <PassesPage onOpen={(id) => onNavigate("pass-detail", id)} />;
     case "pass-detail": return <PassDetailPage passId={selectedId} onBack={() => onNavigate("passes")} />;
