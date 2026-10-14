@@ -16,15 +16,18 @@ jobs:
   diff:
     runs-on: ubuntu-latest
     steps:
-      # pull_request_target의 기본 체크아웃은 base 브랜치이므로 PR의 머지 결과를 명시해서 받는다.
+      # actions/checkout은 pull_request_target에서 포크 PR 코드를 체크아웃하는 것을 거부한다.
+      # base 브랜치만 체크아웃하고, PR에서는 git으로 openapi.yaml 한 파일만 읽어 온다.
       - uses: actions/checkout@v4
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Prepare base spec
-        run: git show "origin/${{ github.base_ref }}:api-spec/openapi.yaml" > .oasdiff-base.yaml
+      - name: Prepare base and revision specs
+        run: |
+          git show "origin/${{ github.base_ref }}:api-spec/openapi.yaml" > .oasdiff-base.yaml
+          git fetch origin "refs/pull/${{ github.event.pull_request.number }}/merge"
+          git show FETCH_HEAD:api-spec/openapi.yaml > .oasdiff-revision.yaml
 
       # secret이 있는 환경에서 실행되므로 제3자 액션은 커밋 SHA로 고정한다 (v0.1.18).
       - name: Generate changelog
@@ -32,7 +35,7 @@ jobs:
         uses: oasdiff/oasdiff-action/changelog@b9325c9e0a27ab65b0da3b766522cedec6be81dc
         with:
           base: .oasdiff-base.yaml
-          revision: api-spec/openapi.yaml
+          revision: .oasdiff-revision.yaml
           format: markdown
 
       - name: Detect breaking changes
@@ -40,7 +43,7 @@ jobs:
         uses: oasdiff/oasdiff-action/breaking@b9325c9e0a27ab65b0da3b766522cedec6be81dc
         with:
           base: .oasdiff-base.yaml
-          revision: api-spec/openapi.yaml
+          revision: .oasdiff-revision.yaml
           fail-on: ERR
         continue-on-error: true
 
