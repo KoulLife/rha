@@ -1,3 +1,4 @@
+import { currentTime } from "@/api/runtime";
 import { PAGE_SIZE } from '@/components/ui/Pagination';
 import { useState } from 'react';
 import * as api from '@/api/generated/api';
@@ -62,7 +63,7 @@ export function RoomsPage({onNavigate}:{onNavigate:Navigate}) {
   return <AdminPage title="룸" description="센터의 수업 공간과 수용 인원을 관리합니다." action={<Button variant="ghost" onClick={()=>onNavigate('admin-settings')}>스튜디오 설정으로</Button>}><QueryState query={query}><DataTable rows={query.data?.content??[]} pageInfo={query.data?.pageInfo} onPage={setPage} action={<Button onClick={()=>edit()}>룸 등록</Button>} columns={[{label:'룸',render:r=>r.name},{label:'수용 인원',render:r=>`${r.capacity}명`},{label:'관리',render:r=><div className="menu-actions"><Button variant="ghost" onClick={()=>setSelected(r.id)}>상세·사용 예정 수업</Button><Button variant="outline" onClick={()=>edit(r)}>수정</Button><Button variant="destructive" onClick={()=>setAction({title:'룸 삭제',description:'시작 전 수업이 있으면 삭제할 수 없습니다. 기존 수업의 공간을 먼저 조정해 주세요.',submitLabel:'룸 삭제',submitVariant:'destructive',danger:true,onSubmit:()=>remove.mutateAsync({roomId:r.id})})}>삭제</Button></div>}]}/></QueryState><PendingFeature title="룸 비활성" description="룸의 사용 중지 기준이 확정되면 제공됩니다. 현재는 룸 수정과 사용 예정 수업이 없는 룸의 삭제를 지원합니다."/>{selected&&<RoomDetail id={selected} onClose={()=>setSelected(null)} onNavigate={onNavigate}/>} {action&&<ActionDialog action={action} onClose={()=>setAction(null)}/>}</AdminPage>;
 }
 function RoomDetail({id,onClose,onNavigate}:{id:number;onClose:()=>void;onNavigate:Navigate}) {
-  const query=api.useGetRoom(id),[page,setPage]=useState(1),lessons=api.useGetLessons({roomId:id,from:'2026-10-13T03:00:00Z',page,size:PAGE_SIZE});
+  const query=api.useGetRoom(id),[page,setPage]=useState(1),lessons=api.useGetLessons({roomId:id,from:currentTime(),page,size:PAGE_SIZE});
   return <Dialog dialog={{title:'룸 상세',body:'룸 정보와 사용 예정 수업'}} onClose={onClose}><div className="menu-stack"><QueryState query={query}>{query.data&&<Facts items={[["룸",query.data.name],["수용 인원",`${query.data.capacity}명`]]}/>}</QueryState><QueryState query={lessons}><DataTable rows={(lessons.data?.content??[]).filter(l=>l.status!=='CANCELED')} pageInfo={lessons.data?.pageInfo} onPage={setPage} columns={[{label:'수업',render:l=>l.title},{label:'상세',render:l=><Button variant="ghost" onClick={()=>{onClose();onNavigate('admin-lesson-detail',l.id);}}>수업 보기</Button>}]}/></QueryState></div></Dialog>;
 }
 export function HoursPage({onNavigate}:{onNavigate:Navigate}) {

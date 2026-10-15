@@ -1,10 +1,11 @@
+import { useAllLessons, useAllLessonTypes, useAllRooms } from '@/features/admin/queries';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { LessonEditor } from '@/features/admin/LessonPages';
 import type { Values } from '@/features/admin/AdminUI';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useCreateReservation, useGetLessons, useGetMyReservations, useGetLessonTypes, useGetRooms, getGetMyReservationsQueryKey, type Lesson, type LessonPageResponse } from '@/api/generated/api';
+import { useCreateReservation, useGetMyReservations, getGetMyReservationsQueryKey, getGetLessonsInfiniteQueryKey, type Lesson } from '@/api/generated/api';
 import type { Screen } from '@/config/access';
 import type { DashboardUser } from '@/features/dashboard/model';
 import { MenuEmpty, MenuPanel } from '@/components/layout/MenuPanel';
@@ -68,19 +69,10 @@ export function TimetablePage({ user, onNavigate, canReserve = false, view = 'ca
 type ScheduleProps = { view: 'calendar' | 'list'; lessonType: string; setLessonType: (value: string) => void; editing: boolean; onCreate: (day: string, hour: number) => void; onEdit: (id: number) => void; selectedId: number | null; onSelect: (id: number) => void; start: string; today: string; user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void; canReserve: boolean; room: string; setRoom: (value: string) => void; scope: string; setScope: (value: string) => void; renderToolbar: (legend?: ReactNode) => ReactNode };
 
 function WeekSchedule({ start, today, user, onNavigate, renderToolbar, ...filters }: ScheduleProps) {
-  const [pages, setPages] = useState<LessonPageResponse[]>([]);
-  const [page, setPage] = useState(1);
-  // Read the previous day too, so a lesson continuing past midnight appears on Monday.
-  const params = { ...weekRange(start), from: weekRange(shiftDate(start, -1)).from, size: 100, page, order: 'ASC' as const };
-  const query = useGetLessons(params, { query: { queryKey: ['timetable', user.role, user.id, params] } });
-  useEffect(() => {
-    if (!query.data) return;
-    const response = query.data;
-    setPages(previous => [...previous.filter(item => item.pageInfo.page !== response.pageInfo.page), response]);
-    if (response.pageInfo.page < response.pageInfo.totalPages) setPage(response.pageInfo.page + 1);
-  }, [query.data]);
-  const loading = query.isPending || !pages.length || pages.length < (query.data?.pageInfo.totalPages ?? 1);
-  const lessons = pages.flatMap(item => item.content).filter(lesson => Date.parse(lesson.endAt) > Date.parse(weekRange(start).from));
+  // Include the preceding day for lessons continuing past midnight.
+  const query = useAllLessons({ ...weekRange(start), from: weekRange(shiftDate(start, -1)).from, order: 'ASC' });
+  const loading = query.isPending;
+  const lessons = (query.data?.content ?? []).filter(lesson => Date.parse(lesson.endAt) > Date.parse(weekRange(start).from));
   if (query.isError) {
     const status = query.error instanceof ApiError ? query.error.problem.status : undefined;
     return <>{renderToolbar()}<Alert variant="destructive"><AlertTitle>{status === 401 ? '로그인이 만료되었습니다' : status === 403 ? '조회 권한이 없습니다' : '시간표를 불러오지 못했습니다'}</AlertTitle><AlertDescription>{status === 401 ? '다시 로그인한 뒤 이용해 주세요.' : '잠시 후 다시 시도해 주세요.'}<Button variant="outline" onClick={() => query.refetch()}>다시 시도</Button></AlertDescription></Alert></>;
@@ -93,8 +85,8 @@ function Schedule({ lessons, start, today, user, onNavigate, canReserve, room, s
   const client = useQueryClient();
   const instructorColors = useInstructorColors();
   const reserve = useCreateReservation();
-  const catalogTypes = useGetLessonTypes({size:100});
-  const catalogRooms = useGetRooms({size:100});
+  const catalogTypes = useAllLessonTypes();
+  const catalogRooms = useAllRooms();
   const [reservationDialog, setReservationDialog] = useState<DialogState>(null);
   const range = weekRange(start);
   const myReservations = useGetMyReservations({ lessonFrom: range.from, lessonTo: range.to, status: 'RESERVED', page: 1, size: 100 }, { query: { enabled: user.role === 'MEMBER' } });
@@ -160,7 +152,7 @@ function Schedule({ lessons, start, today, user, onNavigate, canReserve, room, s
       if (!selectedLesson) return;
       void reserve.mutateAsync({ data: { lessonId: selectedLesson.id } }).then(async () => {
         await Promise.all([
-          client.invalidateQueries({ queryKey: ['timetable', user.role, user.id] }),
+          client.invalidateQueries({ queryKey: getGetLessonsInfiniteQueryKey() }),
           client.invalidateQueries({ queryKey: getGetMyReservationsQueryKey() }),
         ]);
         toast.success('수업 신청이 완료되었습니다.');

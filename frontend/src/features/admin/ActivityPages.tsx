@@ -1,3 +1,4 @@
+import { useAllMembers } from './queries';
 import { PAGE_SIZE } from '@/components/ui/Pagination';
 import { useState } from 'react';
 import * as api from '@/api/generated/api';
@@ -8,7 +9,7 @@ import type { Navigate } from './MemberPages';
 import type { Screen } from '@/app/routes';
 export function ActivityList({targetType,targetId,onNavigate}:{targetType?:string;targetId?:number;onNavigate:Navigate}) {
   const [filters,setFilters]=useState<Values>({}),[page,setPage]=useState(1),[selected,setSelected]=useState<api.ActivityLog|null>(null);
-  const catalog=api.useGetActivityLogActions(),members=api.useGetMembers({size:100});
+  const catalog=api.useGetActivityLogActions(),members=useAllMembers({size:100});
   const query=api.useGetActivityLogs({targetType:targetType??filterValue(filters,'targetType'),targetId:targetId??(filterValue(filters,'targetId')?Number(filters.targetId):undefined),category:filterValue(filters,'category'),action:filterValue(filters,'action'),actorId:filterValue(filters,'actorId')?Number(filters.actorId):undefined,actorRole:filterValue(filters,'actorRole') as api.MemberRole|undefined,subjectMemberId:filterValue(filters,'subjectMemberId')?Number(filters.subjectMemberId):undefined,from:dayStart(textValue(filters,'from')),to:dayEnd(textValue(filters,'to')),order:filters.order==='ASC'?'ASC':'DESC',page,size:PAGE_SIZE});
   const links:Record<string,Screen>={MEMBER:'admin-member-detail',LESSON:'admin-lesson-detail',PASS:'admin-pass-detail',SETTLEMENT:'admin-settlement-detail',ABSENCE:'admin-absence-detail'};
   const linkLabels:Record<string,string>={MEMBER:'회원 상세 보기',LESSON:'수업 상세 보기',PASS:'이용권 상세 보기',SETTLEMENT:'정산 상세 보기',ABSENCE:'부재 상세 보기'};

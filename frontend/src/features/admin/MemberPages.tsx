@@ -1,3 +1,5 @@
+import { useAllLessonTypes } from './queries';
+import { todayInSeoul } from "@/api/runtime";
 import { PAGE_SIZE } from '@/components/ui/Pagination';
 import { useState, type CSSProperties } from 'react';
 import { toast } from 'sonner';
@@ -16,7 +18,7 @@ import { fallbackInstructorColor, saveInstructorColor, useInstructorColors } fro
 export type Navigate = (screen: Screen, id?: number) => void;
 const memberStates = [ALL, { value:'ACTIVE',label:'활성' }, { value:'INACTIVE',label:'비활성' }, { value:'WITHDRAWN',label:'탈퇴' }, { value:'RESIGNED',label:'퇴사' }];
 const instructorStates = [ALL, { value:'ACTIVE',label:'재직' }, { value:'INACTIVE',label:'비활성' }, { value:'RESIGNED',label:'퇴사' }];
-const personFields: FormField[] = [{name:'name',label:'이름',required:true,maxLength:50},{name:'phoneNumber',label:'휴대전화',type:'tel',required:true,pattern:'01[0-9]{8,9}',description:'하이픈 없이 입력해 주세요.'},{name:'birthDate',label:'생년월일',type:'date',required:true,max:'2026-10-13'},{name:'address',label:'주소',maxLength:200}];
+const personFields: FormField[] = [{name:'name',label:'이름',required:true,maxLength:50},{name:'phoneNumber',label:'휴대전화',type:'tel',required:true,pattern:'01[0-9]{8,9}',description:'하이픈 없이 입력해 주세요.'},{name:'birthDate',label:'생년월일',type:'date',required:true,max:todayInSeoul()},{name:'address',label:'주소',maxLength:200}];
 const rgbLabel = (hex:string) => `${parseInt(hex.slice(1,3),16)}, ${parseInt(hex.slice(3,5),16)}, ${parseInt(hex.slice(5,7),16)}`;
 
 export function MembersPage({ instructor = false, onNavigate }: { instructor?: boolean; onNavigate: Navigate }) {
@@ -42,7 +44,7 @@ export function MembersPage({ instructor = false, onNavigate }: { instructor?: b
   </AdminPage>;
 }
 function InstructorPayRatesDialog({instructorId,onClose}:{instructorId:number;onClose:()=>void}) {
-  const query=api.useGetPayRates(instructorId),types=api.useGetLessonTypes({size:100}),save=api.useUpdatePayRates();
+  const query=api.useGetPayRates(instructorId),types=useAllLessonTypes({size:100}),save=api.useUpdatePayRates();
   return <Dialog dialog={{title:query.data?`${query.data.instructor.name} · 수당 기준`:'강사 수당 기준',body:'수업 유형별 한 회당 단가를 등록하거나 수정합니다.'}} onClose={onClose}>
     <QueryState query={query}><QueryState query={types}>{query.data&&<AdminForm key={`${instructorId}-${JSON.stringify(query.data)}-${JSON.stringify(types.data)}`} fields={(types.data?.content??[]).flatMap(type=>[{name:`enabled-${type.id}`,label:`${type.name} 단가 사용`,type:'checkbox' as const},{name:`price-${type.id}`,label:`${type.name} 단가 (원)`,type:'number' as const,min:0}])} initial={Object.fromEntries((types.data?.content??[]).flatMap(type=>{const rate=query.data!.payRates.find(item=>item.lessonType.id===type.id);return [[`enabled-${type.id}`,!!rate],[`price-${type.id}`,String(rate?.unitPrice??0)]];}))} submitLabel={query.data.payRates.length?'수당 기준 수정':'수당 기준 등록'} onSubmit={async values=>{const payRates=(types.data?.content??[]).filter(type=>values[`enabled-${type.id}`]).map(type=>({lessonTypeId:type.id,unitPrice:numValue(values,`price-${type.id}`)}));await save.mutateAsync({memberId:instructorId,data:{payRates}});onClose();}}/>}</QueryState></QueryState>
   </Dialog>;

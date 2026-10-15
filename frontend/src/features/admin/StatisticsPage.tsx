@@ -1,3 +1,4 @@
+import { useAllMembers } from './queries';
 import * as api from '@/api/generated/api';
 import { MenuPanel } from '@/components/layout/MenuPanel';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -48,7 +49,7 @@ function ComparisonBars({ title, bars, format = value => value.toLocaleString('k
 
 export function StatisticsPage() {
   const month = seoulMonth(), from = localStart(month), to = localStart(shiftMonth(month, 1));
-  const members = api.useGetMembers({ role: 'MEMBER', size: 100 });
+  const members = useAllMembers({ role: 'MEMBER', size: 100 });
   const passes = api.useGetPasses({ createdFrom: from, createdTo: to, size: 1 });
   const lessons = api.useGetLessons({ from, to, size: 1 });
   const reserved = api.useGetReservations({ lessonFrom: from, lessonTo: to, status: 'RESERVED', size: 1 });
@@ -63,7 +64,7 @@ export function StatisticsPage() {
   return <AdminPage title="운영 통계" description={`${month}에 시작하는 수업과 회원·이용권 운영 현황입니다.`}>
     <QueryState query={{ isPending: queries.some(query => query.isPending), isError: queries.some(query => query.isError), error: queries.find(query => query.isError)?.error, refetch: () => Promise.all(queries.map(query => query.refetch())) }}>
       <TooltipProvider><div className="admin-stats-grid">
-        <StatisticCard title="회원 등록" value={registered ?? '—'} note={`이번 달 등록 회원${registered === undefined ? ' · 전체 회원이 100명을 초과하여 집계 불가' : ''}`} />
+        <StatisticCard title="회원 등록" value={registered ?? '—'} note={`이번 달 등록 회원${registered === undefined ? ' · 집계 불가' : ''}`} />
         <StatisticCard title="이용권 발급" value={count(passes) ?? '—'} note="이번 달 발급 건수" />
         <StatisticCard title="수업 운영" value={count(lessons) ?? '—'} note="이번 달 시작하는 수업" />
         <StatisticCard title="노쇼율" value={noShowRate} note="이번 달 수업의 노쇼 ÷ (출석 + 노쇼)" />
@@ -98,7 +99,7 @@ export function SalesStatisticsPage() {
         { label: last, value: lastSales },
         { label: month, value: thisSales },
       ]} />
-      <p className="menu-note">환불 표시된 결제 기록은 제외합니다. 각 월의 기록이 100건을 넘으면 해당 월을 표시하지 않고, 비교 월의 매출이 0원이면 증감률을 표시하지 않습니다.</p>
+      <p className="menu-note">환불 표시된 결제 기록은 제외합니다. 각 월의 전체 결제 기록을 합산하며, 비교 월의 매출이 0원이면 증감률을 표시하지 않습니다.</p>
     </QueryState>
   </AdminPage>;
 }

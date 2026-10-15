@@ -1,3 +1,5 @@
+import { useAllMembers, useAllInstructors, useAllRooms } from './queries';
+import { todayInSeoul } from "@/api/runtime";
 import { PAGE_SIZE, Pagination } from '@/components/ui/Pagination';
 import { useState } from 'react';
 import * as api from '@/api/generated/api';
@@ -22,14 +24,14 @@ const resignationActionStyle = {
 
 export function AbsenceList({ instructorId, onNavigate }: { instructorId?:number; onNavigate:Navigate }) {
   const [filters,setFilters]=useState<Values>({}),[page,setPage]=useState(1);
-  const instructors=api.useGetMembers({role:'INSTRUCTOR',size:100});
+  const instructors=useAllMembers({role:'INSTRUCTOR',size:100});
   const query=api.useGetAbsences({instructorId:instructorId??(filterValue(filters,'instructorId')?Number(filters.instructorId):undefined),status:filterValue(filters,'status') as api.AbsenceStatus|undefined,from:dayStart(textValue(filters,'from')),to:dayEnd(textValue(filters,'to')),page,size:PAGE_SIZE});
   return <div className="menu-stack"><Filters fields={[{name:'from',label:'시작일',type:'date'},{name:'to',label:'종료일',type:'date'},...(!instructorId?[{name:'instructorId',label:'강사',type:'search' as const,options:[ALL,...options(instructors.data?.content)]}]:[]),{name:'status',label:'상태',type:'select',options:[ALL,{value:'REQUESTED',label:'승인 대기'},{value:'APPROVED',label:'승인'},{value:'REJECTED',label:'반려'},{value:'CANCELED',label:'취소'}]}]} onApply={v=>{setFilters(v);setPage(1);}}/><QueryState query={query}><DataTable rows={query.data?.content??[]} pageInfo={query.data?.pageInfo} onPage={setPage} columns={[{label:'강사',render:r=>r.instructor.name},{label:'부재 시작',render:r=>dateTime(r.startAt)},{label:'부재 종료',render:r=>dateTime(r.endAt)},{label:'사유',render:r=>r.reason??'—'},{label:'상태',render:r=><StatusBadge domain="absence" status={r.status}/>},{label:'상세',render:r=><Button variant="ghost" onClick={()=>onNavigate('admin-absence-detail',r.id)}>상세 보기</Button>}]}/></QueryState></div>;
 }
 export function AbsencesPage({onNavigate}:{onNavigate:Navigate}) { return <AdminPage title="부재 관리" description="강사의 신청 내용을 확인하고 수업을 조정한 뒤 승인합니다." action={<Button variant="ghost" onClick={()=>onNavigate('admin-instructors')}>강사 목록으로</Button>}><AbsenceList onNavigate={onNavigate}/></AdminPage>; }
 export function AbsenceDetail({id,onNavigate}:{id:number;onNavigate:Navigate}) {
   const query=api.useGetAbsence(id), approve=api.useApproveAbsence(), reject=api.useRejectAbsence(), cancel=api.useCancelAbsence();
-  const instructors=api.useGetInstructors({size:100}),rooms=api.useGetRooms({size:100}),updateLesson=api.useUpdateLesson();
+  const instructors=useAllInstructors({size:100}),rooms=useAllRooms({size:100}),updateLesson=api.useUpdateLesson();
   const [action,setAction]=useState<Action|null>(null),[page,setPage]=useState(1);
   const a=query.data;
   // No lower start bound: a class that starts before the absence may still overlap.
@@ -51,7 +53,7 @@ export function ResignationsPage({onNavigate}:{onNavigate:Navigate}) {
   const [page,setPage]=useState(1),[action,setAction]=useState<Action|null>(null);
   const [historyInstructor,setHistoryInstructor]=useState<{id:number;name:string}|null>(null);
   const [handoffInstructor,setHandoffInstructor]=useState<api.Member|null>(null),[handoffRecipient,setHandoffRecipient]=useState('');
-  const query=api.useGetMembers({role:'INSTRUCTOR',page,size:PAGE_SIZE}), candidates=api.useGetInstructors({size:100});
+  const query=api.useGetMembers({role:'INSTRUCTOR',page,size:PAGE_SIZE}), candidates=useAllInstructors({size:100});
   const register=api.useRegisterResignation(),cancel=api.useCancelResignation(),complete=api.useCompleteResignation(),reassign=api.useReassignLessons();
   return <AdminPage title="퇴사 관리" description="퇴사일 등록, 시작 전 수업 인계, 퇴사 처리와 정산을 진행합니다." action={<Button variant="ghost" onClick={()=>onNavigate('admin-instructors')}>강사 목록으로</Button>}>
     <p className="menu-note">수업 인계는 즉시 미래 수업의 담당 강사를 변경합니다. 담당 이용권은 자동으로 변경되지 않으므로 회원 이용권에서 별도로 조정해 주세요.</p>
@@ -66,7 +68,7 @@ export function ResignationsPage({onNavigate}:{onNavigate:Navigate}) {
           <DropdownMenuTrigger asChild><Button variant="outline" style={resignationActionStyle} aria-label={`${r.name} 퇴사 관리`}>관리</Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="admin-resignation-menu">
             {r.status==='ACTIVE'&&<>
-            <DropdownMenuItem onSelect={()=>setAction({title:'퇴사일 등록',description:'퇴사일 당일부터 새 수업 배정이 제한됩니다. 계정은 퇴사 처리 전까지 유지됩니다.',submitLabel:'퇴사일 저장',fields:[{name:'resignationDate',label:'퇴사일',type:'date',required:true,min:'2026-10-13'}],initial:{resignationDate:r.resignationDate??'2026-10-13'},onSubmit:v=>register.mutateAsync({memberId:r.id,data:{resignationDate:textValue(v,'resignationDate')}})})}>퇴사일 {r.resignationDate?'변경':'등록'}</DropdownMenuItem>
+            <DropdownMenuItem onSelect={()=>setAction({title:'퇴사일 등록',description:'퇴사일 당일부터 새 수업 배정이 제한됩니다. 계정은 퇴사 처리 전까지 유지됩니다.',submitLabel:'퇴사일 저장',fields:[{name:'resignationDate',label:'퇴사일',type:'date',required:true,min:todayInSeoul()}],initial:{resignationDate:r.resignationDate??todayInSeoul()},onSubmit:v=>register.mutateAsync({memberId:r.id,data:{resignationDate:textValue(v,'resignationDate')}})})}>퇴사일 {r.resignationDate?'변경':'등록'}</DropdownMenuItem>
             <DropdownMenuItem disabled={!candidates.data} onSelect={()=>setAction({title:'미래 수업 인계',description:'이후의 시작 전 수업을 모두 인계합니다. 담당 이용권은 유지됩니다.',submitLabel:'수업 인계',danger:true,fields:[{name:'toInstructorId',label:'인계받을 강사',type:'search',required:true,options:options(candidates.data?.content.filter(m=>m.id!==r.id))}],onSubmit:v=>reassign.mutateAsync({memberId:r.id,data:{toInstructorId:numValue(v,'toInstructorId')}})})}>수업 인계</DropdownMenuItem>
             {r.resignationDate&&<>
               <DropdownMenuItem onSelect={()=>{setHandoffInstructor(r);setHandoffRecipient('');}}>인계 대상 등록</DropdownMenuItem>

@@ -1,3 +1,4 @@
+import { currentTime } from "@/api/runtime";
 import { useState, type ReactNode } from "react";
 import * as api from "@/api/generated/api";
 import { PaginatedList } from "@/components/ui/PaginatedList";
@@ -45,7 +46,7 @@ function NotificationList({ items, detail }: { items: api.Notification[]; detail
 }
 
 export function DashboardPage({ user, data, screen = "home", onNavigate, onRecordAttendance, empty = false }: Props) {
-  const snapshot = getDashboardSnapshot(data, user, dashboardPreviewTime);
+  const snapshot = getDashboardSnapshot(data, user, user.role === "ADMIN" ? currentTime() : dashboardPreviewTime);
   const notificationQuery = api.useGetMyNotifications({ page: 1, size: 100 }, { query: { enabled: screen === "home" && user.role !== "MEMBER" && !empty } });
   const unreadQuery = api.useGetMyUnreadNotificationCount({ query: { enabled: screen === "home" && user.role !== "MEMBER" && !empty } });
   const detail = useNotificationDetail(user.role, onNavigate);
