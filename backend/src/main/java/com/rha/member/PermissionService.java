@@ -13,6 +13,10 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
 
 @Service
 public class PermissionService {
@@ -25,14 +29,17 @@ public class PermissionService {
     private final LessonTypeRepository lessonTypeRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public PermissionService(MemberRepository memberRepository, MemberPermissionRepository permissionRepository,
-            LessonTypeRepository lessonTypeRepository, AdminGuard adminGuard, RequestValidator requestValidator) {
+            LessonTypeRepository lessonTypeRepository, AdminGuard adminGuard, RequestValidator requestValidator,
+            ActivityLogRecorder activityLogRecorder) {
         this.memberRepository = memberRepository;
         this.permissionRepository = permissionRepository;
         this.lessonTypeRepository = lessonTypeRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     /** 부여 가능한 권한 목록. 활성 수업 유형마다 LESSON_CREATE, LESSON_UPDATE 권한이 더해진다. */
@@ -82,7 +89,14 @@ public class PermissionService {
                 .toList();
         permissionRepository.saveAll(toGrant);
 
+        activityLogRecorder.record(ActivityAction.PERMISSIONS_UPDATED, callerId, memberId, "MEMBER", memberId,
+                "강사 " + Josa.eulReul("'" + target.getName() + "'") + " 권한을 설정했다.",
+                ActivityChange.ifChanged("permissions", joined(existing), joined(requested)));
         return new MemberPermissionsResponse(requested.stream().sorted(Comparator.naturalOrder()).toList());
+    }
+
+    private static String joined(Set<String> codes) {
+        return codes.stream().sorted().collect(java.util.stream.Collectors.joining(","));
     }
 
     private List<PermissionResponse> availablePermissions() {

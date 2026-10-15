@@ -29,6 +29,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.ActivityTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+import com.rha.absence.AbsenceStatus;
 
 /** 강사의 수업 가능시간, 퇴사, 강사 목록. 수업 인계는 수업 검증을 재사용하므로 {@code LessonService}에 있다. */
 @Service
@@ -45,11 +54,13 @@ public class InstructorService {
     private final MemberPermissionRepository permissionRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public InstructorService(MemberRepository memberRepository,
             InstructorAvailabilityRepository availabilityRepository, LessonRepository lessonRepository,
             AbsenceRepository absenceRepository, RefreshTokenRepository refreshTokenRepository, MemberPermissionRepository permissionRepository,
-            AdminGuard adminGuard, RequestValidator requestValidator) {
+            AdminGuard adminGuard, RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
+        this.activityLogRecorder = activityLogRecorder;
         this.memberRepository = memberRepository;
         this.availabilityRepository = availabilityRepository;
         this.lessonRepository = lessonRepository;
@@ -107,8 +118,35 @@ public class InstructorService {
         requireNoOverlap(slots);
 
         Member instructor = findInstructor(memberId);
+        Map<String, String> before = describeByDay(availabilityRepository.findByInstructorId(memberId));
         availabilityRepository.deleteAllOf(memberId);
-        return toResponse(instructor, availabilityRepository.saveAll(slots));
+        List<InstructorAvailability> saved = availabilityRepository.saveAll(slots);
+
+        Map<String, String> after = describeByDay(saved);
+        List<ActivityChange> changes = new ArrayList<>();
+        for (String day : DAYS) {
+            ActivityChange change = ActivityChange.ifChanged(day, before.get(day), after.get(day));
+            if (change != null) {
+                changes.add(change);
+            }
+        }
+        activityLogRecorder.record(ActivityAction.AVAILABILITY_UPDATED, callerId, memberId, "MEMBER", memberId,
+                "강사 " + Josa.eulReul("'" + instructor.getName() + "'") + " 수업 가능시간을 설정했다.",
+                changes.toArray(new ActivityChange[0]));
+        return toResponse(instructor, saved);
+    }
+
+    /** 요일별 "09:00~12:00, 14:00~18:00" 표기. 시간대가 없는 요일은 "없음"이다. */
+    private static Map<String, String> describeByDay(List<InstructorAvailability> slots) {
+        Map<String, String> result = new HashMap<>();
+        for (String day : DAYS) {
+            String text = slots.stream().filter(slot -> slot.getDayOfWeek().equals(day))
+                    .sorted(Comparator.comparing(InstructorAvailability::getStartTime))
+                    .map(slot -> slot.getStartTime() + "~" + slot.getEndTime())
+                    .collect(Collectors.joining(", "));
+            result.put(day, text.isEmpty() ? "없음" : text);
+        }
+        return result;
     }
 
     /** 같은 요일 안에서 시간대끼리 겹치면 거절한다. 끝과 시작이 맞닿는 것은 겹침이 아니다. */
@@ -153,7 +191,11 @@ public class InstructorService {
         if (date.isBefore(LocalDate.now(CENTER_ZONE))) {
             throw new ApiException(ErrorCode.INVALID_RESIGNATION_DATE);
         }
+        LocalDate beforeDate = member.getResignationDate();
         member.registerResignation(date, Instant.now());
+        activityLogRecorder.record(ActivityAction.RESIGNATION_REGISTERED, callerId, memberId, "MEMBER", memberId,
+                "강사 " + Josa.eulReul("'" + member.getName() + "'") + " 퇴사일로 " + date + "을 등록했다.",
+                ActivityChange.ifChanged("resignationDate", beforeDate, date));
         return MemberResponse.from(member, permissionsOf(memberId));
     }
 
@@ -165,7 +207,11 @@ public class InstructorService {
         if (member.getResignationDate() == null) {
             throw new ApiException(ErrorCode.RESIGNATION_NOT_REGISTERED);
         }
+        LocalDate beforeDate = member.getResignationDate();
         member.cancelResignation(Instant.now());
+        activityLogRecorder.record(ActivityAction.RESIGNATION_CANCELED, callerId, memberId, "MEMBER", memberId,
+                "강사 " + Josa.eulReul("'" + member.getName() + "'") + " 퇴사일 등록을 취소했다.",
+                ActivityChange.of("resignationDate", beforeDate, null));
     }
 
     /**
@@ -190,12 +236,23 @@ public class InstructorService {
             throw new ApiException(ErrorCode.INSTRUCTOR_HAS_UPCOMING_LESSONS);
         }
 
+        MemberStatus beforeStatus = member.getStatus();
         member.resign(now);
         refreshTokenRepository.revokeAllOf(memberId, now);
         permissionRepository.deleteAllOf(memberId);
-        for (Absence absence : absenceRepository.findCancelableOnResignation(memberId, now)) {
+        List<Absence> canceledAbsences = absenceRepository.findCancelableOnResignation(memberId, now);
+        for (Absence absence : canceledAbsences) {
+            AbsenceStatus beforeAbsenceStatus = absence.getStatus();
             absence.cancel(callerId, now);
+            activityLogRecorder.record(ActivityAction.ABSENCE_CANCELED, callerId, memberId, "ABSENCE",
+                    absence.getId(), "퇴사 처리로 부재(" + ActivityTime.period(absence.getStartAt(),
+                            absence.getEndAt()) + ")를 자동 취소했다.",
+                    ActivityChange.of("status", beforeAbsenceStatus, AbsenceStatus.CANCELED));
         }
+        activityLogRecorder.record(ActivityAction.RESIGNATION_COMPLETED, callerId, memberId, "MEMBER", memberId,
+                "강사 " + Josa.eulReul("'" + member.getName() + "'") + " 퇴사 처리했다."
+                        + (canceledAbsences.isEmpty() ? "" : " 부재 " + canceledAbsences.size() + "건이 자동 취소되었다."),
+                ActivityChange.of("status", beforeStatus, member.getStatus()));
         return MemberResponse.from(member, List.of());
     }
 

@@ -9,6 +9,11 @@ import com.rha.reservation.ReservationRepository;
 import java.time.Instant;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.Masking;
 
 @Service
 public class AccountWithdrawalService {
@@ -16,9 +21,12 @@ public class AccountWithdrawalService {
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final ReservationRepository reservationRepository;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public AccountWithdrawalService(MemberRepository memberRepository,
-            RefreshTokenRepository refreshTokenRepository, ReservationRepository reservationRepository) {
+            RefreshTokenRepository refreshTokenRepository, ReservationRepository reservationRepository,
+            ActivityLogRecorder activityLogRecorder) {
+        this.activityLogRecorder = activityLogRecorder;
         this.reservationRepository = reservationRepository;
         this.memberRepository = memberRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -40,6 +48,9 @@ public class AccountWithdrawalService {
         if (reservationRepository.existsUpcomingOf(memberId, now)) {
             throw new ApiException(ErrorCode.MEMBER_HAS_UPCOMING_RESERVATIONS);
         }
+        // 탈퇴 처리가 이름을 바꾸더라도 요약에는 탈퇴 전 이름이 남도록 먼저 기록한다.
+        activityLogRecorder.record(ActivityAction.ACCOUNT_WITHDRAWN, memberId, memberId, "MEMBER", memberId,
+                "회원탈퇴했다.");
         member.withdraw(now);
         refreshTokenRepository.revokeAllOf(memberId, now);
     }

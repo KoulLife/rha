@@ -8,6 +8,11 @@ import java.time.Instant;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.Masking;
 
 @Service
 public class SignUpService {
@@ -15,13 +20,16 @@ public class SignUpService {
     private final MemberRepository memberRepository;
     private final EmailVerificationRepository emailVerificationRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public SignUpService(MemberRepository memberRepository,
             EmailVerificationRepository emailVerificationRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            ActivityLogRecorder activityLogRecorder) {
         this.memberRepository = memberRepository;
         this.emailVerificationRepository = emailVerificationRepository;
         this.passwordEncoder = passwordEncoder;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     @Transactional
@@ -39,7 +47,7 @@ public class SignUpService {
         }
 
         verification.markUsed(now);
-        return memberRepository.save(Member.signUp(
+        Member saved = memberRepository.save(Member.signUp(
                 request.email(),
                 passwordEncoder.encode(request.password()),
                 request.name(),
@@ -47,5 +55,8 @@ public class SignUpService {
                 request.birthDate(),
                 request.address(),
                 now));
+        activityLogRecorder.record(ActivityAction.SIGN_UP, saved.getId(), saved.getId(), "MEMBER", saved.getId(),
+                "회원가입했다.");
+        return saved;
     }
 }

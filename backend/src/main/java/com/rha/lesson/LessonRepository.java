@@ -2,6 +2,7 @@ package com.rha.lesson;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -73,12 +74,6 @@ public interface LessonRepository extends JpaRepository<Lesson, Long>, JpaSpecif
             @Param("rangeStart") Instant rangeStart, @Param("rangeEnd") Instant rangeEnd,
             @Param("now") Instant now);
 
-    /** 공개 예약 시각이 지난 수업을 공개한다. 바뀐 수업 수를 반환한다. */
-    @Modifying(clearAutomatically = true)
-    @Query("""
-            update Lesson l set l.status = com.rha.lesson.LessonStatus.PUBLISHED, l.publishAt = null,
-                   l.updatedAt = :now
-            where l.status = com.rha.lesson.LessonStatus.SCHEDULED and l.publishAt <= :now
-            """)
-    int publishDue(@Param("now") Instant now);
+    /** 공개 예약 시각이 지나 공개해야 하는 수업. 수업마다 활동 이력을 남기기 위해 한 건씩 바꾼다. */
+    List<Lesson> findByStatusAndPublishAtLessThanEqual(LessonStatus status, Instant now);
 }

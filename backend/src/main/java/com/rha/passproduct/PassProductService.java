@@ -16,6 +16,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
 
 /** 이용권 상품 관리(관리자 전용). */
 @Service
@@ -26,14 +30,17 @@ public class PassProductService {
     private final PassService passService;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public PassProductService(PassProductRepository passProductRepository, PassRepository passRepository,
-            PassService passService, AdminGuard adminGuard, RequestValidator requestValidator) {
+            PassService passService, AdminGuard adminGuard, RequestValidator requestValidator,
+            ActivityLogRecorder activityLogRecorder) {
         this.passProductRepository = passProductRepository;
         this.passRepository = passRepository;
         this.passService = passService;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     /** 등록 최신순(같으면 id 내림차순). {@code page}는 1부터 시작한다. */
@@ -65,7 +72,10 @@ public class PassProductService {
 
         PassProduct product = PassProduct.create(request.name(), request.price(), request.totalCount(),
                 request.validityDays(), request.description(), Instant.now());
-        return PassProductResponse.from(passProductRepository.save(product));
+        PassProduct saved = passProductRepository.save(product);
+        activityLogRecorder.record(ActivityAction.PASS_PRODUCT_CREATED, callerId, null, "PASS_PRODUCT", saved.getId(),
+                Josa.eulReul("이용권 상품 '" + saved.getName() + "'") + " 등록했다.");
+        return PassProductResponse.from(saved);
     }
 
     /**
@@ -87,10 +97,25 @@ public class PassProductService {
         Integer changedValidity = request.getValidityDays() != null
                 && request.getValidityDays() != product.getValidityDays() ? request.getValidityDays() : null;
 
+        String beforeName = product.getName();
+        long beforePrice = product.getPrice();
+        int beforeTotalCount = product.getTotalCount();
+        int beforeValidityDays = product.getValidityDays();
+        String beforeDescription = product.getDescription();
         product.update(request.getName(), request.getPrice(), request.getTotalCount(), request.getValidityDays(),
                 request.isDescriptionSpecified(), request.getDescription(), Instant.now());
         int affected = Boolean.TRUE.equals(request.getApplyToIssued())
                 ? passService.applyProductChange(passProductId, countDelta, changedValidity) : 0;
+        activityLogRecorder.record(ActivityAction.PASS_PRODUCT_UPDATED, callerId, null, "PASS_PRODUCT",
+                product.getId(),
+                Josa.eulReul("이용권 상품 '" + product.getName() + "'") + " 수정했다."
+                        + (Boolean.TRUE.equals(request.getApplyToIssued())
+                                ? " 발급된 이용권 " + affected + "건에 반영했다." : ""),
+                ActivityChange.ifChanged("name", beforeName, product.getName()),
+                ActivityChange.ifChanged("price", beforePrice, product.getPrice()),
+                ActivityChange.ifChanged("totalCount", beforeTotalCount, product.getTotalCount()),
+                ActivityChange.ifChanged("validityDays", beforeValidityDays, product.getValidityDays()),
+                ActivityChange.ifChanged("description", beforeDescription, product.getDescription()));
         return new PassProductUpdateResponse(PassProductResponse.from(product), affected);
     }
 
@@ -102,6 +127,8 @@ public class PassProductService {
             throw new ApiException(ErrorCode.PASS_PRODUCT_IN_USE);
         }
         passProductRepository.delete(product);
+        activityLogRecorder.record(ActivityAction.PASS_PRODUCT_DELETED, callerId, null, "PASS_PRODUCT",
+                product.getId(), Josa.eulReul("이용권 상품 '" + product.getName() + "'") + " 삭제했다.");
     }
 
     private PassProduct find(Long passProductId) {

@@ -12,6 +12,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.Masking;
 
 @Service
 public class PasswordResetService {
@@ -24,6 +29,7 @@ public class PasswordResetService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final Duration tokenTtl;
+    private final ActivityLogRecorder activityLogRecorder;
     private final SecureRandom random = new SecureRandom();
 
     public PasswordResetService(MemberRepository memberRepository,
@@ -31,7 +37,9 @@ public class PasswordResetService {
             PasswordResetMailer mailer,
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
-            @Value("${rha.auth.password-reset.token-ttl:30m}") Duration tokenTtl) {
+            @Value("${rha.auth.password-reset.token-ttl:30m}") Duration tokenTtl,
+            ActivityLogRecorder activityLogRecorder) {
+        this.activityLogRecorder = activityLogRecorder;
         this.memberRepository = memberRepository;
         this.tokenRepository = tokenRepository;
         this.mailer = mailer;
@@ -93,6 +101,8 @@ public class PasswordResetService {
         member.changePassword(passwordEncoder.encode(newPassword), now);
         refreshTokenRepository.revokeAllOf(member.getId(), now);
         tokenRepository.deleteUnusedByMemberId(member.getId());
+        activityLogRecorder.record(ActivityAction.PASSWORD_RESET, member.getId(), member.getId(), "MEMBER",
+                member.getId(), "비밀번호를 재설정했다.");
     }
 
     private String newRandomToken() {

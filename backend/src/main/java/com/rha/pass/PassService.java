@@ -36,6 +36,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.ActivityTime;
 
 /**
  * 이용권 발급·조회·수정과 일시정지, 날짜에 따른 상태 전환.
@@ -62,10 +67,13 @@ public class PassService {
     private final MemberRepository memberRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public PassService(PassRepository passRepository, PassPauseRepository pauseRepository,
             PassProductRepository productRepository, PassPaymentRepository paymentRepository,
-            ReservationRepository reservationRepository, MemberRepository memberRepository, AdminGuard adminGuard, RequestValidator requestValidator) {
+            ReservationRepository reservationRepository, MemberRepository memberRepository, AdminGuard adminGuard, RequestValidator requestValidator,
+            ActivityLogRecorder activityLogRecorder) {
+        this.activityLogRecorder = activityLogRecorder;
         this.passRepository = passRepository;
         this.pauseRepository = pauseRepository;
         this.productRepository = productRepository;
@@ -84,7 +92,15 @@ public class PassService {
         Instant now = Instant.now();
         pauseRepository.activate(today);
         pauseRepository.end(today);
-        passRepository.expire(today, now);
+        List<Pass> expiring = passRepository.findExpiringForUpdate(today);
+        for (Pass pass : expiring) {
+            PassStatus beforeStatus = pass.getStatus();
+            pass.changeStatus(PassStatus.EXPIRED, now);
+            activityLogRecorder.record(ActivityAction.PASS_EXPIRED, null, pass.getMemberId(), "PASS", pass.getId(),
+                    "이용권 #" + pass.getId() + "이 만료일(" + pass.getEndDate() + ")이 지나 만료되었다.",
+                    ActivityChange.of("status", beforeStatus, PassStatus.EXPIRED));
+        }
+        passRepository.flush();
         passRepository.pause(today, now);
         passRepository.activate(today, now);
     }
@@ -224,6 +240,9 @@ public class PassService {
         PassStatus status = start.isAfter(today) ? PassStatus.UPCOMING : PassStatus.ACTIVE;
         Pass pass = passRepository.save(Pass.issue(product.getId(), member.getId(), instructor.getId(), price,
                 product.getTotalCount(), start, end, status, Instant.now()));
+        activityLogRecorder.record(ActivityAction.PASS_ISSUED, callerId, member.getId(), "PASS", pass.getId(),
+                "회원 '" + member.getName() + "'에게 이용권 '" + product.getName() + "'을 발급했다. (이용권 #"
+                        + pass.getId() + ", " + start + " ~ " + end + ")");
         return PassResponse.of(pass, product, member, instructor, 0);
     }
 
@@ -258,6 +277,10 @@ public class PassService {
         }
 
         Instant now = Instant.now();
+        int beforeRemaining = pass.getRemainingCount();
+        Long beforeInstructorId = pass.getInstructorId();
+        LocalDate beforeEndDate = pass.getEndDate();
+        PassStatus beforeStatus = pass.getStatus();
         if (request.remainingCount() != null) {
             pass.changeRemainingCount(request.remainingCount(), now);
         }
@@ -268,6 +291,12 @@ public class PassService {
             pass.changeEndDate(endDate, now);
             pass.changeStatus(statusOf(pass, today()), now);
         }
+        activityLogRecorder.record(ActivityAction.PASS_UPDATED, callerId, pass.getMemberId(), "PASS", pass.getId(),
+                "이용권 #" + pass.getId() + "을 수정했다.",
+                ActivityChange.ifChanged("remainingCount", beforeRemaining, pass.getRemainingCount()),
+                ActivityChange.ifChanged("instructorId", beforeInstructorId, pass.getInstructorId()),
+                ActivityChange.ifChanged("endDate", beforeEndDate, pass.getEndDate()),
+                ActivityChange.ifChanged("status", beforeStatus, pass.getStatus()));
         return toResponse(pass);
     }
 
@@ -329,12 +358,17 @@ public class PassService {
 
         Instant now = Instant.now();
         boolean startsToday = start.equals(today);
+        LocalDate beforeEndDate = pass.getEndDate();
         PassPause pause = pauseRepository.save(PassPause.register(passId, start, end,
                 startsToday ? PassPauseStatus.ACTIVE : PassPauseStatus.SCHEDULED, request.reason(), callerId, now));
         pass.changeEndDate(pass.getEndDate().plusDays(pause.plannedDays()), now);
         if (startsToday) {
             pass.changeStatus(PassStatus.PAUSED, now);
         }
+        activityLogRecorder.record(ActivityAction.PASS_PAUSED, callerId, pass.getMemberId(), "PASS_PAUSE",
+                pause.getId(), "이용권 #" + passId + "의 일시정지(" + start + " ~ " + end + ")를 등록했다. ("
+                        + pause.plannedDays() + "일, 만료일 연장)",
+                ActivityChange.ifChanged("endDate", beforeEndDate, pass.getEndDate()));
         return PassPauseResponse.from(pause);
     }
 
@@ -356,6 +390,7 @@ public class PassService {
         }
 
         Instant now = Instant.now();
+        LocalDate beforeEndDate = pass.getEndDate();
         if (pause.getStatus() == PassPauseStatus.SCHEDULED || !pause.getStartDate().isBefore(today)) {
             pass.changeEndDate(pass.getEndDate().minusDays(pause.plannedDays()), now);
             pause.cancel(now);
@@ -367,6 +402,10 @@ public class PassService {
         }
         pauseRepository.saveAndFlush(pause);
         pass.changeStatus(statusOf(pass, today), now);
+        activityLogRecorder.record(ActivityAction.PASS_PAUSE_TERMINATED, callerId, pass.getMemberId(), "PASS_PAUSE",
+                pause.getId(), "이용권 #" + passId + "의 일시정지(" + pause.getStartDate() + " ~ "
+                        + pause.getEndDate() + ")를 해제했다.",
+                ActivityChange.ifChanged("endDate", beforeEndDate, pass.getEndDate()));
         return PassPauseResponse.from(pause);
     }
 

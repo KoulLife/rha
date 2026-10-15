@@ -8,6 +8,11 @@ import java.time.Instant;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.Masking;
 
 @Service
 public class PasswordChangeService {
@@ -15,13 +20,16 @@ public class PasswordChangeService {
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public PasswordChangeService(MemberRepository memberRepository,
             RefreshTokenRepository refreshTokenRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            ActivityLogRecorder activityLogRecorder) {
         this.memberRepository = memberRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     /** 비밀번호를 변경하고, 그 회원의 모든 Refresh Token을 폐기한다. */
@@ -42,5 +50,7 @@ public class PasswordChangeService {
         Instant now = Instant.now();
         member.changePassword(passwordEncoder.encode(newPassword), now);
         refreshTokenRepository.revokeAllOf(memberId, now);
+        activityLogRecorder.record(ActivityAction.PASSWORD_CHANGED, memberId, memberId, "MEMBER", memberId,
+                "비밀번호를 변경했다.");
     }
 }

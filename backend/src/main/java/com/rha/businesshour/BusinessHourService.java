@@ -13,6 +13,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
 
 @Service
 public class BusinessHourService {
@@ -23,12 +27,14 @@ public class BusinessHourService {
     private final BusinessHourRepository businessHourRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public BusinessHourService(BusinessHourRepository businessHourRepository, AdminGuard adminGuard,
-            RequestValidator requestValidator) {
+            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
         this.businessHourRepository = businessHourRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     @Transactional(readOnly = true)
@@ -52,13 +58,32 @@ public class BusinessHourService {
                 BusinessHourRequest::dayOfWeek, BusinessHourService::validTimes));
 
         List<BusinessHour> rows = businessHourRepository.findAll();
+        Map<String, String> before = new java.util.HashMap<>();
         for (BusinessHour row : rows) {
+            before.put(row.getDayOfWeek(), describe(row.isClosed(), row.getOpenTime(), row.getCloseTime()));
             BusinessHourRequest day = days.stream()
                     .filter(d -> d.dayOfWeek().equals(row.getDayOfWeek())).findFirst().orElseThrow();
             LocalTime[] range = times.get(row.getDayOfWeek());
             row.change(day.closed(), range[0], range[1]);
         }
-        return toResponse(businessHourRepository.saveAll(rows));
+        List<BusinessHour> saved = businessHourRepository.saveAll(rows);
+
+        List<ActivityChange> changes = new java.util.ArrayList<>();
+        for (String day : DAYS) {
+            BusinessHour row = saved.stream().filter(r -> r.getDayOfWeek().equals(day)).findFirst().orElseThrow();
+            ActivityChange change = ActivityChange.ifChanged(day, before.get(day),
+                    describe(row.isClosed(), row.getOpenTime(), row.getCloseTime()));
+            if (change != null) {
+                changes.add(change);
+            }
+        }
+        activityLogRecorder.record(ActivityAction.BUSINESS_HOURS_UPDATED, callerId, null, "BUSINESS_HOURS", null,
+                "영업시간을 설정했다.", changes.toArray(new ActivityChange[0]));
+        return toResponse(saved);
+    }
+
+    private static String describe(boolean closed, LocalTime open, LocalTime close) {
+        return closed ? "휴무" : open + "~" + close;
     }
 
     /** 휴무이면 시각이 없어야 하고, 영업일이면 오픈 시각이 마감 시각보다 빨라야 한다. */

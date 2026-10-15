@@ -42,6 +42,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.ActivityTime;
 
 /**
  * 수업 예약, 취소, 출결 기록과 조회. 예약하면 서버가 이용권을 골라 횟수를 1회 차감하고 취소하면 복구한다.
@@ -71,6 +76,7 @@ public class ReservationService {
     private final NotificationPublisher notificationPublisher;
     private final SettlementItemRepository settlementItemRepository;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public ReservationService(ReservationRepository reservationRepository, LessonRepository lessonRepository,
             LessonTypeRepository lessonTypeRepository, RoomRepository roomRepository,
@@ -78,7 +84,8 @@ public class ReservationService {
             PassRepository passRepository, PassProductRepository productRepository,
             PassPaymentRepository paymentRepository, ReservationPolicyRepository policyRepository,
             NotificationPublisher notificationPublisher, SettlementItemRepository settlementItemRepository,
-            RequestValidator requestValidator) {
+            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
+        this.activityLogRecorder = activityLogRecorder;
         this.reservationRepository = reservationRepository;
         this.lessonRepository = lessonRepository;
         this.lessonTypeRepository = lessonTypeRepository;
@@ -128,6 +135,9 @@ public class ReservationService {
         pass.consumeOne(now);
         Reservation reservation = reservationRepository.save(
                 Reservation.reserve(lesson.getId(), callerId, pass.getId(), now));
+        activityLogRecorder.record(ActivityAction.RESERVATION_CREATED, callerId, callerId, "RESERVATION",
+                reservation.getId(), "수업 '" + lesson.getTitle() + "'(" + ActivityTime.format(lesson.getStartAt())
+                        + ")을 예약했다. (이용권 #" + pass.getId() + ")");
         return toResponses(List.of(reservation)).get(0);
     }
 
@@ -195,6 +205,11 @@ public class ReservationService {
         if (admin && !reservation.getMemberId().equals(callerId)) {
             notificationPublisher.reservationCanceledByAdmin(reservation, lesson);
         }
+        activityLogRecorder.record(ActivityAction.RESERVATION_CANCELED, callerId, reservation.getMemberId(),
+                "RESERVATION", reservation.getId(), memberLabel(reservation, callerId) + "수업 '" + lesson.getTitle()
+                        + "'(" + ActivityTime.format(lesson.getStartAt()) + ") 예약을 취소했다.",
+                ActivityChange.of("status", ReservationStatus.RESERVED, ReservationStatus.CANCELED),
+                body.reason() == null ? null : ActivityChange.of("reason", null, body.reason()));
         return toResponses(List.of(reservation)).get(0);
     }
 
@@ -227,8 +242,23 @@ public class ReservationService {
         if (settlementItemRepository.existsByLessonId(lesson.getId())) {
             throw new ApiException(ErrorCode.LESSON_SETTLED);
         }
+        ReservationStatus beforeStatus = reservation.getStatus();
         reservation.confirmAttendance(target, now);
+        activityLogRecorder.record(ActivityAction.ATTENDANCE_RECORDED, callerId, reservation.getMemberId(),
+                "RESERVATION", reservation.getId(), memberLabel(reservation, null) + "수업 '" + lesson.getTitle()
+                        + "'(" + ActivityTime.format(lesson.getStartAt()) + ")의 출결을 " + target.name()
+                        + "(으)로 기록했다.",
+                ActivityChange.ifChanged("status", beforeStatus, target));
         return toResponses(List.of(reservation)).get(0);
+    }
+
+    /** 예약한 회원이 행위자가 아니면 "'이름' 회원의 "을 앞에 붙인다. */
+    private String memberLabel(Reservation reservation, Long callerId) {
+        if (reservation.getMemberId().equals(callerId)) {
+            return "";
+        }
+        return memberRepository.findById(reservation.getMemberId())
+                .map(member -> "회원 '" + member.getName() + "'의 ").orElse("");
     }
 
     private static ReservationStatus attendanceStatus(String value) {

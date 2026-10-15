@@ -6,16 +6,24 @@ import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.Masking;
 
 @Service
 public class MemberService {
 
     private final MemberRepository memberRepository;
     private final MemberPermissionRepository permissionRepository;
+    private final ActivityLogRecorder activityLogRecorder;
 
-    public MemberService(MemberRepository memberRepository, MemberPermissionRepository permissionRepository) {
+    public MemberService(MemberRepository memberRepository, MemberPermissionRepository permissionRepository,
+            ActivityLogRecorder activityLogRecorder) {
         this.memberRepository = memberRepository;
         this.permissionRepository = permissionRepository;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     @Transactional(readOnly = true)
@@ -29,8 +37,21 @@ public class MemberService {
             throw new ApiException(ErrorCode.INVALID_INPUT);
         }
         Member member = findAuthenticatedMember(memberId);
+        String beforeName = member.getName();
+        String beforePhone = member.getPhoneNumber();
+        Object beforeBirthDate = member.getBirthDate();
+        String beforeAddress = member.getAddress();
         member.updateProfile(request.getName(), request.getPhoneNumber(), request.getBirthDate(),
                 request.isAddressSpecified(), request.getAddress(), Instant.now());
+        activityLogRecorder.record(ActivityAction.MEMBER_PROFILE_UPDATED, memberId, memberId, "MEMBER", memberId,
+                "내 정보를 수정했다.",
+                ActivityChange.ifChanged("name", beforeName, member.getName()),
+                ActivityChange.ifChanged("phoneNumber", Masking.phone(beforePhone),
+                        Masking.phone(member.getPhoneNumber())),
+                ActivityChange.ifChanged("birthDate", Masking.birthDate(beforeBirthDate),
+                        Masking.birthDate(member.getBirthDate())),
+                ActivityChange.ifChanged("address", Masking.address(beforeAddress),
+                        Masking.address(member.getAddress())));
         return toResponse(member);
     }
 

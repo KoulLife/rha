@@ -15,6 +15,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
 
 @Service
 public class RoomService {
@@ -23,13 +27,15 @@ public class RoomService {
     private final LessonRepository lessonRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public RoomService(RoomRepository roomRepository, LessonRepository lessonRepository, AdminGuard adminGuard,
-            RequestValidator requestValidator) {
+            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
         this.roomRepository = roomRepository;
         this.lessonRepository = lessonRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     /** 이름 오름차순(같으면 id 오름차순). 삭제된 룸은 제외한다. {@code page}는 1부터 시작한다. */
@@ -55,8 +61,10 @@ public class RoomService {
         if (roomRepository.existsByNameAndDeletedAtIsNull(name)) {
             throw new ApiException(ErrorCode.ROOM_NAME_DUPLICATED);
         }
-        Room room = Room.create(name, request.capacity(), Instant.now());
-        return RoomResponse.from(saveUnique(room));
+        Room room = saveUnique(Room.create(name, request.capacity(), Instant.now()));
+        activityLogRecorder.record(ActivityAction.ROOM_CREATED, callerId, null, "ROOM", room.getId(),
+                Josa.eulReul("룸 '" + room.getName() + "'") + " 등록했다.");
+        return RoomResponse.from(room);
     }
 
     @Transactional
@@ -72,8 +80,15 @@ public class RoomService {
         if (name != null && roomRepository.existsByNameAndIdNotAndDeletedAtIsNull(name, roomId)) {
             throw new ApiException(ErrorCode.ROOM_NAME_DUPLICATED);
         }
+        String beforeName = room.getName();
+        int beforeCapacity = room.getCapacity();
         room.update(name, request.capacity(), Instant.now());
-        return RoomResponse.from(saveUnique(room));
+        Room saved = saveUnique(room);
+        activityLogRecorder.record(ActivityAction.ROOM_UPDATED, callerId, null, "ROOM", saved.getId(),
+                Josa.eulReul("룸 '" + saved.getName() + "'") + " 수정했다.",
+                ActivityChange.ifChanged("name", beforeName, saved.getName()),
+                ActivityChange.ifChanged("capacity", beforeCapacity, saved.getCapacity()));
+        return RoomResponse.from(saved);
     }
 
     /** 룸을 삭제 처리한다. 시작 전이고 취소되지 않은 수업이 있으면 거절한다. */
@@ -87,6 +102,8 @@ public class RoomService {
             throw new ApiException(ErrorCode.ROOM_IN_USE);
         }
         room.delete(now);
+        activityLogRecorder.record(ActivityAction.ROOM_DELETED, callerId, null, "ROOM", room.getId(),
+                Josa.eulReul("룸 '" + room.getName() + "'") + " 삭제했다.");
     }
 
     private Room findActive(Long roomId) {
