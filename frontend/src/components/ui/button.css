@@ -1,4 +1,10 @@
 @layer utilities {
+  .button-table-action {
+    inline-size: var(--table-action-width);
+    block-size: var(--table-action-height);
+    padding-inline: var(--space-control);
+    font-size: var(--font-size-caption);
+  }
   .button-warning { color: var(--button-warning-foreground); background: var(--warning-soft); border-color: var(--warning-border); }
   .button-warning:hover { background: var(--warning-hover); }
   .button-destructive { color: var(--button-destructive-foreground); background: var(--destructive-soft); border-color: var(--destructive-border); }

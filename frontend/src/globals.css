@@ -256,6 +256,7 @@
   --dashboard-panel-padding: var(--panel-padding);
   --dashboard-metric-padding: var(--panel-padding);
   --dashboard-row-padding: .75rem;
+  --dashboard-notification-max-height: calc(var(--table-row-height) * 5);
   --dashboard-dialog-width: 30rem;
   --dashboard-dialog-margin: 1rem;
   --dashboard-dialog-padding: 1.5rem;
