@@ -331,6 +331,11 @@
   --admin-form-width: 48rem;
   --admin-filter-width: 10rem;
   --admin-filter-search-width: 18rem;
+  --admin-sales-chart-height: 13rem;
+  --admin-sales-axis-width: 4.5rem;
+  --admin-sales-bar-width: 4.5rem;
+  --admin-sales-value-space: 2rem;
+  --admin-reservation-donut-size: 13rem;
 }
 @media (max-width: 767px) {
   :root {
@@ -344,6 +349,7 @@
   --timetable-month-width: 11rem;
   --timetable-filter-width: 9rem;
   --timetable-preview-width: 20rem;
+  --lesson-view-tabs-width: 16rem;
   --timetable-fact-width: 5rem;
   --timetable-height: 34rem;
   --timetable-mobile-height: 32rem;

@@ -32,16 +32,54 @@ function StatisticCard({ title, value, note }: { title: string; value: string | 
   </Tooltip>;
 }
 
-function ComparisonBars({ title, bars, format = value => value.toLocaleString('ko-KR') }: {
-  title: string; bars: Bar[]; format?: (value: number) => string;
-}) {
-  const max = Math.max(1, ...bars.map(bar => bar.value ?? 0));
-  return <MenuPanel title={title}>
-    <div className="admin-chart" role="img" aria-label={`${title}: ${bars.map(bar => `${bar.label} ${bar.value === undefined ? '집계 불가' : format(bar.value)}`).join(', ')}`}>
-      {bars.map(bar => <div className="admin-chart-row" key={bar.label}>
-        <div className="admin-chart-row-heading"><span>{bar.label}</span><strong>{bar.value === undefined ? '—' : format(bar.value)}</strong></div>
-        <div className="admin-chart-track"><span className="admin-chart-bar" style={{ width: `${bar.value === undefined ? 0 : bar.value / max * 100}%` }} /></div>
-      </div>)}
+function ReservationStatusChart({ bars }: { bars: Bar[] }) {
+  const total = bars.every(bar => bar.value !== undefined) ? bars.reduce((sum, bar) => sum + (bar.value ?? 0), 0) : undefined;
+  const circumference = 2 * Math.PI * 70;
+  let offset = 0;
+  return <MenuPanel title="예약 상태 구성">
+    <div className="admin-reservation-chart">
+      <TooltipProvider><div className="admin-reservation-donut">
+        <svg viewBox="0 0 200 200" role="img" aria-label={`이번 달 수업의 예약 상태: ${bars.map(bar => `${bar.label} ${bar.value === undefined ? '집계 불가' : `${bar.value}건`}`).join(', ')}`}>
+          <circle className="admin-reservation-donut-track" cx="100" cy="100" r="70" />
+          {total ? bars.map((bar, index) => {
+            const length = (bar.value ?? 0) / total * circumference;
+            const segment = length > 0 && <Tooltip key={bar.label}>
+              <TooltipTrigger asChild><circle className="admin-reservation-donut-segment" data-status={index} cx="100" cy="100" r="70" strokeDasharray={`${length} ${circumference - length}`} strokeDashoffset={-offset} tabIndex={0} aria-label={`${bar.label} ${bar.value}건, 전체의 ${((bar.value ?? 0) / total * 100).toFixed(1)}%`} /></TooltipTrigger>
+              <TooltipContent side="top">{bar.label} {bar.value?.toLocaleString('ko-KR')}건 · 전체의 {((bar.value ?? 0) / total * 100).toFixed(1)}%</TooltipContent>
+            </Tooltip>;
+            offset += length;
+            return segment;
+          }) : null}
+        </svg>
+        <div className="admin-reservation-donut-center" aria-hidden="true"><strong>{total === undefined ? '—' : total.toLocaleString('ko-KR')}</strong><span>전체 예약</span></div>
+      </div></TooltipProvider>
+      <ul className="admin-reservation-legend">{bars.map((bar, index) => <li key={bar.label}>
+        <span className="admin-reservation-legend-dot" data-status={index} aria-hidden="true" />
+        <span>{bar.label}</span><strong>{bar.value === undefined ? '—' : `${bar.value.toLocaleString('ko-KR')}건`}</strong>
+      </li>)}</ul>
+    </div>
+  </MenuPanel>;
+}
+
+function SalesComparisonChart({ bars }: { bars: Bar[] }) {
+  const highest = Math.max(0, ...bars.map(bar => bar.value ?? 0));
+  const targetStep = Math.max(1, highest / 4);
+  const magnitude = 10 ** Math.floor(Math.log10(targetStep));
+  const step = ([1, 2, 5, 10].find(value => value * magnitude >= targetStep) ?? 10) * magnitude;
+  const ceiling = step * 4;
+  const ticks = [4, 3, 2, 1, 0].map(index => index * step);
+  const axisLabel = (value: number) => value >= 10000 ? `${(value / 10000).toLocaleString('ko-KR')}만` : value.toLocaleString('ko-KR');
+  return <MenuPanel title="월별 매출 비교">
+    <div className="admin-sales-chart" role="img" aria-label={bars.map(bar => `${bar.label} ${bar.value === undefined ? '집계 불가' : money(bar.value)}`).join(', ')}>
+      <div className="admin-sales-axis" aria-hidden="true">{ticks.map(tick => <span key={tick}>{axisLabel(tick)}</span>)}</div>
+      <div className="admin-sales-plot" aria-hidden="true">
+        <div className="admin-sales-grid">{ticks.map(tick => <span key={tick} />)}</div>
+        <div className="admin-sales-columns">{bars.map((bar, index) => <div className="admin-sales-column" key={bar.label}>
+          <span className="admin-sales-value" style={{ bottom: `calc(${bar.value === undefined ? 0 : bar.value / ceiling * 100}% + var(--space-control))` }}>{bar.value === undefined ? '—' : `${axisLabel(bar.value)}원`}</span>
+          {bar.value !== undefined && bar.value > 0 && <span className="admin-sales-bar" data-current={index === bars.length - 1} style={{ height: `${bar.value / ceiling * 100}%` }} />}
+        </div>)}</div>
+      </div>
+      <div className="admin-sales-labels" aria-hidden="true">{bars.map((bar, index) => <span key={bar.label}>{['지난해 같은 달', '지난달', '이번 달'][index]}<small>{bar.label}</small></span>)}</div>
     </div>
   </MenuPanel>;
 }
@@ -62,13 +100,13 @@ export function StatisticsPage() {
   const queries = [members, passes, lessons, reserved, canceled, attended, noShow];
   return <AdminPage title="운영 통계" description={`${month}에 시작하는 수업과 회원·이용권 운영 현황입니다.`}>
     <QueryState query={{ isPending: queries.some(query => query.isPending), isError: queries.some(query => query.isError), error: queries.find(query => query.isError)?.error, refetch: () => Promise.all(queries.map(query => query.refetch())) }}>
-      <TooltipProvider><div className="admin-stats-grid">
+      <TooltipProvider><div className="admin-stats-grid admin-operations-metrics">
         <StatisticCard title="회원 등록" value={registered ?? '—'} note={`이번 달 등록 회원${registered === undefined ? ' · 전체 회원이 100명을 초과하여 집계 불가' : ''}`} />
         <StatisticCard title="이용권 발급" value={count(passes) ?? '—'} note="이번 달 발급 건수" />
         <StatisticCard title="수업 운영" value={count(lessons) ?? '—'} note="이번 달 시작하는 수업" />
         <StatisticCard title="노쇼율" value={noShowRate} note="이번 달 수업의 노쇼 ÷ (출석 + 노쇼)" />
       </div></TooltipProvider>
-      <ComparisonBars title="수업별 예약 상태" bars={[
+      <ReservationStatusChart bars={[
         { label: '예약 완료', value: count(reserved) },
         { label: '출석', value: count(attended) },
         { label: '노쇼', value: count(noShow) },
@@ -93,7 +131,7 @@ export function SalesStatisticsPage() {
         <StatisticCard title="지난달 대비" value={percent(thisSales, lastSales)} note={`${last} 대비 증감률`} />
         <StatisticCard title="지난해 같은 달 대비" value={percent(thisSales, yearSales)} note={`${lastYear} 대비 증감률`} />
       </div></TooltipProvider>
-      <ComparisonBars title="월별 매출 비교" format={money} bars={[
+      <SalesComparisonChart bars={[
         { label: lastYear, value: yearSales },
         { label: last, value: lastSales },
         { label: month, value: thisSales },

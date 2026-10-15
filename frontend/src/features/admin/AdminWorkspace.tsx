@@ -1,5 +1,4 @@
 import * as api from '@/api/generated/api';
-import { Button } from '@/components/ui/button';
 import type { Screen } from '@/app/routes';
 import type { DashboardData } from '@/features/dashboard/model';
 import { MembersPage,MemberDetail,type Navigate } from './MemberPages';
@@ -9,7 +8,6 @@ import { PassesPage,PassDetail,PaymentsPage } from './PassPages';
 import { SettingsPage,ProductsPage,LessonTypesPage,RoomsPage,HoursPage,PolicyPage } from './SettingsPages';
 import { SettlementsPage,SettlementCreate,SettlementDetail } from './SettlementPages';
 import { ActivityPage } from './ActivityPages';
-import { AdminPage,PendingFeature } from './AdminUI';
 import { StatisticsPage, SalesStatisticsPage } from './StatisticsPage';
 
 export function useAdminDashboard(enabled:boolean) {
@@ -34,8 +32,6 @@ export function AdminWorkspace({screen,id,onNavigate}:{screen:Screen;id:number;o
     case 'admin-lesson-detail':content=<LessonDetail id={id} onNavigate={onNavigate}/>;break;
     case 'admin-lesson-create':content=<LessonEditor onNavigate={onNavigate}/>;break;
     case 'admin-lesson-edit':content=<LessonEditor id={id} onNavigate={onNavigate}/>;break;
-    case 'admin-repeat':content=<AdminPage title="반복 일정" description="반복 회차를 한 번에 생성·수정하는 기능입니다." action={<Button variant="ghost" onClick={()=>onNavigate('admin-lessons')}>수업 관리로</Button>}><PendingFeature title="반복 일정 생성·회차 수정" description="반복 생성과 이번 회차·선택 회차·이후 회차 수정 범위가 검토 중입니다. 현재는 수업 관리에서 개별 회차를 개설·수정할 수 있습니다."/></AdminPage>;break;
-    case 'admin-waitlist':content=<AdminPage title="승인 신청 대기" description="예약 신청 승인과 대기자 운영을 위한 메뉴입니다." action={<Button variant="ghost" onClick={()=>onNavigate('admin-lessons')}>수업 관리로</Button>}><PendingFeature title="신청 승인·거절·대기자 자동 승급" description="예약 승인과 대기 순서, 승급 조건이 확정되면 제공됩니다. 현재 운영 기준은 즉시 예약 확정 및 예약 시 1회 차감입니다."/></AdminPage>;break;
     case 'admin-passes':content=<PassesPage onNavigate={onNavigate}/>;break;
     case 'admin-pass-detail':content=<PassDetail id={id} onNavigate={onNavigate}/>;break;
     case 'admin-payments':content=<PaymentsPage onNavigate={onNavigate}/>;break;
