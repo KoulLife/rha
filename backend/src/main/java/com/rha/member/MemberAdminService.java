@@ -6,6 +6,8 @@ import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.PageInfo;
 import com.rha.common.validation.RequestValidator;
+import com.rha.lesson.LessonRepository;
+import com.rha.lesson.LessonStatus;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -30,6 +32,7 @@ public class MemberAdminService {
     private final MemberPermissionRepository permissionRepository;
     private final PasswordResetService passwordResetService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final LessonRepository lessonRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
@@ -37,12 +40,14 @@ public class MemberAdminService {
             MemberPermissionRepository permissionRepository,
             PasswordResetService passwordResetService,
             RefreshTokenRepository refreshTokenRepository,
+            LessonRepository lessonRepository,
             AdminGuard adminGuard,
             RequestValidator requestValidator) {
         this.memberRepository = memberRepository;
         this.permissionRepository = permissionRepository;
         this.passwordResetService = passwordResetService;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.lessonRepository = lessonRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
     }
@@ -82,8 +87,8 @@ public class MemberAdminService {
 
     /**
      * 회원 정보를 부분 수정한다. 역할이 실제로 바뀌면 부여된 권한을 회수하고 Refresh Token을 폐기한다.
-     * 확인 순서는 관리자 여부(403) → 입력(400) → 회원 존재(404) → 본인 역할 변경(403)이다.
-     * 강사의 시작 전 담당 수업 확인은 수업 기능이 구현될 때 추가한다.
+     * 확인 순서는 관리자 여부(403) → 입력(400) → 회원 존재(404) → 본인 역할 변경(403)
+     * → 강사의 시작 전 담당 수업(409)이다.
      */
     @Transactional
     public MemberResponse updateMember(Long callerId, Long memberId, MemberAdminUpdateRequest request) {
@@ -99,6 +104,9 @@ public class MemberAdminService {
         if (roleChanged && callerId.equals(memberId)) {
             throw new ApiException(ErrorCode.CANNOT_CHANGE_OWN_ROLE);
         }
+        if (roleChanged && member.isRole(MemberRole.INSTRUCTOR)) {
+            requireNoUpcomingLessons(memberId);
+        }
 
         Instant now = Instant.now();
         member.updateProfile(request.getName(), request.getPhoneNumber(), request.getBirthDate(),
@@ -113,7 +121,7 @@ public class MemberAdminService {
 
     /**
      * 계정을 ACTIVE 또는 INACTIVE로 바꾼다. 비활성화하면 Refresh Token을 모두 폐기한다.
-     * 시작 전 담당 수업과 예약 확인은 수업·예약 기능이 구현될 때 추가한다.
+     * 시작 전 예약(MEMBER_HAS_UPCOMING_RESERVATIONS) 확인은 예약 기능이 구현될 때 추가한다.
      */
     @Transactional
     public MemberResponse changeMemberStatus(Long callerId, Long memberId, MemberStatusChangeRequest request) {
@@ -135,6 +143,9 @@ public class MemberAdminService {
             if (member.getStatus() == MemberStatus.RESIGNED) {
                 throw new ApiException(ErrorCode.MEMBER_RESIGNED);
             }
+            if (member.isRole(MemberRole.INSTRUCTOR)) {
+                requireNoUpcomingLessons(memberId);
+            }
         }
 
         Instant now = Instant.now();
@@ -143,6 +154,14 @@ public class MemberAdminService {
             refreshTokenRepository.revokeAllOf(memberId, now);
         }
         return MemberResponse.from(member, permissionsOf(memberId));
+    }
+
+    /** 시작 전이고 취소되지 않은 담당 수업이 있으면 강사의 역할 변경·비활성화를 거절한다. */
+    private void requireNoUpcomingLessons(Long instructorId) {
+        if (lessonRepository.existsByInstructorIdAndStatusNotAndStartAtAfter(instructorId,
+                LessonStatus.CANCELED, Instant.now())) {
+            throw new ApiException(ErrorCode.INSTRUCTOR_HAS_UPCOMING_LESSONS);
+        }
     }
 
     /** 관리자 여부를 확인한 뒤에 입력을 검증하기 위해, 컨트롤러가 아니라 서비스에서 검증한다. */

@@ -4,6 +4,8 @@ import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.PageInfo;
 import com.rha.common.validation.RequestValidator;
+import com.rha.lesson.LessonRepository;
+import com.rha.lesson.LessonStatus;
 import com.rha.member.AdminGuard;
 import java.time.Instant;
 import java.util.List;
@@ -18,11 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class RoomService {
 
     private final RoomRepository roomRepository;
+    private final LessonRepository lessonRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
-    public RoomService(RoomRepository roomRepository, AdminGuard adminGuard, RequestValidator requestValidator) {
+    public RoomService(RoomRepository roomRepository, LessonRepository lessonRepository, AdminGuard adminGuard,
+            RequestValidator requestValidator) {
         this.roomRepository = roomRepository;
+        this.lessonRepository = lessonRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
     }
@@ -71,15 +76,17 @@ public class RoomService {
         return RoomResponse.from(saveUnique(room));
     }
 
-    /**
-     * 룸을 삭제 처리한다. 시작 전 수업이 있는 룸의 삭제 거절(ROOM_IN_USE)은
-     * 수업 기능이 구현될 때 추가한다.
-     */
+    /** 룸을 삭제 처리한다. 시작 전이고 취소되지 않은 수업이 있으면 거절한다. */
     @Transactional
     public void deleteRoom(Long callerId, Long roomId) {
         adminGuard.requireAdmin(callerId);
-        Room room = findActive(roomId);
-        room.delete(Instant.now());
+        Room room = roomRepository.findActiveForUpdate(roomId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+        Instant now = Instant.now();
+        if (lessonRepository.existsByRoomIdAndStatusNotAndStartAtAfter(roomId, LessonStatus.CANCELED, now)) {
+            throw new ApiException(ErrorCode.ROOM_IN_USE);
+        }
+        room.delete(now);
     }
 
     private Room findActive(Long roomId) {
