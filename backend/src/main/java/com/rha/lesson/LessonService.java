@@ -1,5 +1,6 @@
 package com.rha.lesson;
 
+import com.rha.absence.AbsenceRepository;
 import com.rha.businesshour.BusinessHour;
 import com.rha.businesshour.BusinessHourRepository;
 import com.rha.common.error.ApiException;
@@ -40,9 +41,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 수업 개설·수정·공개 상태 변경·취소와 조회.
  *
- * <p>영업시간은 센터 현지 시각(Asia/Seoul) 기준이다. 강사의 수업 가능시간(INSTRUCTOR_UNAVAILABLE)과 부재
- * (INSTRUCTOR_ABSENT), 예약이 있는 수업의 시간 변경(LESSON_HAS_RESERVATIONS), 취소 시 예약·이용권·알림 처리는
- * 해당 기능이 구현될 때 추가한다.
+ * <p>영업시간은 센터 현지 시각(Asia/Seoul) 기준이다. 예약이 있는 수업의 시간 변경(LESSON_HAS_RESERVATIONS)과
+ * 취소 시 예약·이용권·알림 처리는 해당 기능이 구현될 때 추가한다.
  */
 @Service
 public class LessonService {
@@ -61,13 +61,15 @@ public class LessonService {
     private final MemberPermissionRepository permissionRepository;
     private final BusinessHourRepository businessHourRepository;
     private final InstructorAvailabilityRepository availabilityRepository;
+    private final AbsenceRepository absenceRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
     public LessonService(LessonRepository lessonRepository, LessonTypeRepository lessonTypeRepository,
             RoomRepository roomRepository, MemberRepository memberRepository,
             MemberPermissionRepository permissionRepository, BusinessHourRepository businessHourRepository,
-            InstructorAvailabilityRepository availabilityRepository, AdminGuard adminGuard,
+            InstructorAvailabilityRepository availabilityRepository, AbsenceRepository absenceRepository,
+            AdminGuard adminGuard,
             RequestValidator requestValidator) {
         this.lessonRepository = lessonRepository;
         this.lessonTypeRepository = lessonTypeRepository;
@@ -76,6 +78,7 @@ public class LessonService {
         this.permissionRepository = permissionRepository;
         this.businessHourRepository = businessHourRepository;
         this.availabilityRepository = availabilityRepository;
+        this.absenceRepository = absenceRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
     }
@@ -430,6 +433,9 @@ public class LessonService {
     private void checkAssignable(Member instructor, Long roomId, Instant start, Instant end, Long excludeId) {
         checkBusinessHours(start, end);
         checkAvailability(instructor.getId(), start, end);
+        if (absenceRepository.existsApprovedOverlap(instructor.getId(), start, end)) {
+            throw new ApiException(ErrorCode.INSTRUCTOR_ABSENT);
+        }
         LocalDate resignationDate = instructor.getResignationDate();
         if (resignationDate != null && !start.atZone(CENTER_ZONE).toLocalDate().isBefore(resignationDate)) {
             throw new ApiException(ErrorCode.INSTRUCTOR_RESIGNING);
