@@ -302,6 +302,7 @@
   --menu-panel-padding: var(--panel-padding);
   --menu-field-width: 10rem;
   --menu-table-row-height: 3.5rem;
+  --member-reservations-table-min-width: 49rem;
   --menu-count-cell-padding: .5rem;
   --menu-fact-label-width: 7rem;
   --menu-pass-number-size: 2.25rem;
@@ -353,4 +354,14 @@
   --timetable-nav-radius: 999px;
   --timetable-event-padding: .25rem;
   --timetable-event-accent: .25rem;
+}
+
+:root {
+  --home-public-table-min-width: 40rem;
+  --home-fit-table-action-width: 4.75rem;
+  --home-fit-body-size: .875rem;
+  --home-fit-caption-size: .75rem;
+  --home-fit-action-height: 1.75rem;
+  --home-fit-table-row-height: 3rem;
+  --home-fit-table-header-height: 2.5rem;
 }
