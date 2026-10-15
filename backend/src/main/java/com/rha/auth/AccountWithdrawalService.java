@@ -2,6 +2,7 @@ package com.rha.auth;
 
 import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
+import com.rha.common.persistence.RowLock;
 import com.rha.member.Member;
 import com.rha.member.MemberRepository;
 import com.rha.member.MemberRole;
@@ -22,11 +23,13 @@ public class AccountWithdrawalService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final ReservationRepository reservationRepository;
     private final ActivityLogRecorder activityLogRecorder;
+    private final RowLock rowLock;
 
     public AccountWithdrawalService(MemberRepository memberRepository,
             RefreshTokenRepository refreshTokenRepository, ReservationRepository reservationRepository,
-            ActivityLogRecorder activityLogRecorder) {
+            ActivityLogRecorder activityLogRecorder, RowLock rowLock) {
         this.activityLogRecorder = activityLogRecorder;
+        this.rowLock = rowLock;
         this.reservationRepository = reservationRepository;
         this.memberRepository = memberRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -38,7 +41,8 @@ public class AccountWithdrawalService {
      */
     @Transactional
     public void withdraw(Long memberId) {
-        Member member = memberRepository.findById(memberId)
+        // 예약도 회원 행을 잠그므로, 시작 전 예약 확인과 탈퇴 사이에 새 예약이 끼어들지 못한다.
+        Member member = memberRepository.findById(memberId).map(rowLock::lock)
                 .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHENTICATED));
         if (!member.isRole(MemberRole.MEMBER)) {
             throw new ApiException(ErrorCode.FORBIDDEN_ROLE);

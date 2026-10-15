@@ -3,6 +3,7 @@ package com.rha.settlement;
 import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.PageInfo;
+import com.rha.common.persistence.RowLock;
 import com.rha.common.validation.RequestValidator;
 import com.rha.lesson.Lesson;
 import com.rha.lessontype.LessonType;
@@ -66,13 +67,15 @@ public class SettlementService {
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
     private final ActivityLogRecorder activityLogRecorder;
+    private final RowLock rowLock;
 
     public SettlementService(SettlementRepository settlementRepository, SettlementItemRepository itemRepository,
             PayRateRepository payRateRepository, ReservationRepository reservationRepository,
             LessonTypeRepository lessonTypeRepository, RoomRepository roomRepository,
             MemberRepository memberRepository, com.rha.lesson.LessonRepository lessonRepository,
-            AdminGuard adminGuard, RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
+            AdminGuard adminGuard, RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder, RowLock rowLock) {
         this.activityLogRecorder = activityLogRecorder;
+        this.rowLock = rowLock;
         this.settlementRepository = settlementRepository;
         this.itemRepository = itemRepository;
         this.payRateRepository = payRateRepository;
@@ -139,7 +142,8 @@ public class SettlementService {
         if (start.isAfter(end) || !end.isBefore(today)) {
             throw new ApiException(ErrorCode.INVALID_PERIOD);
         }
-        Member instructor = memberRepository.findById(request.instructorId())
+        // 강사를 잠가 같은 강사의 정산 계산이 서로의 기간 겹침 확인을 지나치지 못하게 한다.
+        Member instructor = memberRepository.findById(request.instructorId()).map(rowLock::lock)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
         if (!instructor.isRole(MemberRole.INSTRUCTOR)) {
             throw new ApiException(ErrorCode.INVALID_INSTRUCTOR);
@@ -149,9 +153,12 @@ public class SettlementService {
         }
 
         Instant now = Instant.now();
-        List<Lesson> lessons = lessonRepository.findLessonsToSettle(instructor.getId(),
+        // 수업을 잠가 계산하는 동안 출결이 정정되지 않게 한다. 항목은 시작 시각 순으로 담는다.
+        List<Lesson> lessons = lessonRepository.findLessonsToSettleForUpdate(instructor.getId(),
                 start.atStartOfDay(CENTER_ZONE).toInstant(), end.plusDays(1).atStartOfDay(CENTER_ZONE).toInstant(),
-                now);
+                now).stream()
+                .sorted(java.util.Comparator.comparing(Lesson::getStartAt).thenComparing(Lesson::getId))
+                .toList();
         Map<Long, Map<ReservationStatus, Integer>> counts = countReservations(lessons);
 
         List<ApiException.Detail> unrecorded = lessons.stream()
@@ -243,7 +250,7 @@ public class SettlementService {
     @Transactional
     public SettlementResponse requestReview(Long callerId, Long settlementId) {
         adminGuard.requireAdmin(callerId);
-        Settlement settlement = find(settlementId);
+        Settlement settlement = lock(settlementId);
         requireStatus(settlement, SettlementStatus.CALCULATED);
         settlement.requestReview(Instant.now());
         recordStatusChange(ActivityAction.SETTLEMENT_REVIEW_REQUESTED, callerId, settlement,
@@ -255,7 +262,7 @@ public class SettlementService {
     @Transactional
     public SettlementResponse confirm(Long callerId, Long settlementId) {
         adminGuard.requireAdmin(callerId);
-        Settlement settlement = find(settlementId);
+        Settlement settlement = lock(settlementId);
         requireStatus(settlement, SettlementStatus.REVIEW_REQUESTED);
         settlement.confirm(Instant.now());
         recordStatusChange(ActivityAction.SETTLEMENT_CONFIRMED, callerId, settlement,
@@ -269,7 +276,7 @@ public class SettlementService {
         adminGuard.requireAdmin(callerId);
         requestValidator.validate(request);
         LocalDate paidAt = parseDate(request.paidAt());
-        Settlement settlement = find(settlementId);
+        Settlement settlement = lock(settlementId);
         requireStatus(settlement, SettlementStatus.CONFIRMED);
         settlement.recordPayment(paidAt, request.memo(), Instant.now());
         activityLogRecorder.record(ActivityAction.SETTLEMENT_PAID, callerId, settlement.getInstructorId(),
@@ -284,7 +291,7 @@ public class SettlementService {
     @Transactional
     public void discard(Long callerId, Long settlementId) {
         adminGuard.requireAdmin(callerId);
-        Settlement settlement = find(settlementId);
+        Settlement settlement = lock(settlementId);
         if (settlement.getStatus() != SettlementStatus.CALCULATED
                 && settlement.getStatus() != SettlementStatus.REVIEW_REQUESTED) {
             throw new ApiException(ErrorCode.INVALID_SETTLEMENT_STATUS);
@@ -300,6 +307,12 @@ public class SettlementService {
 
     private Settlement find(Long settlementId) {
         return settlementRepository.findById(settlementId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+    }
+
+    /** 상태를 바꾸거나 폐기할 정산을 잠가 읽어, 동시에 들어온 다른 처리와 겹치지 않게 한다. 먼저 폐기되었으면 404이다. */
+    private Settlement lock(Long settlementId) {
+        return settlementRepository.findByIdForUpdate(settlementId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
     }
 
