@@ -2454,8 +2454,8 @@ paths:
       operationId: getPayRates
       summary: 강사의 수당 단가 조회 (관리자)
       description: |
-        관리자 전용. 단가가 설정된 수업 유형만 반환한다.
-        대상이 강사(`INSTRUCTOR`)가 아니면 404이다.
+        관리자 전용. 단가가 설정된 수업 유형만 반환하며 수업 유형 id 오름차순으로 정렬된다. 비활성 수업 유형의 단가도 포함한다.
+        대상이 강사(`INSTRUCTOR`)가 아니면 404이다. 퇴사한 강사도 조회할 수 있다.
       responses:
         '200':
           description: 조회 성공
@@ -2481,7 +2481,8 @@ paths:
         단가는 수업에 출석한 인원 수와 무관하게 수업 유형으로만 정해진다.
         - 변경된 단가는 이후에 계산하는 정산부터 적용된다. 이미 계산된 정산은 계산 시점의 단가를 유지한다.
         - 대상이 강사(`INSTRUCTOR`)가 아니면 400 (INVALID_INSTRUCTOR). 퇴사한 강사의 단가도 설정할 수 있다.
-        - 수업 유형이 중복되거나 존재하지 않으면 400 (INVALID_PAY_RATE)
+        - 수업 유형이 중복되거나 존재하지 않으면 400 (INVALID_PAY_RATE). 비활성 수업 유형의 단가도 설정할 수 있다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 회원이면 404 → 강사가 아니면 400 (INVALID_INSTRUCTOR) → 단가 목록 오류 400 (INVALID_PAY_RATE).
       requestBody:
         required: true
         content:
