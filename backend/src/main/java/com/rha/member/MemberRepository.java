@@ -14,6 +14,9 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
 
     Optional<Member> findByEmail(String email);
 
+    org.springframework.data.domain.Page<Member> findByRoleAndStatus(MemberRole role, MemberStatus status,
+            org.springframework.data.domain.Pageable pageable);
+
     /** 수업 시간 충돌 검사와 저장 사이에 같은 강사의 수업이 끼어들지 못하도록 행을 잠근다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select m from Member m where m.id = :id")

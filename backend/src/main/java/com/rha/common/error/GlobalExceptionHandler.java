@@ -28,6 +28,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ResponseEntity<ProblemDetail> handleApiException(ApiException e, HttpServletRequest request) {
         ErrorCode errorCode = e.errorCode();
         ProblemDetail problem = problem(errorCode, e.getMessage(), request.getRequestURI());
+        if (!e.details().isEmpty()) {
+            problem.setProperty("invalidParams", e.details().stream()
+                    .map(d -> new InvalidParam(d.field(), d.reason())).toList());
+        }
         return ResponseEntity.status(errorCode.status()).body(problem);
     }
 

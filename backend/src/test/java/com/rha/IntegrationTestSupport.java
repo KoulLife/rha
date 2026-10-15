@@ -31,6 +31,7 @@ public abstract class IntegrationTestSupport {
     @BeforeEach
     void cleanDatabase() {
         cleanerJdbc.update("DELETE FROM lessons");
+        cleanerJdbc.update("DELETE FROM instructor_availabilities");
         cleanerJdbc.update("DELETE FROM member_permissions");
         cleanerJdbc.update("DELETE FROM password_reset_tokens");
         cleanerJdbc.update("DELETE FROM refresh_tokens");
