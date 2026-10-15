@@ -1494,7 +1494,7 @@ paths:
       tags: [Payment]
       operationId: getPassPayments
       summary: 이용권 결제 기록 조회 (관리자)
-      description: 관리자 전용. 결제일 내림차순(같으면 기록 최신순)으로 정렬된다.
+      description: 관리자 전용. 결제일 내림차순(같으면 기록 최신순, 즉 id 내림차순)으로 정렬된다.
       parameters:
         - $ref: '#/components/parameters/PageQuery'
         - $ref: '#/components/parameters/SizeQuery'
@@ -1525,7 +1525,8 @@ paths:
         - 여러 번 나누어 기록할 수 있다. 기록된 결제 합계가 이용권 금액(`price`)을 넘으면 409 (PAYMENT_EXCEEDS_PRICE).
         - 만료된 이용권에도 기록할 수 있다.
         - 결제일이 오늘(센터 현지 날짜)보다 미래이면 400 (INVALID_PAYMENT_DATE)
-        - 기록하면 이용권의 `paidAmount`, `unpaidAmount`, `paymentStatus`가 갱신된다.
+        - 기록하면 이용권의 `paidAmount`, `unpaidAmount`, `paymentStatus`가 갱신된다. 결제 상태는 합계가 0이고 금액이 0보다 크면 `UNPAID`, 합계가 금액보다 작으면 `PARTIAL`, 그 외는 `PAID`(금액이 0인 경우 포함)이다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT, INVALID_PAYMENT_DATE) → 없는 이용권이면 404 → 합계 초과 409 (PAYMENT_EXCEEDS_PRICE).
       requestBody:
         required: true
         content:
@@ -1567,6 +1568,7 @@ paths:
         - 결제일이 오늘(센터 현지 날짜)보다 미래이면 400 (INVALID_PAYMENT_DATE)
         - 환불로 체크된 기록은 정정할 수 없다 (409, PAYMENT_REFUNDED). 먼저 환불 체크를 해제해야 한다.
         - 이용권의 `paidAmount`, `unpaidAmount`, `paymentStatus`가 다시 계산된다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT, INVALID_PAYMENT_DATE) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불로 체크된 기록 409 (PAYMENT_REFUNDED) → 합계 초과 409 (PAYMENT_EXCEEDS_PRICE).
       requestBody:
         required: true
         content:
@@ -1601,6 +1603,7 @@ paths:
         관리자 전용. 잘못 입력한 결제 기록을 삭제한다. 삭제하면 미수금이 다시 늘어난다.
         삭제한 사실은 활동 이력에 남는다. 환불은 삭제가 아니라 `setPassPaymentRefund`로 체크한다.
         - 환불로 체크된 기록은 삭제할 수 없다 (409, PAYMENT_REFUNDED). 먼저 환불 체크를 해제해야 한다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불로 체크된 기록 409 (PAYMENT_REFUNDED).
       responses:
         '204':
           description: 삭제 성공
@@ -1628,7 +1631,8 @@ paths:
         - 이용권, 예약, 미수금은 자동으로 바뀌지 않는다. 환불로 체크된 기록도 이용권의 결제 합계(`paidAmount`)에 그대로 포함된다. 이용권을 회수하려면 `updatePass`로 잔여 횟수나 만료일을 직접 조정한다.
         - `refunded`가 true이면 환불일(`refundedAt`)을 기록한다. 생략하면 오늘(센터 현지 날짜)이다. 환불일이 미래이거나 결제일보다 빠르면 400 (INVALID_PAYMENT_DATE).
         - `refunded`가 false이면 환불 체크를 해제하고, 환불일과 메모는 지워진다.
-        - 같은 값으로 다시 요청해도 오류 없이 처리된다.
+        - 같은 값으로 다시 요청해도 오류 없이 처리된다. 이미 환불로 체크된 기록에 `refunded`를 다시 true로 보내면 전달한 환불일과 메모로 갱신하고, 생략한 값은 기존 값을 유지한다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불일 범위 400 (INVALID_PAYMENT_DATE).
         - 체크와 해제는 활동 이력에 남는다.
       requestBody:
         required: true
@@ -1664,6 +1668,7 @@ paths:
         - 월, 일, 년 단위 조회는 결제일 범위(`paidFrom`~`paidTo`)로 표현한다. 두 값 모두 센터 현지 날짜이며 시작일과 종료일을 포함한다.
         - `keyword`는 회원 이름에 부분 일치한다.
         - 환불로 체크된 기록도 기본으로 포함된다. `refunded`로 걸러낼 수 있다.
+        - 정렬 값이 같으면 id가 정렬 방향과 같은 순서로 정렬된다. `paidTo`가 `paidFrom`보다 빠르면 400 (INVALID_INPUT)이다.
       parameters:
         - $ref: '#/components/parameters/PageQuery'
         - $ref: '#/components/parameters/SizeQuery'

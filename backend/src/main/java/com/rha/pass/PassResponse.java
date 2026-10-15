@@ -15,10 +15,9 @@ public record PassResponse(Long id, ProductSummary passProduct, PersonSummary me
     public record PersonSummary(Long id, String name) {
     }
 
-    /** 결제 기록 기능이 구현되기 전이라 결제 합계는 0이다. 금액이 0이면 완납으로 본다. */
-    static PassResponse of(Pass pass, PassProduct product, Member member, Member instructor) {
-        long paid = 0;
-        PaymentStatus paymentStatus = pass.getPrice() == 0 ? PaymentStatus.PAID : PaymentStatus.UNPAID;
+    /** {@code paid}는 기록된 결제 합계이다. 환불로 체크된 기록도 포함한다. */
+    static PassResponse of(Pass pass, PassProduct product, Member member, Member instructor, long paid) {
+        PaymentStatus paymentStatus = PaymentStatus.of(pass.getPrice(), paid);
         return new PassResponse(pass.getId(), new ProductSummary(product.getId(), product.getName()),
                 new PersonSummary(member.getId(), member.getName()),
                 new PersonSummary(instructor.getId(), instructor.getName()), pass.getPrice(), paid,

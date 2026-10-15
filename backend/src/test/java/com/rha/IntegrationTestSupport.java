@@ -30,6 +30,7 @@ public abstract class IntegrationTestSupport {
      */
     @BeforeEach
     void cleanDatabase() {
+        cleanerJdbc.update("DELETE FROM pass_payments");
         cleanerJdbc.update("DELETE FROM pass_pauses");
         cleanerJdbc.update("DELETE FROM passes");
         cleanerJdbc.update("DELETE FROM lessons");
