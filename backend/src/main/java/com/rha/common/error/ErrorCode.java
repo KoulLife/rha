@@ -28,6 +28,7 @@ public enum ErrorCode {
     INVALID_END_DATE(HttpStatus.BAD_REQUEST, "만료일이 시작일보다 빠릅니다."),
     INVALID_PAUSE_PERIOD(HttpStatus.BAD_REQUEST, "일시정지 기간이 올바르지 않습니다."),
     INVALID_PAYMENT_DATE(HttpStatus.BAD_REQUEST, "결제일 또는 환불일이 올바르지 않습니다."),
+    INVALID_PAY_RATE(HttpStatus.BAD_REQUEST, "수당 단가 목록이 올바르지 않습니다."),
     INVALID_AVAILABILITY(HttpStatus.BAD_REQUEST, "수업 가능시간 설정이 올바르지 않습니다."),
     INVALID_RESIGNATION_DATE(HttpStatus.BAD_REQUEST, "퇴사일은 오늘보다 과거일 수 없습니다."),
     INVALID_PUBLISH_AT(HttpStatus.BAD_REQUEST, "공개 예약 시각이 올바르지 않습니다."),
