@@ -52,7 +52,8 @@
     justify-content: center;
     flex-wrap: nowrap;
   }
-  [data-slot="table"][data-variant="management"] [data-slot="table-cell"]:last-child [data-slot="button"] {
+  [data-slot="table"][data-variant="management"] [data-slot="table-cell"]:last-child [data-slot="button"],
+  .admin-lesson-roster [data-slot="table"][data-variant="management"] [data-slot="table-cell"]:nth-child(2) [data-slot="button"] {
     inline-size: var(--table-action-width);
     block-size: var(--table-action-height);
     padding-inline: var(--space-control);

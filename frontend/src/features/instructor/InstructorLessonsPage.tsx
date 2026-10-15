@@ -25,7 +25,7 @@ const statusName = (status: DashboardReservation["status"]) => getStatusLabel({ 
 
 export function InstructorLessonsPage({ mode, user, data, selectedId, changes, onNavigate, onRecord }: Props) {
   const [draft, setDraft] = useState(initialFilters);
-  const [filters, setFilters] = useState(initialFilters);
+  const filters = draft;
   const [lessonId, setLessonId] = useState(selectedId);
   const [detail, setDetail] = useState<DashboardReservation | null>(null);
   const [editing, setEditing] = useState<DashboardReservation | null>(null);
@@ -55,13 +55,13 @@ export function InstructorLessonsPage({ mode, user, data, selectedId, changes, o
 
   return <div className="menu-page instructor-page">
     <PageTitle title={titles[mode]} description={mode === "attendees" ? "담당 수업을 선택하고 예약자와 예약 정보를 확인하세요." : mode === "attendance" ? "수업별 예약자의 출석과 노쇼를 기록하세요." : "기록한 출결을 확인하고 필요한 내역을 정정하세요."} />
-    <MenuPanel variant="filter"><form className="menu-filters" onSubmit={event => { event.preventDefault(); setFilters(draft); setMemberSearch(""); setRosterStatus("all"); }}>
+    <MenuPanel variant="filter"><div className="menu-filters">
       <Field><FieldLabel htmlFor="instructor-search">수업명</FieldLabel><Input id="instructor-search" placeholder="수업명 검색" value={draft.search} onChange={event => setDraft({ ...draft, search: event.target.value })} /></Field>
       <Field><FieldLabel htmlFor="instructor-from">시작일</FieldLabel><Input id="instructor-from" type="date" max={draft.to || undefined} value={draft.from} onChange={event => setDraft({ ...draft, from: event.target.value })} /></Field>
       <Field><FieldLabel htmlFor="instructor-to">종료일</FieldLabel><Input id="instructor-to" type="date" min={draft.from || undefined} value={draft.to} onChange={event => setDraft({ ...draft, to: event.target.value })} /></Field>
       <InstructorSelect id="instructor-status" label="수업 상태" value={draft.status} onChange={status => setDraft({ ...draft, status })} options={[{ value: "all", label: "전체 수업" }, { value: "started", label: "시작한 수업" }, { value: "upcoming", label: "예정된 수업" }]} />
-      <div className="menu-actions"><Button type="submit" variant="outline">조회</Button><Button type="button" variant="outline" onClick={() => { setDraft(initialFilters); setFilters(initialFilters); setMemberSearch(""); setRosterStatus("all"); }}>초기화</Button></div>
-    </form></MenuPanel>
+      <div className="menu-actions"><Button type="button" variant="outline" onClick={() => { setDraft(initialFilters); setMemberSearch(""); setRosterStatus("all"); }}>초기화</Button></div>
+    </div></MenuPanel>
     <div className="menu-results"><strong>담당 수업 {lessons.length}개</strong><span>서울 시간 기준</span></div>
     <InstructorTable key={JSON.stringify(filters)} rows={lessons} selectedId={selected?.id} label="담당 수업 목록" columns={[
       { key: "number", label: "번호", cell: row => lessons.indexOf(row) + 1 },

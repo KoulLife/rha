@@ -4,6 +4,7 @@ import * as api from '@/api/generated/api';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { MenuPanel } from '@/components/layout/MenuPanel';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AdminPage, AdminForm, DataTable, QueryState, Filters, Facts, ActionDialog, ALL, options, filterValue, money, dateTime, textValue, numValue, type Values, type Action } from './AdminUI';
 import { ActivityList } from './ActivityPages';
 import type { Navigate } from './MemberPages';
@@ -26,7 +27,9 @@ export function SettlementDetail({id,onNavigate}:{id:number;onNavigate:Navigate}
     {s.status==='REVIEW_REQUESTED'&&<Button onClick={()=>setAction({title:'정산 확정',description:`${money(s.totalAmount)}을 확정합니다. 확정 후에는 금액 변경과 폐기가 불가능합니다.`,submitLabel:'정산 확정',danger:true,onSubmit:()=>confirm.mutateAsync({settlementId:id})})}>정산 확정</Button>}
     {s.status==='CONFIRMED'&&<Button onClick={()=>setAction({title:'외부 지급 기록',description:`확정 금액 ${money(s.totalAmount)} 전액을 지급한 사실을 기록합니다. 실제 송금은 수행하지 않습니다.`,submitLabel:'지급 사실 기록',danger:true,fields:[{name:'paidAt',label:'실제 지급일',type:'date',required:true,max:'2026-10-13'},{name:'memo',label:'지급 메모',type:'textarea'}],initial:{paidAt:'2026-10-13'},onSubmit:v=>payment.mutateAsync({settlementId:id,data:{paidAt:textValue(v,'paidAt'),memo:textValue(v,'memo')}})})}>지급 사실 기록</Button>}
     {['CALCULATED','REVIEW_REQUESTED'].includes(s.status)&&<Button variant="destructive" onClick={()=>setAction({title:'정산 폐기',description:'정산을 폐기하면 출결을 정정하고 같은 기간을 다시 계산할 수 있습니다.',submitLabel:'정산 폐기',submitVariant:'destructive',danger:true,onSubmit:async()=>{await discard.mutateAsync({settlementId:id});onNavigate('admin-instructor-settlements',s.instructor.id);}})}>폐기·재계산</Button>}</div>
-    <details className="admin-detail-section" open><summary>수업별 정산 항목</summary><DataTable rows={s.items.map(i=>({...i,id:i.lesson.id}))} columns={[{label:'수업',render:i=>i.lesson.title},{label:'시작',render:i=>dateTime(i.lesson.startAt)},{label:'출석 / 노쇼',render:i=>`${i.attendedCount} / ${i.noShowCount}명`},{label:'단가',money:true,render:i=>i.unitPrice==null?'—':money(i.unitPrice)},{label:'금액',money:true,render:i=>money(i.amount)},{label:'정산 여부',render:i=>i.settled?'정산':'예약 없음 · 미정산'}]}/></details>
-    <details className="admin-detail-section"><summary>처리 이력</summary><ActivityList targetType="SETTLEMENT" targetId={id} onNavigate={onNavigate}/></details>
+    <Tabs defaultValue="items" className="menu-tabs"><TabsList><TabsTrigger value="items">수업별 정산 항목</TabsTrigger><TabsTrigger value="history">처리 이력</TabsTrigger></TabsList>
+      <TabsContent value="items"><DataTable rows={s.items.map(i=>({...i,id:i.lesson.id}))} columns={[{label:'수업',render:i=>i.lesson.title},{label:'시작',render:i=>dateTime(i.lesson.startAt)},{label:'출석 / 노쇼',render:i=>`${i.attendedCount} / ${i.noShowCount}명`},{label:'단가',money:true,render:i=>i.unitPrice==null?'—':money(i.unitPrice)},{label:'금액',money:true,render:i=>money(i.amount)},{label:'정산 여부',render:i=>i.settled?'정산':'예약 없음 · 미정산'}]}/></TabsContent>
+      <TabsContent value="history"><ActivityList targetType="SETTLEMENT" targetId={id} onNavigate={onNavigate}/></TabsContent>
+    </Tabs>
   </>}</QueryState>{action&&<ActionDialog action={action} onClose={()=>setAction(null)}/>}</AdminPage>;
 }

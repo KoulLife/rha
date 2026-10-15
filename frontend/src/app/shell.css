@@ -87,6 +87,9 @@
     justify-content: space-between;
     color: var(--muted-foreground);
   }
+  .member-navigation-label { display: flex; align-items: center; min-width: 0; gap: var(--space-detail); }
+  .member-navigation-label > svg { flex: none; }
+  .member-navigation-label > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .member-navigation-button[data-active="true"] {
     background: var(--secondary);
     color: var(--secondary-foreground);
@@ -206,5 +209,8 @@
 }
 
 .member-preview .main-content:not(.home-main) .content:has(> .admin-page > .admin-table-area, > .admin-page > .menu-stack > .admin-table-area) {
+  padding-block: var(--page-list-padding-block);
+}
+.member-preview .main-content:not(.home-main) .content:has(> .timetable-page) {
   padding-block: var(--page-list-padding-block);
 }

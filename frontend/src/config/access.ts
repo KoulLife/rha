@@ -32,8 +32,9 @@ export const menuItems = [
   { screen: "profile", label: "내 계정", roles: ["MEMBER"], permission: "profile.read" },
   { screen: "admin-members", label: "회원 관리", roles: ["ADMIN"], permission: "profile.read" },
   { screen: "admin-instructors", label: "강사 관리", roles: ["ADMIN"], permission: "profile.read" },
-  { screen: "admin-lessons", label: "수업 운영", roles: ["ADMIN"], permission: "lesson.read" },
+  { screen: "admin-lessons", label: "수업 관리", roles: ["ADMIN"], permission: "lesson.read" },
   { screen: "admin-passes", label: "회원 이용권", roles: ["ADMIN"], permission: "pass.read" },
+  { screen: "admin-reports", label: "통계·정산", roles: ["ADMIN"], permission: "profile.read" },
   { screen: "today-lessons", label: "오늘 전체 수업", roleLabels: { INSTRUCTOR: "오늘 담당 수업" }, roles: ["INSTRUCTOR"], permission: "lesson.read" },
   { screen: "attendance-overview", label: "예약·출결 현황", roles: ["INSTRUCTOR"], permission: "reservation.read" },
   { screen: "absence-requests", label: "부재 승인 대기", roleLabels: { INSTRUCTOR: "내 부재 승인 대기" }, roles: ["INSTRUCTOR"], permission: "profile.read" },
@@ -58,15 +59,17 @@ export const detailScreens = {
   "admin-waitlist": { parent: "admin-lessons", label: "승인 신청 대기" },
   "admin-pass-detail": { parent: "admin-passes", label: "이용권 상세" },
   "admin-payments": { parent: "admin-passes", label: "결제 내역" },
+  "admin-settlements": { parent: "admin-reports", label: "정산 내역" },
+  "admin-statistics": { parent: "admin-reports", label: "운영 통계" },
+  "admin-sales-statistics": { parent: "admin-reports", label: "매출 통계" },
   "admin-products": { parent: "admin-settings", label: "이용권 상품" },
   "admin-types": { parent: "admin-settings", label: "수업 유형" },
   "admin-rooms": { parent: "admin-settings", label: "룸" },
   "admin-hours": { parent: "admin-settings", label: "영업시간·휴무일" },
   "admin-policy": { parent: "admin-settings", label: "예약 정책" },
-  "admin-settlements": { parent: "admin-instructors", label: "정산 내역" },
-  "admin-settlement-create": { parent: "admin-instructors", label: "정산 계산" },
-  "admin-settlement-detail": { parent: "admin-instructors", label: "정산 상세" },
-  "admin-instructor-settlements": { parent: "admin-instructors", label: "강사별 정산" },
+  "admin-settlement-create": { parent: "admin-reports", label: "정산 계산" },
+  "admin-settlement-detail": { parent: "admin-reports", label: "정산 상세" },
+  "admin-instructor-settlements": { parent: "admin-reports", label: "강사별 정산" },
   "lesson-detail": { parent: "classes", label: "수업 상세" },
   "pass-detail": { parent: "passes", label: "이용권 상세" },
   "reservation-detail": { parent: "reservations", label: "예약 상세" },
@@ -90,6 +93,11 @@ const submenus: Partial<Record<MenuScreen, NonNullable<NavigationItem['children'
   'admin-passes': [
     { screen: 'admin-passes', label: '이용권 목록', activeScreens: ['admin-passes', 'admin-pass-detail'] },
     { screen: 'admin-payments', label: '결제 내역', activeScreens: ['admin-payments'] },
+  ],
+  'admin-reports': [
+    { screen: 'admin-settlements', label: '정산 내역', activeScreens: ['admin-settlements', 'admin-instructor-settlements', 'admin-settlement-create', 'admin-settlement-detail'] },
+    { screen: 'admin-statistics', label: '운영 통계', activeScreens: ['admin-statistics'] },
+    { screen: 'admin-sales-statistics', label: '매출 통계', activeScreens: ['admin-sales-statistics'] },
   ],
   'admin-settings': [
     { screen: 'admin-settings', label: '운영 기본 설정', activeScreens: ['admin-settings'] },
@@ -118,6 +126,8 @@ export function getNavigation(role: UserRole, permissions: ReadonlySet<Permissio
 
 export function canAccessScreen(screen: Screen, role: UserRole, permissions: ReadonlySet<Permission>) {
   if (screen === "notifications") return permissions.has("notification.read");
+  if (screen === "attendees" || screen === "attendance" || screen === "attendance-corrections") return role === "INSTRUCTOR" && permissions.has("reservation.read");
+  if (screen === "absences") return role === "INSTRUCTOR" && permissions.has("profile.read");
   return getNavigation(role, permissions).some(item => item.screen === getMenuScreen(screen));
 }
 

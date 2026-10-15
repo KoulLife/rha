@@ -79,7 +79,7 @@
   --table-row-height: 3.875rem;
   --table-action-width: 6.75rem;
   --table-action-height: 2rem;
-  --table-visible-rows: 5;
+  --table-visible-rows: 7;
   --table-scroll-max-height: calc(var(--table-header-height) + var(--table-row-height) * var(--table-visible-rows) + 1px);
   --background: #F7F8F6;
   --foreground: #292E2B;
@@ -104,6 +104,12 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+  --instructor-0: #39775B;
+  --instructor-1: #3C70AD;
+  --instructor-2: #AC6A40;
+  --instructor-3: #8D5A9D;
+  --instructor-4: #397C88;
+  --instructor-5: #777B35;
   --radius: 0.625rem;
   --sidebar: var(--card);
   --sidebar-foreground: var(--foreground);
@@ -339,10 +345,11 @@
   --timetable-fact-width: 5rem;
   --timetable-height: 34rem;
   --timetable-mobile-height: 32rem;
-  --timetable-hour-height: 3rem;
+  --timetable-hour-height: 2.75rem;
   --timetable-header-height: 2.5rem;
   --timetable-time-width: 3.5rem;
   --timetable-day-width: 5.5rem;
+  --admin-color-swatch-size: 1.5rem;
   --timetable-nav-radius: 999px;
   --timetable-event-padding: .25rem;
   --timetable-event-accent: .25rem;

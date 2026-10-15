@@ -1,5 +1,5 @@
 import { Collapsible } from "radix-ui";
-import { ChevronRight } from "lucide-react";
+import { BookOpen, CalendarCheck, CalendarDays, CalendarOff, ChartColumn, ChevronRight, ClipboardCheck, Clock, CreditCard, DoorOpen, GraduationCap, Grid2X2, History, House, List, ListChecks, Package, Receipt, Repeat, Settings, SlidersHorizontal, Ticket, TrendingUp, UserMinus, UserRound, UsersRound, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { AppFooter } from "../components/layout/AppFooter";
@@ -7,7 +7,7 @@ import { AppHeader } from "../components/layout/AppHeader";
 import { BrandLogo } from "../components/layout/BrandLogo";
 import { PageBreadcrumb } from "../components/layout/PageBreadcrumb";
 import { Dialog } from "../components/ui/Dialog";
-import { canAccessScreen, getMenuScreen, getNavigation, type NavigationItem, type Permission } from "../config/access";
+import { canAccessScreen, getMenuScreen, getNavigation, type MenuScreen, type NavigationItem, type Permission } from "../config/access";
 import { currentUser } from "../mocks/member";
 import { Button } from "@/components/ui/button";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, SidebarProvider, useSidebar } from "@/components/ui/sidebar";
@@ -27,6 +27,43 @@ import { QueryState } from "@/features/admin/AdminUI";
 import { TimetablePage } from "@/features/timetable/TimetablePage";
 import "./legacy.css";
 import "./shell.css";
+
+const menuIcons: Record<MenuScreen, LucideIcon> = {
+  home: House,
+  timetable: CalendarDays,
+  classes: BookOpen,
+  passes: Ticket,
+  reservations: ClipboardCheck,
+  profile: UserRound,
+  'admin-members': UsersRound,
+  'admin-instructors': GraduationCap,
+  'admin-lessons': BookOpen,
+  'admin-passes': Ticket,
+  'admin-reports': ChartColumn,
+  'today-lessons': CalendarCheck,
+  'attendance-overview': ClipboardCheck,
+  'absence-requests': CalendarOff,
+  'activity-logs': History,
+  'admin-settings': Settings,
+};
+
+const submenuIcons: Partial<Record<Screen, LucideIcon>> = {
+  'admin-instructors': UsersRound,
+  'admin-absences': CalendarOff,
+  'admin-resignations': UserMinus,
+  'admin-lessons': List,
+  'admin-repeat': Repeat,
+  'admin-waitlist': Clock,
+  'admin-passes': Ticket,
+  'admin-payments': CreditCard,
+  'admin-settlements': Receipt,
+  'admin-statistics': ListChecks,
+  'admin-sales-statistics': TrendingUp,
+  'admin-settings': SlidersHorizontal,
+  'admin-products': Package,
+  'admin-types': Grid2X2,
+  'admin-rooms': DoorOpen,
+};
 
 function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "normal" }: { user: DashboardUser; name?: string; onLogout: (trigger?: HTMLElement) => void; onLogin: () => void; initialHomeView?: HomeView }) {
   const [homeView, setHomeView] = useState(initialHomeView);
@@ -107,16 +144,18 @@ function AppSidebar({ user, navigation, screen, onNavigate }: { user: DashboardU
         <SidebarGroup><SidebarGroupContent><nav aria-label={`${roleLabels[user.role]} 메뉴`}><SidebarMenu>
         {navigation.map((item) => {
           const active = getMenuScreen(screen) === item.screen;
+          const Icon = menuIcons[item.screen];
           if (item.children) return <Collapsible.Root key={item.screen} asChild open={openMenu === item.screen} onOpenChange={open => setOpenMenu(open ? item.screen : null)}>
             <SidebarMenuItem>
               <Collapsible.Trigger asChild><SidebarMenuButton variant="brand" size="lg" isActive={active}>
-                <span>{item.label}</span><ChevronRight className="navigation-disclosure" aria-hidden="true" />
+                <span className="member-navigation-label"><Icon aria-hidden="true" /><span>{item.label}</span></span><ChevronRight className="navigation-disclosure" aria-hidden="true" />
               </SidebarMenuButton></Collapsible.Trigger>
               <Collapsible.Content><SidebarMenuSub className="member-subnavigation">
                 {item.children.map(child => {
                   const selected = child.activeScreens.includes(screen);
+                  const ChildIcon = submenuIcons[child.screen] ?? Icon;
                   return <SidebarMenuSubItem key={child.screen}><SidebarMenuSubButton asChild isActive={selected} className="member-subnavigation-button">
-                    <button type="button" aria-current={selected ? 'page' : undefined} onClick={() => navigate(child.screen)}>{child.label}</button>
+                    <button type="button" aria-current={selected ? 'page' : undefined} onClick={() => navigate(child.screen)}><ChildIcon aria-hidden="true" /><span>{child.label}</span></button>
                   </SidebarMenuSubButton></SidebarMenuSubItem>;
                 })}
               </SidebarMenuSub></Collapsible.Content>
@@ -124,7 +163,7 @@ function AppSidebar({ user, navigation, screen, onNavigate }: { user: DashboardU
           </Collapsible.Root>;
           return <SidebarMenuItem key={item.screen}>
             <SidebarMenuButton variant="brand" size="lg" isActive={active} aria-current={active ? "page" : undefined} onClick={() => { onNavigate(item.screen); if (isMobile) setOpenMobile(false); }}>
-              <span>{item.label}</span>
+              <span className="member-navigation-label"><Icon aria-hidden="true" /><span>{item.label}</span></span>
             </SidebarMenuButton>
           </SidebarMenuItem>;
         })}

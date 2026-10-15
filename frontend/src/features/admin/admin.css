@@ -27,8 +27,25 @@
   .admin-choice-popup [role="option"] { justify-content: start; }
   .admin-choice-popup [aria-selected="true"] { background: var(--accent); }
   .admin-resignation-menu .admin-resignation-warning { color: var(--button-warning-foreground); }
+  .admin-instructor-swatch { display: inline-block; flex: none; width: var(--admin-color-swatch-size); height: var(--admin-color-swatch-size); border-radius: 50%; background: var(--instructor-color); vertical-align: middle; }
+  .admin-color-trigger { border-radius: 50%; }
+  .admin-color-picker { display: grid; justify-items: start; gap: var(--space-control); color: var(--muted-foreground); font-size: var(--font-size-caption); }
+  .admin-color-picker input { width: var(--control-height); height: var(--control-height); padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+  .admin-color-picker input::-webkit-color-swatch-wrapper { padding: 0; }
+  .admin-color-picker input::-webkit-color-swatch { border: 1px solid var(--border); border-radius: 50%; }
+  .admin-color-picker input::-moz-color-swatch { border: 1px solid var(--border); border-radius: 50%; }
+  .admin-color-picker input:focus-visible { outline: 2px solid var(--ring); outline-offset: var(--space-tight); }
+  .admin-instructor-swatch[data-color="0"] { --instructor-color: var(--instructor-0); }
+  .admin-instructor-swatch[data-color="1"] { --instructor-color: var(--instructor-1); }
+  .admin-instructor-swatch[data-color="2"] { --instructor-color: var(--instructor-2); }
+  .admin-instructor-swatch[data-color="3"] { --instructor-color: var(--instructor-3); }
+  .admin-instructor-swatch[data-color="4"] { --instructor-color: var(--instructor-4); }
+  .admin-instructor-swatch[data-color="5"] { --instructor-color: var(--instructor-5); }
   .admin-absence-detail-card > [data-slot="card-content"] { display: flex; flex-direction: column; gap: var(--space-panel); }
   .admin-absence-actions { justify-content: flex-end; margin-top: auto; padding-top: var(--space-detail); border-top: 1px solid var(--border); }
+  .admin-lesson-detail-card > .menu-panel-heading { flex-wrap: wrap; }
+  .admin-lesson-detail-card > .menu-panel-heading .menu-actions { justify-content: flex-end; margin-left: auto; }
+  .admin-lesson-detail-card .menu-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, auto); grid-auto-flow: column; column-gap: var(--space-panel); }
   .admin-money { text-align: right; font-variant-numeric: tabular-nums; }
   .admin-loading { display: grid; gap: var(--space-detail); }
   .admin-notification-controls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-detail); min-width: 0; }
@@ -49,7 +66,20 @@
   .admin-skeleton { height: var(--menu-table-row-height); }
   .admin-detail-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--menu-gap); }
   .admin-full-form { max-width: var(--admin-form-width); }
+  .admin-lesson-form-panel .admin-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-lesson-form-panel :is([data-field="title"], [data-field="lessonTypeId"], .menu-note, .admin-form-actions, [data-slot="alert"]) { grid-column: 1 / -1; }
   .admin-detail-section { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); }
+  .admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--timetable-preview-width), 1fr)); gap: var(--menu-gap); }
+  .admin-stat-card { min-width: 0; cursor: help; border-radius: var(--radius-panel); }
+  .admin-stat-card .menu-panel { height: 100%; }
+  .admin-stat-card:focus-visible { outline: 2px solid var(--ring); outline-offset: var(--space-control); }
+  .admin-chart { display: grid; gap: var(--space-detail); }
+  .admin-chart-row { display: grid; gap: var(--space-control); min-width: 0; }
+  .admin-chart-row-heading { display: flex; justify-content: space-between; gap: var(--space-detail); align-items: baseline; }
+  .admin-chart-row-heading span { color: var(--muted-foreground); }
+  .admin-chart-row-heading strong { font-weight: var(--font-weight-heading); font-variant-numeric: tabular-nums; }
+  .admin-chart-track { height: var(--space-control); overflow: hidden; border-radius: var(--radius-sm); background: var(--secondary); }
+  .admin-chart-bar { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
   .admin-detail-section > summary { cursor: pointer; padding: var(--space-detail) var(--space-panel); font-size: var(--font-size-body); font-weight: var(--font-weight-heading); }
   .admin-detail-section[open] > summary { border-bottom: 1px solid var(--border); }
   .admin-detail-section > :not(summary) { margin: var(--space-detail); }
@@ -62,7 +92,23 @@
   .admin-hours-row { display: grid; grid-template-columns: var(--menu-fact-label-width) minmax(0,1fr) minmax(0,1fr) auto; align-items: center; gap: var(--space-detail); }
   .admin-metric { font-size: var(--font-size-metric); font-weight: var(--font-weight-metric); }
 }
+@media(min-width: 768px) {
+  .member-preview .main-content:not(.home-main):has(.admin-page > .admin-table-area, .admin-page > .menu-stack > .admin-table-area) { height: 100dvh; min-height: 0; }
+  .member-preview .main-content:not(.home-main) .content:has(> .admin-page > .admin-table-area, > .admin-page > .menu-stack > .admin-table-area) { min-height: 0; overflow: hidden; }
+  .admin-page:has(> .admin-table-area, > .menu-stack > .admin-table-area) { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .admin-page > .menu-stack:has(> .admin-table-area) { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; }
+  .admin-table-area { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; }
+  .admin-table-area .menu-panel-table { flex: 0 1 auto; min-height: 0; }
+  .admin-table-area .menu-panel-table > [data-slot="card-content"] { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; }
+  .admin-table-area [data-slot="table-container"] { max-height: var(--table-scroll-max-height); min-height: 0; }
+  .member-preview .main-content:not(.home-main):has(.admin-page .admin-form[data-variant="filter"][data-expanded="true"]) { height: auto; min-height: 100dvh; }
+  .member-preview .main-content:not(.home-main) .content:has(> .admin-page .admin-form[data-variant="filter"][data-expanded="true"]) { overflow: visible; }
+  .admin-page:has(.admin-form[data-variant="filter"][data-expanded="true"]) { height: auto; }
+  .admin-page:has(.admin-form[data-variant="filter"][data-expanded="true"]) .admin-table-area { flex: none; }
+}
 @media(max-width: 767px) {
+  .admin-lesson-detail-card .menu-facts { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-flow: row; }
+  .admin-lesson-form-panel .admin-form { grid-template-columns: minmax(0, 1fr); }
   .admin-form[data-variant="filter"] .admin-filter-toggle[data-desktop-visible="false"] { display: inline-flex; }
   .admin-form[data-variant="filter"][data-expanded="false"] > [data-filter-mobile-extra] { display: none; }
   .member-preview .main-content:not(.home-main):has(.admin-page > .admin-table-area, .admin-page > .menu-stack > .admin-table-area) { height: 100dvh; min-height: 0; }
@@ -112,4 +158,14 @@
   .admin-setting-row { align-items: start; flex-direction: column; }
   .admin-hours-form .admin-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-hours-form [data-orientation="horizontal"] { grid-column: 1 / -1; padding-top: var(--space-detail); }
+}
+
+@layer utilities {
+  .member-preview .main-content:not(.home-main):has(.admin-page > .admin-lesson-roster > .admin-table-area) { height: auto; min-height: 100dvh; }
+  .member-preview .main-content:not(.home-main) .content:has(> .admin-page > .admin-lesson-roster > .admin-table-area) { overflow: visible; min-height: auto; }
+  .admin-page:has(> .admin-lesson-roster > .admin-table-area) { display: grid; height: auto; }
+  .admin-page > .admin-lesson-roster:has(> .admin-table-area) { flex: none; min-height: auto; }
+  .admin-lesson-roster .admin-table-area, .admin-lesson-roster .admin-table-area .menu-panel-table,
+  .admin-lesson-roster .admin-table-area .menu-panel-table > [data-slot="card-content"] { flex: none; min-height: auto; }
+  .admin-lesson-roster .admin-table-area [data-slot="table-container"] { max-height: none; }
 }

@@ -29,7 +29,7 @@ const lessonConfirmation = (lesson: Lesson, waiting: boolean): NonNullable<Dialo
 
 export function LessonsPage({ onOpen, onDialog, canReserve, canWaitlist }: { onOpen: (id: number) => void; onDialog: (dialog: NonNullable<DialogState>) => void; canReserve: boolean; canWaitlist: boolean }) {
   const [draft, setDraft] = useState(initialFilters);
-  const [filters, setFilters] = useState(initialFilters);
+  const filters = draft;
   const [page, setPage] = useState(1);
   const rows = lessons.filter(lesson => {
     const date = lesson.startAt.slice(0, 10);
@@ -39,13 +39,12 @@ export function LessonsPage({ onOpen, onDialog, canReserve, canWaitlist }: { onO
   const currentPage = Math.min(page, totalPages);
   return <div className="menu-page">
     <PageTitle title="수업 목록" description="공개된 수업을 확인하고 나에게 맞는 수업을 예약하세요." />
-    <MenuPanel variant="filter"><form className="menu-filters" onSubmit={event => { event.preventDefault(); setFilters(draft); setPage(1); }}>
-      <Field><FieldLabel htmlFor="lesson-from">시작일</FieldLabel><Input id="lesson-from" type="date" value={draft.from} max={draft.to || undefined} onChange={event => setDraft({ ...draft, from: event.target.value })} /></Field>
-      <Field><FieldLabel htmlFor="lesson-to">종료일</FieldLabel><Input id="lesson-to" type="date" value={draft.to} min={draft.from || undefined} onChange={event => setDraft({ ...draft, to: event.target.value })} /></Field>
-      <Field><FieldLabel htmlFor="lesson-type">수업 유형</FieldLabel><Select value={draft.type} onValueChange={type => setDraft({ ...draft, type })}><SelectTrigger id="lesson-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 유형</SelectItem>{[...new Set(lessons.map(item => item.type))].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></Field>
-      <Field><FieldLabel htmlFor="lesson-room">룸</FieldLabel><Select value={draft.room} onValueChange={room => setDraft({ ...draft, room })}><SelectTrigger id="lesson-room"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 룸</SelectItem>{[...new Set(lessons.map(item => item.room))].map(room => <SelectItem key={room} value={room}>{room}</SelectItem>)}</SelectContent></Select></Field>
-      <div className="menu-actions"><Button variant="outline" type="submit">조회</Button></div>
-    </form></MenuPanel>
+    <MenuPanel variant="filter"><div className="menu-filters">
+      <Field><FieldLabel htmlFor="lesson-from">시작일</FieldLabel><Input id="lesson-from" type="date" value={draft.from} max={draft.to || undefined} onChange={event => { setDraft({ ...draft, from: event.target.value }); setPage(1); }} /></Field>
+      <Field><FieldLabel htmlFor="lesson-to">종료일</FieldLabel><Input id="lesson-to" type="date" value={draft.to} min={draft.from || undefined} onChange={event => { setDraft({ ...draft, to: event.target.value }); setPage(1); }} /></Field>
+      <Field><FieldLabel htmlFor="lesson-type">수업 유형</FieldLabel><Select value={draft.type} onValueChange={type => { setDraft({ ...draft, type }); setPage(1); }}><SelectTrigger id="lesson-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 유형</SelectItem>{[...new Set(lessons.map(item => item.type))].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></Field>
+      <Field><FieldLabel htmlFor="lesson-room">룸</FieldLabel><Select value={draft.room} onValueChange={room => { setDraft({ ...draft, room }); setPage(1); }}><SelectTrigger id="lesson-room"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 룸</SelectItem>{[...new Set(lessons.map(item => item.room))].map(room => <SelectItem key={room} value={room}>{room}</SelectItem>)}</SelectContent></Select></Field>
+    </div></MenuPanel>
     <div className="menu-list">{rows.length ? rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map(lesson => <LessonCard key={lesson.id} lesson={lesson} onOpen={onOpen} onDialog={onDialog} canReserve={canReserve} canWaitlist={canWaitlist} />) : <MenuPanel><MenuEmpty title="조건에 맞는 수업이 없습니다" description="조회 조건을 변경해 주세요." /></MenuPanel>}</div>
     <Pagination total={rows.length} page={currentPage} totalPages={totalPages} onPageChange={setPage} />
   </div>;

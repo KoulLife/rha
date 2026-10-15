@@ -20,7 +20,7 @@ type Props = { user: DashboardUser; data: DashboardData; state: InstructorState;
 
 export function InstructorAbsencesPage({ user, data, state, onCreate, onWithdraw }: Props) {
   const [draft, setDraft] = useState(initialFilters);
-  const [filters, setFilters] = useState(initialFilters);
+  const filters = draft;
   const [creating, setCreating] = useState(false);
   const [detail, setDetail] = useState<DashboardAbsence | null>(null);
   const [withdrawing, setWithdrawing] = useState<DashboardAbsence | null>(null);
@@ -29,13 +29,13 @@ export function InstructorAbsencesPage({ user, data, state, onCreate, onWithdraw
   const selectedDetail = detail && state.absenceDetails[detail.id];
   return <div className="menu-page instructor-page">
     <PageTitle title="부재 신청" description="부재 일정을 신청하고 승인 결과를 확인하세요." action={<Button onClick={() => setCreating(true)}>부재 신청하기</Button>} />
-    <MenuPanel variant="filter"><form className="menu-filters" onSubmit={event => { event.preventDefault(); setFilters(draft); }}>
+    <MenuPanel variant="filter"><div className="menu-filters">
       <Field><FieldLabel htmlFor="absence-search">신청 사유</FieldLabel><Input id="absence-search" placeholder="사유 검색" value={draft.search} onChange={event => setDraft({ ...draft, search: event.target.value })} /></Field>
       <Field><FieldLabel htmlFor="absence-from">시작일</FieldLabel><Input id="absence-from" type="date" max={draft.to || undefined} value={draft.from} onChange={event => setDraft({ ...draft, from: event.target.value })} /></Field>
       <Field><FieldLabel htmlFor="absence-to">종료일</FieldLabel><Input id="absence-to" type="date" min={draft.from || undefined} value={draft.to} onChange={event => setDraft({ ...draft, to: event.target.value })} /></Field>
       <InstructorSelect id="absence-status" label="처리 상태" value={draft.status} onChange={status => setDraft({ ...draft, status })} options={[{ value: "all", label: "전체 상태" }, ...(["REQUESTED", "APPROVED", "REJECTED", "CANCELED"] as const).map(status => ({ value: status, label: getStatusLabel({ domain: "absence", status }) }))]} />
-      <div className="menu-actions"><Button type="submit" variant="outline">조회</Button><Button type="button" variant="outline" onClick={() => { setDraft(initialFilters); setFilters(initialFilters); }}>초기화</Button></div>
-    </form></MenuPanel>
+      <div className="menu-actions"><Button type="button" variant="outline" onClick={() => setDraft(initialFilters)}>초기화</Button></div>
+    </div></MenuPanel>
     <div className="menu-results"><strong>신청 내역 {rows.length}건</strong><span>승인 대기 {own.filter(item => item.status === "REQUESTED").length}건</span></div>
     <InstructorTable key={JSON.stringify(filters)} rows={rows} label="내 부재 신청 목록" emptyTitle="부재 신청 내역이 없습니다" columns={[
       { key: "number", label: "번호", cell: row => rows.indexOf(row) + 1 },
@@ -46,7 +46,7 @@ export function InstructorAbsencesPage({ user, data, state, onCreate, onWithdraw
       { key: "status", label: "상태", cell: row => <StatusBadge domain="absence" status={row.status} /> },
       { key: "actions", label: "관리", cell: row => <div className="menu-actions"><Button variant="outline" size="sm" aria-label={`${row.from} 부재 상세 보기`} onClick={() => setDetail(row)}>상세 보기</Button>{canWithdrawAbsence(row, user) && <Button variant="destructive" size="sm" onClick={() => setWithdrawing(row)}>신청 철회</Button>}</div> },
     ]} />
-    {creating && <AbsenceForm user={user} data={data} state={state} onClose={() => setCreating(false)} onSubmit={(values, reason) => { onCreate(values, reason); setCreating(false); setDraft(initialFilters); setFilters(initialFilters); }} />}
+    {creating && <AbsenceForm user={user} data={data} state={state} onClose={() => setCreating(false)} onSubmit={(values, reason) => { onCreate(values, reason); setCreating(false); setDraft(initialFilters); }} />}
     {detail && <Dialog dialog={{ title: "부재 신청 상세", body: "신청 기간과 처리 결과를 확인하세요." }} onClose={() => setDetail(null)}><div className="instructor-dialog-stack"><div className="instructor-detail-heading"><h2>{user.name}</h2><StatusBadge domain="absence" status={detail.status} /></div>
       <dl className="menu-facts">{[["시작 일시", selectedDetail ? fullTime(selectedDetail.startAt) : detail.from], ["종료 일시", selectedDetail ? fullTime(selectedDetail.endAt) : detail.to], ["신청 사유", detail.reason || "사유 없음"], ["신청 일시", selectedDetail ? fullTime(selectedDetail.createdAt) : "—"], ...(selectedDetail?.processedAt ? [["처리 일시", fullTime(selectedDetail.processedAt)]] : [])].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
       {selectedDetail?.rejectionReason && <p className="menu-note">반려 사유: {selectedDetail.rejectionReason}</p>}

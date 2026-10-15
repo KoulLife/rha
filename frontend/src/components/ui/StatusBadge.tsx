@@ -7,7 +7,7 @@ const statuses = {
   absence: { REQUESTED: ["승인 대기", "warning"], APPROVED: ["승인", "success"], REJECTED: ["반려", "destructive"], CANCELED: ["취소", "neutral"] },
   notification: { UNREAD: ["읽지 않음", "warning"], READ: ["읽음", "neutral"] },
   pass: { UPCOMING: ["시작 전", "warning"], ACTIVE: ["이용 중", "success"], PAUSED: ["홀딩 중", "warning"], EXPIRED: ["만료", "destructive"] },
-  member: { ACTIVE: ["활성", "success"], INACTIVE: ["비활성", "neutral"], WITHDRAWN: ["탈퇴", "neutral"], RESIGNED: ["퇴사", "neutral"] },
+  member: { ACTIVE: ["활성", "success"], INACTIVE: ["비활성", "neutral"], WITHDRAWN: ["탈퇴", "neutral"], RESIGNED: ["퇴사", "destructive"] },
   payment: { UNPAID: ["미결제", "destructive"], PARTIAL: ["일부 결제", "warning"], PAID: ["완납", "success"], REFUNDED: ["환불 기록", "destructive"] },
   settlement: { CALCULATED: ["계산 완료", "neutral"], REVIEW_REQUESTED: ["검토 요청", "warning"], CONFIRMED: ["확정", "success"], PAID: ["지급 기록 완료", "success"] },
   pause: { SCHEDULED: ["홀딩 예정", "warning"], ACTIVE: ["홀딩 중", "warning"], ENDED: ["종료", "neutral"], CANCELED: ["취소", "neutral"] },
