@@ -72,6 +72,11 @@
   .table-centered [data-slot="table-header"] { background: var(--table-header-background); }
   .table-sort-button { color: inherit; font-weight: inherit; }
   .table-sort-direction { color: var(--primary); font-size: .6875rem; }
+  /* 모든 역할의 첫 행·중간 행·마지막 행에 같은 세로 padding을 적용한다. */
+  [data-slot="table"][data-variant] [data-slot="table-cell"],
+  [data-slot="table"][data-variant] [data-slot="table-head"] {
+    padding-block: var(--space-detail);
+  }
   [data-slot="table"][data-variant] [data-slot="table-head"] {
     text-align: center;
     vertical-align: middle;

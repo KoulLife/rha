@@ -4,6 +4,8 @@ import type { Screen } from "@/app/routes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { PAGE_SIZE } from "@/components/ui/Pagination";
+import { PaginatedList } from "@/components/ui/PaginatedList";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -29,7 +31,7 @@ export function MemberHomePage({ user, data, onNavigate, empty = false }: {
   empty?: boolean;
 }) {
   const pass = !empty && user.id === 1 ? passes[0] : undefined;
-  const publicLessons = empty ? [] : lessons.slice(0, 6);
+  const publicLessons = empty ? [] : lessons;
   const ownReservations = data.reservations.filter(item => item.memberId === user.id);
   const reserved = ownReservations.filter(item => item.status === "RESERVED");
   const usedCount = pass ? pass.total - pass.remaining : 0;
@@ -42,7 +44,7 @@ export function MemberHomePage({ user, data, onNavigate, empty = false }: {
 
   return <div className="home-page">
     <div className="home-heading">
-      <div><h1>내 수업과 신청 현황</h1><p>수업을 선택해 예약하거나 대기를 신청하세요.</p></div>
+      <div><h1>내 수업과 신청 현황</h1></div>
       <div className="home-heading-actions"><Button variant="outline" onClick={() => onNavigate("classes")}>수업 목록 보기</Button></div>
     </div>
     <section className="home-metrics" aria-label="내 현황 요약">
@@ -54,26 +56,32 @@ export function MemberHomePage({ user, data, onNavigate, empty = false }: {
     </section>
     <div className="home-columns">
       <HomePanel variant="public" title="공개 수업 목록" action={<Button variant="ghost" onClick={() => onNavigate("classes")}>전체 보기</Button>}>
-        {publicLessons.length ? <div className="home-lesson-list">{publicLessons.map(lesson => <div className="home-lesson" key={lesson.id}>
-          <div className="home-lesson-time"><strong>{lesson.date} ({weekdayFormatter.format(new Date(lesson.startAt))})</strong><span>{lesson.time}</span></div>
-          <div className="home-lesson-info"><h3>{lesson.type}</h3><p>{lesson.teacher} · {lesson.room}</p><span>예약 {lesson.booked}</span></div>
-          <div className="home-lesson-action">
-            <StatusBadge domain="lesson" status={lesson.status === "예약 가능" ? "AVAILABLE" : lesson.status === "대기 신청 가능" ? "WAITING" : "CLOSED"} />
-            <Button variant="ghost" onClick={() => onNavigate("lesson-detail", lesson.id)} aria-label={`${lesson.type} 상세 보기`}>상세 보기</Button>
-          </div>
-        </div>)}</div> : <Empty><EmptyHeader><EmptyTitle>공개된 수업이 없습니다</EmptyTitle><EmptyDescription>새 수업이 공개되면 이곳에서 확인할 수 있습니다.</EmptyDescription></EmptyHeader></Empty>}
+        {publicLessons.length ? <PaginatedList items={publicLessons}>{pageLessons => <Table variant="management" className="home-public-table" aria-label="공개 수업 목록">
+          <TableHeader><TableRow>{["날짜", "시간", "수업명", "담당 강사", "룸", "예약 / 정원", "예약 상태", "상세"].map(label => <TableHead key={label} scope="col">{label}</TableHead>)}</TableRow></TableHeader>
+          <TableBody>{pageLessons.map(lesson => <TableRow key={lesson.id}>
+            <TableCell>{lesson.date} ({weekdayFormatter.format(new Date(lesson.startAt))})</TableCell>
+            <TableCell>{lesson.time}</TableCell>
+            <TableCell><strong>{lesson.type}</strong></TableCell>
+            <TableCell>{lesson.teacher}</TableCell>
+            <TableCell>{lesson.room}</TableCell>
+            <TableCell>{lesson.booked}</TableCell>
+            <TableCell><StatusBadge domain="lesson" status={lesson.status === "예약 가능" ? "AVAILABLE" : lesson.status === "대기 신청 가능" ? "WAITING" : "CLOSED"} /></TableCell>
+            <TableCell><Button variant="outline" size="sm" onClick={() => onNavigate("lesson-detail", lesson.id)} aria-label={`${lesson.type} 상세 보기`}>상세 보기</Button></TableCell>
+          </TableRow>)}{Array.from({ length: PAGE_SIZE - pageLessons.length }, (_, index) => <TableRow key={`public-empty-${index}`} aria-hidden="true"><TableCell colSpan={8} /></TableRow>)}</TableBody>
+        </Table>}</PaginatedList> : <Empty><EmptyHeader><EmptyTitle>공개된 수업이 없습니다</EmptyTitle><EmptyDescription>새 수업이 공개되면 이곳에서 확인할 수 있습니다.</EmptyDescription></EmptyHeader></Empty>}
+
       </HomePanel>
       <div className="home-side">
         <HomePanel variant="reservations" title="내가 예약한 수업" action={<Button variant="ghost" onClick={() => onNavigate("reservations")}>전체 보기</Button>}>
-          <div className="home-reservation-list">{Array.from({ length: 2 }, (_, index) => {
-            const item = reserved[index];
+          <PaginatedList items={reserved} pageSize={3} alwaysShowPagination>{pageReservations => <div className="home-reservation-list">{Array.from({ length: 3 }, (_, index) => {
+            const item = pageReservations[index];
             if (!item) return <div className="home-reservation" key={`reservation-empty-${index}`} aria-hidden="true" />;
             const lesson = data.lessons.find(lesson => lesson.id === item.lessonId);
             return <div className="home-reservation" key={item.id}>
               <div><h3>{lesson?.title ?? "예약한 수업"}</h3>{lesson && <p>{seoulDate(lesson.startAt).replace(/-/g, ".")} {seoulTime(lesson.startAt)} · {lesson.instructor}</p>}</div>
               <div className="home-reservation-action"><StatusBadge domain="reservation" status="RESERVED" /><Button variant="ghost" onClick={() => onNavigate("reservation-detail", item.id)}>내역 보기</Button></div>
             </div>;
-          })}</div>
+          })}</div>}</PaginatedList>
         </HomePanel>
         <HomePanel variant="pass" title="내 이용권" action={<Button variant="ghost" onClick={() => pass ? onNavigate("pass-detail", pass.id) : onNavigate("passes")}>상세 보기</Button>}>
           {pass ? <>

@@ -5,6 +5,17 @@ export type AbsenceDetail = { startAt: string; endAt: string; createdAt: string;
 export type AttendanceChange = { id: number; reservationId: number; before: DashboardReservation["status"]; after: AttendanceStatus; reason: string; at: string };
 export type InstructorState = { absenceDetails: Record<number, AbsenceDetail>; changes: AttendanceChange[] };
 
+export function attendanceChangeError(data: DashboardData, user: DashboardUser, id: number, status: AttendanceStatus, reason: string, now: string) {
+  const error = attendanceRestriction(data, user, id, now);
+  if (error) return error;
+  const reservation = data.reservations.find(item => item.id === id)!;
+  if (status !== "ATTENDED" && status !== "NO_SHOW") return "출석 또는 노쇼를 선택해 주세요.";
+  if (reservation.status === status) return "현재 출결과 다른 상태를 선택해 주세요.";
+  if (reservation.status !== "RESERVED" && !reason.trim()) return "정정 사유를 입력해 주세요.";
+  if (reason.trim().length > 500) return "정정 사유는 500자 이내로 입력해 주세요.";
+  return null;
+}
+
 // 정산 여부는 현재 응답에 없는 값이므로 UI 검토용 메타데이터로만 관리한다.
 export const settledLessonIds: ReadonlySet<number> = new Set([110]);
 

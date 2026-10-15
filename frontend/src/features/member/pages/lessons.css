@@ -1,0 +1,6 @@
+@layer utilities {
+  [data-slot="table-container"]:has(> .member-lessons-table) { max-height: none; }
+  .member-lessons-table [data-slot="table-head"],
+  .member-lessons-table [data-slot="table-cell"] { white-space: nowrap; }
+  .member-lessons-table [data-slot="button"] { font-size: var(--font-size-caption); block-size: var(--table-action-height); }
+}

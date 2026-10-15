@@ -26,15 +26,15 @@ export function ReservationsPage({ onDialog, canCancel }: { onDialog: (dialog: D
   const rows = reservations.filter(item => tab === "reserved" ? item.state === "예약 완료" : tab === "history" ? item.state !== "예약 완료" : false).sort((a, b) => (a[sort.key].localeCompare(b[sort.key]) || a.id - b.id) * (sort.direction === "asc" ? 1 : -1));
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  return <div className="menu-page"><PageTitle title="내 예약·출결" description="예약 완료와 대기 신청, 지난 수업의 출결 내역을 확인합니다." />
+  return <div className="menu-page member-reservations-page"><PageTitle title="내 예약·출결" description="예약 완료와 대기 신청, 지난 수업의 출결 내역을 확인합니다." />
     <Tabs value={tab} onValueChange={value => { setTab(value); setPage(1); }} className="menu-tabs"><TabsList><TabsTrigger value="reserved">예약 완료</TabsTrigger><TabsTrigger value="waiting">대기 신청</TabsTrigger><TabsTrigger value="history">지난 수업·취소</TabsTrigger></TabsList>
       {["reserved", "waiting", "history"].map(value => <TabsContent value={value} key={value}>
         <div className="menu-stack">
           <MenuPanel variant="table">
-            {rows.length ? <Table variant="management">
+            {rows.length ? <Table variant="management" className="member-reservations-table" aria-label={value === "reserved" ? "예약 완료 목록" : "지난 수업·취소 목록"}>
               <TableHeader><TableRow><TableHead>수업</TableHead>{([{ key: "date", label: "수업 일시" }, { key: "createdAt", label: "예약 일시" }] as const).map(column => <TableHead key={column.key} aria-sort={sort.key === column.key ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><SortHeaderButton label={column.label} direction={sort.key === column.key ? sort.direction : undefined} onClick={() => toggleSort(column.key)} /></TableHead>)}<TableHead>강사</TableHead><TableHead>상태</TableHead><TableHead>사용 이용권</TableHead>{value === "reserved" && canCancel && <TableHead>예약 취소</TableHead>}</TableRow></TableHeader>
               <TableBody>{rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map(item => <TableRow key={item.id}>
-                <TableCell><strong>{item.lesson}</strong><p className="menu-muted">예약 #{item.id}</p></TableCell>
+                <TableCell><strong>{item.lesson}</strong></TableCell>
                 <TableCell>{item.date}</TableCell>
                 <TableCell>{seoulDate(item.createdAt)} {seoulTime(item.createdAt)}</TableCell>
                 <TableCell>{item.teacher}</TableCell>
@@ -43,7 +43,7 @@ export function ReservationsPage({ onDialog, canCancel }: { onDialog: (dialog: D
                 {value === "reserved" && canCancel && <TableCell><Button variant="warning" onClick={() => onDialog({ title: "예약 취소", body: `${item.lesson} · ${item.date}\n취소하면 수업 예약이 해제됩니다.`, action: "예약 취소하기", destructive: true, actionVariant: "warning" })}>예약 취소</Button></TableCell>}
               </TableRow>)}</TableBody>
             </Table> : <MenuEmpty title={value === "waiting" ? "대기 신청한 수업이 없습니다" : value === "history" ? "지난 수업·취소 기록이 없습니다" : "예약한 수업이 없습니다"} description="수업 목록에서 수업과 신청 가능 여부를 확인하세요." />}
-          </MenuPanel><Pagination total={rows.length} page={currentPage} totalPages={totalPages} onPageChange={setPage} />
+          </MenuPanel><Pagination total={rows.length} page={currentPage} pageSize={PAGE_SIZE} totalPages={totalPages} onPageChange={setPage} />
         </div>
       </TabsContent>)}
     </Tabs>

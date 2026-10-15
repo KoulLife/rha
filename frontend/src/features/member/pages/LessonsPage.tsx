@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import "./lessons.css";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
 type Lesson = (typeof lessons)[number];
@@ -45,23 +47,29 @@ export function LessonsPage({ onOpen, onDialog, canReserve, canWaitlist }: { onO
       <Field><FieldLabel htmlFor="lesson-type">수업 유형</FieldLabel><Select value={draft.type} onValueChange={type => { setDraft({ ...draft, type }); setPage(1); }}><SelectTrigger id="lesson-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 유형</SelectItem>{[...new Set(lessons.map(item => item.type))].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></Field>
       <Field><FieldLabel htmlFor="lesson-room">룸</FieldLabel><Select value={draft.room} onValueChange={room => { setDraft({ ...draft, room }); setPage(1); }}><SelectTrigger id="lesson-room"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">전체 룸</SelectItem>{[...new Set(lessons.map(item => item.room))].map(room => <SelectItem key={room} value={room}>{room}</SelectItem>)}</SelectContent></Select></Field>
     </div></MenuPanel>
-    <div className="menu-list">{rows.length ? rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map(lesson => <LessonCard key={lesson.id} lesson={lesson} onOpen={onOpen} onDialog={onDialog} canReserve={canReserve} canWaitlist={canWaitlist} />) : <MenuPanel><MenuEmpty title="조건에 맞는 수업이 없습니다" description="조회 조건을 변경해 주세요." /></MenuPanel>}</div>
+    <MenuPanel variant="table">{rows.length ? <Table variant="management" className="member-lessons-table" aria-label="수업 목록">
+      <TableHeader><TableRow>{["날짜", "시간", "수업명", "담당 강사", "룸", "예약 / 정원", "예약 상태", "상세", "신청"].map(label => <TableHead key={label} scope="col">{label}</TableHead>)}</TableRow></TableHeader>
+      <TableBody>{rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map(lesson => <LessonRow key={lesson.id} lesson={lesson} onOpen={onOpen} onDialog={onDialog} canReserve={canReserve} canWaitlist={canWaitlist} />)}</TableBody>
+    </Table> : <MenuEmpty title="조건에 맞는 수업이 없습니다" description="조회 조건을 변경해 주세요." />}</MenuPanel>
     <Pagination total={rows.length} page={currentPage} totalPages={totalPages} onPageChange={setPage} />
   </div>;
 }
 
-function LessonCard({ lesson, onOpen, onDialog, canReserve, canWaitlist }: { lesson: Lesson; onOpen: (id: number) => void; onDialog: (dialog: NonNullable<DialogState>) => void; canReserve: boolean; canWaitlist: boolean }) {
+function LessonRow({ lesson, onOpen, onDialog, canReserve, canWaitlist }: { lesson: Lesson; onOpen: (id: number) => void; onDialog: (dialog: NonNullable<DialogState>) => void; canReserve: boolean; canWaitlist: boolean }) {
   const status = lessonStatus(lesson);
   const canAct = status === "AVAILABLE" ? canReserve : status === "WAITING" && canWaitlist;
   const waiting = status === "WAITING";
-  return <MenuPanel variant={status === "CLOSED" ? "closed" : "lesson"} className="lesson-list-card">
-    <div className="menu-lesson-row">
-      <div className="menu-lesson-date"><strong>{lesson.date}</strong><span>{lesson.time}</span></div>
-      <div className="menu-lesson-info"><h2>{lesson.type}</h2><p>{lesson.teacher} · {lesson.room}</p></div>
-      <div className="menu-lesson-meta"><StatusBadge domain="lesson" status={status} /><span>예약 {lesson.booked}</span></div>
-      <div className="menu-actions lesson-card-actions"><Button variant="outline" onClick={() => onOpen(lesson.id)}>상세 보기</Button><Button className="lesson-primary-action" variant={waiting ? "warning" : status === "CLOSED" ? "outline" : "default"} disabled={!canAct} onClick={() => onDialog(lessonConfirmation(lesson, waiting))}>{status === "CLOSED" ? "수업 마감" : waiting ? "대기 신청하기" : "수업 예약하기"}</Button></div>
-    </div>
-  </MenuPanel>;
+  return <TableRow>
+    <TableCell>{lesson.date}</TableCell>
+    <TableCell>{lesson.time}</TableCell>
+    <TableCell><strong>{lesson.type}</strong></TableCell>
+    <TableCell>{lesson.teacher}</TableCell>
+    <TableCell>{lesson.room}</TableCell>
+    <TableCell>{lesson.booked}</TableCell>
+    <TableCell><StatusBadge domain="lesson" status={status} /></TableCell>
+    <TableCell><Button variant="outline" size="sm" onClick={() => onOpen(lesson.id)} aria-label={`${lesson.type} 상세 보기`}>상세 보기</Button></TableCell>
+    <TableCell><Button variant={waiting ? "warning" : status === "CLOSED" ? "outline" : "default"} disabled={!canAct} onClick={() => onDialog(lessonConfirmation(lesson, waiting))}>{status === "CLOSED" ? "수업 마감" : waiting ? "대기 신청하기" : "수업 예약하기"}</Button></TableCell>
+  </TableRow>;
 }
 
 export function LessonDetailPage({ lessonId, onBack, onDialog, canReserve, canWaitlist }: { lessonId: number; onBack: () => void; onDialog: (dialog: DialogState) => void; canReserve: boolean; canWaitlist: boolean }) {

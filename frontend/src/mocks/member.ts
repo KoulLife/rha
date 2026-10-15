@@ -32,9 +32,19 @@ export const passes = [
 ];
 
 export const reservations = [
-  // TODO: 실제 예약 API 연동 시 Reservation.createdAt을 사용한다. 현재 백엔드 마이그레이션에는 reservations 테이블이 없으며, ERD에는 created_at이 정의되어 있다.
+  // 예약·출결 미리보기: 각 목록의 5개 표시와 다음 페이지를 확인할 수 있도록 구성한다.
   { id: 501, lesson: "기구 필라테스", date: "2026.10.13 10:00", createdAt: "2026-10-11T00:20:00Z", teacher: "김강사", state: "출석 완료", pass: "필라테스 10회권" },
   { id: 502, lesson: "리포머 그룹", date: "2026.10.13 14:00", createdAt: "2026-10-12T06:35:00Z", teacher: "박강사", state: "예약 완료", pass: "필라테스 10회권" },
+  { id: 503, lesson: "모닝 리포머", date: "2026.10.15 10:00", createdAt: "2026-10-12T07:00:00Z", teacher: "박강사", state: "예약 완료", pass: "필라테스 10회권" },
+  { id: 504, lesson: "코어 필라테스", date: "2026.10.15 18:00", createdAt: "2026-10-12T08:00:00Z", teacher: "김강사", state: "예약 완료", pass: "필라테스 10회권" },
+  { id: 505, lesson: "개인 레슨", date: "2026.10.16 11:00", createdAt: "2026-10-13T00:00:00Z", teacher: "박강사", state: "예약 완료", pass: "개인 레슨 5회권" },
+  { id: 506, lesson: "기구 필라테스", date: "2026.10.19 10:00", createdAt: "2026-10-13T01:00:00Z", teacher: "김강사", state: "예약 완료", pass: "필라테스 10회권" },
+  { id: 507, lesson: "리포머 그룹", date: "2026.10.20 14:00", createdAt: "2026-10-13T02:00:00Z", teacher: "박강사", state: "예약 완료", pass: "필라테스 10회권" },
+  { id: 508, lesson: "기구 필라테스", date: "2026.10.01 10:00", createdAt: "2026-09-28T00:00:00Z", teacher: "김강사", state: "출석 완료", pass: "필라테스 10회권" },
+  { id: 509, lesson: "리포머 그룹", date: "2026.10.05 14:00", createdAt: "2026-10-01T01:00:00Z", teacher: "박강사", state: "출석 완료", pass: "필라테스 10회권" },
+  { id: 510, lesson: "개인 레슨", date: "2026.10.06 11:00", createdAt: "2026-10-02T02:00:00Z", teacher: "박강사", state: "출석 완료", pass: "개인 레슨 5회권" },
+  { id: 511, lesson: "모닝 리포머", date: "2026.10.08 10:00", createdAt: "2026-10-05T00:00:00Z", teacher: "박강사", state: "출석 완료", pass: "필라테스 10회권" },
+  { id: 512, lesson: "코어 필라테스", date: "2026.10.12 18:00", createdAt: "2026-10-08T01:00:00Z", teacher: "김강사", state: "출석 완료", pass: "필라테스 10회권" },
 ];
 
 export const notifications = [

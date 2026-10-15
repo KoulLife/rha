@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { attendanceRestriction, absenceRestriction, canWithdrawAbsence } from "../src/features/instructor/model.ts";
-import { canAccessScreen } from "../src/config/access.ts";
+import { attendanceChangeError, attendanceRestriction, absenceRestriction, canWithdrawAbsence } from "../src/features/instructor/model.ts";
+import { canAccessScreen, getNavigation } from "../src/config/access.ts";
 
 const user = { id: 2, role: "INSTRUCTOR", name: "김강사" };
 const now = "2026-10-13T03:00:00Z";
@@ -54,4 +54,26 @@ test("강사 업무 메뉴는 강사에게만 노출되고 관리자 수업 상�
   }
   assert.ok(canAccessScreen("admin-absences", "ADMIN", permissions));
   assert.ok(canAccessScreen("admin-lesson-detail", "ADMIN", permissions));
+});
+
+
+test("첫 출결은 사유 없이 기록하고, 수정은 다른 상태와 정정 사유가 필요하다", () => {
+  assert.equal(attendanceChangeError(data, user, 1, "ATTENDED", "", now), null);
+  assert.equal(attendanceChangeError(data, user, 1, "NO_SHOW", "", now), null);
+  const recorded = { ...data, reservations: data.reservations.map(row => row.id === 1 ? { ...row, status: "ATTENDED" } : row) };
+  assert.ok(attendanceChangeError(recorded, user, 1, "NO_SHOW", "  ", now));
+  assert.ok(attendanceChangeError(recorded, user, 1, "ATTENDED", "동일 상태", now));
+  assert.ok(attendanceChangeError(recorded, user, 1, "NO_SHOW", "가".repeat(501), now));
+  assert.equal(attendanceChangeError(recorded, user, 1, "NO_SHOW", "출석 오입력 확인", now), null);
+  const noShow = { ...recorded, reservations: recorded.reservations.map(row => row.id === 1 ? { ...row, status: "NO_SHOW" } : row) };
+  assert.equal(attendanceChangeError(noShow, user, 1, "ATTENDED", "실제 출석 확인", now), null);
+  for (const id of [2, 3, 4, 5, 999]) assert.ok(attendanceChangeError(recorded, user, id, "NO_SHOW", "정정 사유", now));
+  assert.equal(data.reservations[0].status, "RESERVED");
+});
+
+test("강사 출결 사이드 메뉴는 제거하고 담당 수업·예약자·부재 메뉴를 유지한다", () => {
+  const permissions = new Set(["lesson.read", "reservation.read", "profile.read", "notification.read"]);
+  const screens = getNavigation("INSTRUCTOR", permissions).map(item => item.screen);
+  assert.equal(screens.includes("attendance"), false);
+  for (const screen of ["today-lessons", "attendees", "absences"]) assert.equal(screens.includes(screen), true);
 });

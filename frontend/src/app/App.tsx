@@ -1,3 +1,8 @@
+import { toast } from "sonner";
+import { InstructorPage, isInstructorScreen } from "@/features/instructor/InstructorPage";
+import { initialInstructorState, withInstructorPreview } from "@/features/instructor/preview";
+import { attendanceChangeError } from "@/features/instructor/model";
+import type { RecordAttendance } from "@/features/instructor/AttendanceActions";
 import { Collapsible } from "radix-ui";
 import { BookOpen, CalendarCheck, CalendarDays, CalendarOff, ChartColumn, ChevronRight, ClipboardCheck, Clock, CreditCard, DoorOpen, GraduationCap, Grid2X2, History, House, List, ListChecks, Package, Receipt, Repeat, Settings, SlidersHorizontal, Ticket, TrendingUp, UserMinus, UserRound, UsersRound, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -15,7 +20,7 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHead
 import { HomePage } from "../features/member/pages/HomePage";
 import { AccountPage } from "../features/member/pages/AccountPage";
 import { LessonDetailPage, LessonsPage } from "../features/member/pages/LessonsPage";
-import { dashboardPreview } from "@/features/dashboard/preview";
+import { dashboardPreview, dashboardPreviewTime } from "@/features/dashboard/preview";
 import { roleLabels, type DashboardUser } from "@/features/dashboard/model";
 import { PassDetailPage, PassesPage } from "../features/member/pages/PassesPage";
 import { reservationDialog, ReservationsPage } from "../features/member/pages/ReservationsPage";
@@ -42,8 +47,8 @@ const menuIcons: Record<MenuScreen, LucideIcon> = {
   'admin-passes': Ticket,
   'admin-reports': ChartColumn,
   'today-lessons': CalendarCheck,
-  'attendance-overview': ClipboardCheck,
-  'absence-requests': CalendarOff,
+  attendees: ClipboardCheck,
+  absences: CalendarOff,
   'activity-logs': History,
   'admin-settings': Settings,
 };
@@ -70,7 +75,8 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   const [homeView, setHomeView] = useState(initialHomeView);
   const [screen, setScreen] = useState<Screen>("home");
   const [selectedId, setSelectedId] = useState(101);
-  const data = initialHomeView === "empty" ? { lessons: [], reservations: [], absences: [], notifications: [] } : dashboardPreview;
+  const [data, setData] = useState(() => initialHomeView === "empty" ? { lessons: [], reservations: [], absences: [], notifications: [] } : user.role === "INSTRUCTOR" ? withInstructorPreview(dashboardPreview) : dashboardPreview);
+  const [instructorState, setInstructorState] = useState(initialInstructorState);
   const admin = useAdminDashboard(user.role === "ADMIN");
   const viewData = user.role === "ADMIN" && homeView !== "empty" ? admin.data : data;
   const unread = api.useGetMyUnreadNotificationCount();
@@ -78,11 +84,24 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   const navigation = getNavigation(user.role, currentUser.permissions);
   const [dialog, setDialog] = useState<DialogState>(null);
 
+  const onRecordAttendance: RecordAttendance = (id, status, reason) => {
+    const error = attendanceChangeError(data, user, id, status, reason, dashboardPreviewTime);
+    if (error) { toast.error(error); return; }
+    const reservation = data.reservations.find(item => item.id === id)!;
+    setData(previous => ({ ...previous, reservations: previous.reservations.map(item => item.id === id ? { ...item, status } : item) }));
+    setInstructorState(previous => ({ ...previous, changes: [{ id: (previous.changes[0]?.id ?? 0) + 1, reservationId: id, before: reservation.status, after: status, reason: reason.trim(), at: dashboardPreviewTime }, ...previous.changes] }));
+    toast.success(reservation.status === "RESERVED" ? "출결을 기록했습니다." : "출결을 수정했습니다.");
+  };
+
   const go = (next: Screen, id?: number) => {
     if (user.role === "ADMIN") {
       if (next === "today-lessons") next = "admin-lessons";
       if (next === "attendance-overview") next = "admin-lessons";
       if (next === "absence-requests") next = "admin-absences";
+    }
+    if (user.role === "INSTRUCTOR") {
+      if (next === "attendance-overview" || next === "attendance-corrections") next = "attendance";
+      if (next === "absence-requests") next = "absences";
     }
     if (!canAccessScreen(next, user.role, currentUser.permissions)) return;
     if (user.role === "MEMBER" && next === "reservation-detail" && id !== undefined) { setDialog(reservationDialog(id)); return; }
@@ -106,7 +125,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
           onLogout={onLogout}
         />
         <div className="content">
-          {screen === "notifications" ? <NotificationsPage role={user.role} onNavigate={go} /> : screen === "timetable" ? <TimetablePage user={user} onNavigate={go} canReserve={can("reservation.create")} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} /> : <MemberScreen
+          {user.role === "INSTRUCTOR" && isInstructorScreen(screen) ? <InstructorPage screen={screen} user={user} data={data} setData={setData} state={instructorState} setState={setInstructorState} selectedId={selectedId} onNavigate={go} onRecord={onRecordAttendance} /> : screen === "notifications" ? <NotificationsPage role={user.role} onNavigate={go} /> : screen === "timetable" ? <TimetablePage user={user} onNavigate={go} canReserve={can("reservation.create")} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onRecordAttendance={onRecordAttendance} /> : <MemberScreen
             screen={screen}
             selectedId={selectedId}
             onNavigate={go}

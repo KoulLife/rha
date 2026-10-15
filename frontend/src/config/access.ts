@@ -36,8 +36,8 @@ export const menuItems = [
   { screen: "admin-passes", label: "회원 이용권", roles: ["ADMIN"], permission: "pass.read" },
   { screen: "admin-reports", label: "통계·정산", roles: ["ADMIN"], permission: "profile.read" },
   { screen: "today-lessons", label: "오늘 전체 수업", roleLabels: { INSTRUCTOR: "오늘 담당 수업" }, roles: ["INSTRUCTOR"], permission: "lesson.read" },
-  { screen: "attendance-overview", label: "예약·출결 현황", roles: ["INSTRUCTOR"], permission: "reservation.read" },
-  { screen: "absence-requests", label: "부재 승인 대기", roleLabels: { INSTRUCTOR: "내 부재 승인 대기" }, roles: ["INSTRUCTOR"], permission: "profile.read" },
+  { screen: "attendees", label: "수업별 예약자", roles: ["INSTRUCTOR"], permission: "reservation.read" },
+  { screen: "absences", label: "부재 신청", roles: ["INSTRUCTOR"], permission: "profile.read" },
   { screen: "activity-logs", label: "활동 이력", roles: ["ADMIN"], permission: "profile.read" },
   { screen: "admin-settings", label: "스튜디오 설정", roles: ["ADMIN"], permission: "profile.read" },
 ] as const satisfies readonly MenuDefinition[];
@@ -47,6 +47,10 @@ export type NavigationItem = { screen: MenuScreen; label: string; children?: rea
 
 // 상세 화면은 상위 메뉴의 접근 조건과 선택 표시를 공유한다.
 export const detailScreens = {
+  "attendance": { parent: "today-lessons", label: "출결" },
+  "attendance-overview": { parent: "today-lessons", label: "출결" },
+  "attendance-corrections": { parent: "today-lessons", label: "출결" },
+  "absence-requests": { parent: "absences", label: "부재 신청" },
   "admin-member-detail": { parent: "admin-members", label: "회원 상세" },
   "admin-instructor-detail": { parent: "admin-instructors", label: "강사 상세" },
   "admin-absences": { parent: "admin-instructors", label: "부재 관리" },
@@ -134,8 +138,8 @@ export function canAccessScreen(screen: Screen, role: UserRole, permissions: Rea
 export function getScreenLabel(screen: Screen, role: UserRole): string {
   if (screen === "notifications") return "알림";
   if (screen === "attendees") return "수업별 예약자";
-  if (screen === "attendance") return "출결 처리";
-  if (screen === "attendance-corrections") return "출결 정정";
+  if (screen === "attendance") return "출결";
+  if (screen === "attendance-corrections") return "출결";
   if (screen === "absences") return "부재 신청";
   if (isDetailScreen(screen)) return detailScreens[screen].label;
   const item: MenuDefinition = menuItems.find(item => item.screen === screen)!;
