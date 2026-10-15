@@ -9,6 +9,10 @@ export default defineConfig({
       httpClient: 'fetch',
       clean: true,
       override: {
+        operations: Object.fromEntries([
+          'getLessons', 'getReservations', 'getAbsences', 'getMembers', 'getInstructors',
+          'getPassProducts', 'getLessonTypes', 'getRooms', 'getPayments',
+        ].map(operation => [operation, { query: { useInfinite: true, useInfiniteQueryParam: 'page' } }])),
         mutator: { path: './src/api/client.ts', name: 'apiRequest' },
         fetch: { includeHttpResponseReturnType: false },
       },

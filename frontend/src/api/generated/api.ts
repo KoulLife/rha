@@ -13,18 +13,23 @@
  * OpenAPI spec version: 1.0.0
  */
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
+  DefinedUseInfiniteQueryResult,
   DefinedUseQueryResult,
+  InfiniteData,
   MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseInfiniteQueryOptions,
+  UseInfiniteQueryResult,
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
@@ -624,6 +629,13 @@ export interface Notification {
      * - ABSENCE_REQUESTED: 강사가 부재를 신청함 (관리자에게 발송)
      * - ABSENCE_APPROVED: 부재가 승인됨 (신청한 강사에게 발송)
      * - ABSENCE_REJECTED: 부재가 반려됨 (신청한 강사에게 발송)
+     *
+     * 알림은 원인이 되는 처리와 같은 트랜잭션으로 생성된다. 수신 대상은 다음과 같다.
+     * - LESSON_CANCELED: 취소된 수업의 예약(`RESERVED`)을 가진 회원. `relatedType`은 LESSON이다.
+     * - RESERVATION_CANCELED: 관리자가 취소한 예약의 회원. `relatedType`은 RESERVATION이다.
+     * - ABSENCE_REQUESTED: 활동 중인(`ACTIVE`) 모든 관리자. `relatedType`은 ABSENCE이다.
+     * - ABSENCE_APPROVED, ABSENCE_REJECTED: 부재를 신청한 강사. `relatedType`은 ABSENCE이다.
+     * 날짜와 시각은 센터 현지 시각(Asia/Seoul)으로 표기한다.
      */
   type: string;
   title: string;
@@ -928,6 +940,7 @@ export interface PassProductUpdateResponse {
  * - PAUSED: 일시정지 중 (정지 기간에 속한 날, 예약 불가)
  * - EXPIRED: 만료됨 (만료일이 지나면 서버가 자동으로 전환)
  * 횟수가 모두 소진되어도 상태는 바뀌지 않는다 (잔여 횟수가 0인 것으로 판단).
+ * 날짜에 따른 전환은 서버가 1분 이내에 반영하며, 이용권을 조회하거나 수정할 때도 최신 상태로 반영된다.
  * 정지 시작과 종료, 만료는 서버가 날짜에 맞춰 자동으로 전환한다.
  */
 export type PassStatus = typeof PassStatus[keyof typeof PassStatus];
@@ -3129,7 +3142,11 @@ export const getGetMembersUrl = (params?: GetMembersParams,) => {
 
 /**
  * 관리자 또는 `MEMBER_READ` 권한을 가진 강사만 가능하다 (없으면 403, PERMISSION_DENIED). 최신 가입순으로 정렬된다.
- * - `keyword`는 이름 또는 이메일에 부분 일치한다.
+ * - 권한은 호출 시점의 DB 기준으로 확인한다. `ACTIVE` 상태의 관리자, 또는 `MEMBER_READ`를 가진 `ACTIVE` 상태의 강사만 가능하며, 일반 회원은 항상 403이다 (본인 정보는 `getMyProfile`을 사용한다).
+ * - `keyword`는 이름 또는 이메일에 부분 일치한다. 앞뒤 공백은 무시하고 대소문자를 구분하지 않으며, 비어 있으면 필터를 적용하지 않는다.
+ * - `status`를 지정하지 않으면 모든 상태(탈퇴, 비활성, 퇴사 포함)의 회원을 반환한다.
+ * - 가입 시각이 같으면 `id`가 큰 회원이 먼저 나온다.
+ * - `page`가 1 미만이거나 `size`가 1~100 범위 밖이거나 `role`, `status` 값이 올바르지 않으면 400 (INVALID_INPUT). 마지막 페이지를 넘어서면 빈 `content`를 반환한다.
  * @summary 회원 목록 조회 (관리자 또는 MEMBER_READ)
  */
 export const getMembers = async (params?: GetMembersParams, options?: Parameters<typeof apiRequest>[1]): Promise<MemberPageResponse> => {
@@ -3147,11 +3164,84 @@ export const getMembers = async (params?: GetMembersParams, options?: Parameters
 
 
 
+export const getGetMembersInfiniteQueryKey = (params?: GetMembersParams,) => {
+    return [
+    'infinite', `/members`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetMembersQueryKey = (params?: GetMembersParams,) => {
     return [
     `/members`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetMembersInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getMembers>>, GetMembersParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(params?: GetMembersParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData, QueryKey, GetMembersParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMembersInfiniteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMembers>>, QueryKey, GetMembersParams['page']> = ({ signal, pageParam }) => getMembers({...params, 'page': pageParam ?? params?.['page']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData, QueryKey, GetMembersParams['page']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMembersInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getMembers>>>
+export type GetMembersInfiniteQueryError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse
+
+
+export function useGetMembersInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getMembers>>, GetMembersParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params: undefined |  GetMembersParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData, QueryKey, GetMembersParams['page']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMembers>>,
+          TError,
+          Awaited<ReturnType<typeof getMembers>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMembersInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getMembers>>, GetMembersParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetMembersParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData, QueryKey, GetMembersParams['page']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMembers>>,
+          TError,
+          Awaited<ReturnType<typeof getMembers>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMembersInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getMembers>>, GetMembersParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetMembersParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData, QueryKey, GetMembersParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 회원 목록 조회 (관리자 또는 MEMBER_READ)
+ */
+
+export function useGetMembersInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getMembers>>, GetMembersParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetMembersParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData, QueryKey, GetMembersParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMembersInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetMembersQueryOptions = <TData = Awaited<ReturnType<typeof getMembers>>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(params?: GetMembersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>>, request?: SecondParameter<typeof apiRequest>}
@@ -3235,7 +3325,12 @@ export const getCreateMemberUrl = () => {
  * - 비밀번호 없이 등록하며, 입력한 이메일로 비밀번호 설정 링크(초대 메일)가 발송된다.
  * - 설정 링크는 `resetPassword`(POST /auth/password-resets)로 처리한다. 링크가 만료되면 `requestPasswordReset`으로 다시 받을 수 있다.
  * - 비밀번호를 설정하기 전까지는 로그인할 수 없다.
- * - 이미 가입된 이메일이면 409 (EMAIL_ALREADY_EXISTS)
+ * - 설정 링크의 토큰은 `requestPasswordReset`이 발급하는 것과 같은 형식(`prt_`)이며 유효 시간은 30분이다.
+ * - 관리자(`ADMIN`)가 아닌 호출자는 403 (PERMISSION_DENIED)
+ * - 이미 가입된 이메일이면 409 (EMAIL_ALREADY_EXISTS). 탈퇴, 비활성화, 퇴사한 계정의 이메일도 포함한다.
+ * - 계정 생성과 초대 메일 발송은 하나의 작업으로 처리한다. 메일 발송에 실패하면 계정도 생성되지 않는다.
+ * - 성공하면 201과 함께 `ACTIVE` 상태의 회원 정보를 반환한다. 권한은 비어 있고 비밀번호는 없다.
+ * - 요청 형식이 올바르지 않으면 400 (INVALID_INPUT)
  * @summary 강사/관리자 등록 (관리자)
  */
 export const createMember = async (memberCreateRequest: MemberCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<Member> => {
@@ -3325,6 +3420,9 @@ export const getGetMemberUrl = (memberId: number,) => {
 
 /**
  * 관리자 또는 `MEMBER_READ` 권한을 가진 강사만 가능하다 (없으면 403, PERMISSION_DENIED).
+ * - 권한은 호출 시점의 DB 기준으로 확인한다. `ACTIVE` 상태의 관리자, 또는 `MEMBER_READ`를 가진 `ACTIVE` 상태의 강사만 가능하며, 일반 회원은 자기 `id`를 조회해도 403이다 (본인 정보는 `getMyProfile`을 사용한다).
+ * - 탈퇴, 비활성, 퇴사한 회원도 조회할 수 있다.
+ * - 없는 회원이면 404
  * @summary 회원 상세 조회 (관리자 또는 MEMBER_READ)
  */
 export const getMember = async (memberId: number, options?: Parameters<typeof apiRequest>[1]): Promise<Member> => {
@@ -3432,6 +3530,11 @@ export const getUpdateMemberUrl = (memberId: number,) => {
  * - 역할이 바뀌면 해당 회원의 Refresh Token은 폐기된다.
  * - 강사(`INSTRUCTOR`)의 역할을 다른 역할로 바꾸려는데 시작 전이고 취소되지 않은 담당 수업이 있으면 409 (INSTRUCTOR_HAS_UPCOMING_LESSONS). 담당 강사를 바꾸거나 수업을 취소한 뒤 다시 시도한다.
  * - 강사에게 부여된 권한은 역할이 바뀌면 모두 회수된다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없는 회원이면 404 → 본인의 역할을 다른 역할로 바꾸려 하면 403 (CANNOT_CHANGE_OWN_ROLE) → 담당 수업이 있으면 409 (INSTRUCTOR_HAS_UPCOMING_LESSONS).
+ * - 본인 `id`에 `role`을 현재와 같은 값으로 보내면 무시하고 나머지 필드는 정상 수정한다. 본인의 역할을 *다른* 역할로 바꾸려 할 때만 403이다.
+ * - 탈퇴, 비활성, 퇴사한 회원의 정보도 수정할 수 있다.
+ * - 역할이 실제로 바뀌는 경우에만 권한 회수와 Refresh Token 폐기가 일어나며, 정보 수정과 같은 트랜잭션으로 처리한다.
  * @summary 회원 정보 수정 (관리자)
  */
 export const updateMember = async (memberId: number,
@@ -3528,6 +3631,11 @@ export const getChangeMemberStatusUrl = (memberId: number,) => {
  * - 탈퇴(`WITHDRAWN`)하거나 퇴사(`RESIGNED`)한 계정은 `ACTIVE`로만 되돌릴 수 있다. 이용권, 수업, 이력 등 데이터는 삭제되지 않고 보존되어 있어 그대로 이어진다. `INACTIVE`로 바꾸려 하면 409 (MEMBER_WITHDRAWN, 퇴사한 강사는 MEMBER_RESIGNED).
  * - 퇴사한 강사를 복구하면 퇴사일이 지워진다. 퇴사 처리 때 회수된 권한은 복구되지 않으므로 필요하면 다시 부여한다. 수업 가능시간은 그대로 남아 있다. 퇴사는 `completeResignation`으로 처리한다.
  * - 비활성화하려는 회원에게 시작 전 예약(`RESERVED`)이 있으면 409 (MEMBER_HAS_UPCOMING_RESERVATIONS). 예약을 먼저 취소해야 한다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없는 회원이면 404 → 본인 계정이면 403 (CANNOT_CHANGE_OWN_STATUS) → 상태 변경 불가면 409.
+ * - 이미 요청한 상태와 같으면 변경 없이 200으로 현재 회원 정보를 반환한다. Refresh Token 폐기 등 부작용도 없다.
+ * - 탈퇴나 퇴사한 계정을 `ACTIVE`로 복구하면 탈퇴일과 퇴사일(`resignationDate`)이 지워진다.
+ * - 비활성화와 Refresh Token 폐기는 같은 트랜잭션으로 처리한다.
  * @summary 회원 상태 변경 (관리자)
  */
 export const changeMemberStatus = async (memberId: number,
@@ -3619,6 +3727,10 @@ export const getGetPermissionsUrl = () => {
 /**
  * 관리자 전용. 현재 부여 가능한 모든 권한을 반환한다. 활성 상태인 수업 유형별 권한도 포함된다.
  * 관리자 화면에서 체크박스 목록을 한 번에 그리기 위해 페이징을 사용하지 않는다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 403 (PERMISSION_DENIED)이다.
+ * - 권한 코드 오름차순으로 정렬한다.
+ * - 활성 수업 유형이 없으면 `MEMBER_READ`만 반환한다. `MEMBER_READ`의 `name`은 "회원 조회"이다.
+ * - 활성 수업 유형마다 `LESSON_CREATE:{code}`(`name`은 "{유형명} 수업 개설")와 `LESSON_UPDATE:{code}`(`name`은 "{유형명} 수업 수정")가 포함된다. 유형명을 바꾸면 이름도 따라 바뀐다.
  * @summary 부여 가능한 권한 목록 조회 (관리자)
  */
 export const getPermissions = async ( options?: Parameters<typeof apiRequest>[1]): Promise<PermissionListResponse> => {
@@ -3721,6 +3833,10 @@ export const getGetMemberPermissionsUrl = (memberId: number,) => {
 
 /**
  * 관리자 전용. 명시적으로 부여된 권한만 반환한다. 관리자 계정은 암묵적으로 모든 권한을 가지므로 빈 목록이 반환된다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 403 (PERMISSION_DENIED)이다.
+ * - 없는 회원이면 404이다. 강사가 아닌 회원(일반 회원, 관리자)은 빈 목록을 반환한다.
+ * - 회원의 상태(비활성, 탈퇴, 퇴사)와 관계없이 조회할 수 있다.
+ * - 권한 코드 오름차순으로 정렬한다.
  * @summary 회원의 보유 권한 조회 (관리자)
  */
 export const getMemberPermissions = async (memberId: number, options?: Parameters<typeof apiRequest>[1]): Promise<MemberPermissionsResponse> => {
@@ -3826,6 +3942,11 @@ export const getUpdateMemberPermissionsUrl = (memberId: number,) => {
  * - 대상이 강사(`INSTRUCTOR`)가 아니면 400 (PERMISSION_TARGET_INVALID)
  * - 목록에 없는 권한 코드이거나 중복이면 400 (INVALID_PERMISSION)
  * - 변경은 즉시 반영된다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식이 올바르지 않으면 400 (INVALID_INPUT) → 없는 회원이면 404 → 대상이 강사가 아니면 400 (PERMISSION_TARGET_INVALID) → 권한 코드가 목록에 없거나 중복이면 400 (INVALID_PERMISSION).
+ * - 대상 강사의 상태(비활성, 탈퇴, 퇴사)와 관계없이 설정할 수 있다.
+ * - 형식이 올바르지 않은 코드(`PermissionCode` 패턴 불일치, null 등)는 400 (INVALID_INPUT)이고, 형식은 맞지만 `getPermissions` 목록에 없는 코드는 400 (INVALID_PERMISSION)이다.
+ * - 교체 후에도 유지되는 권한은 부여자와 부여 시각을 그대로 두고, 새로 추가되는 권한만 호출자를 부여자로 기록한다. 응답은 권한 코드 오름차순이다.
  * @summary 회원 권한 설정 (관리자)
  */
 export const updateMemberPermissions = async (memberId: number,
@@ -3922,7 +4043,8 @@ export const getGetLessonTypesUrl = (params?: GetLessonTypesParams,) => {
 }
 
 /**
- * 등록 순으로 정렬된다. `active`를 지정하지 않으면 활성/비활성 유형을 모두 반환한다.
+ * 등록 순(`id` 오름차순)으로 정렬된다. `active`를 지정하지 않으면 활성/비활성 유형을 모두 반환한다.
+ * - 로그인한 모든 역할이 조회할 수 있다.
  * @summary 수업 유형 목록 조회
  */
 export const getLessonTypes = async (params?: GetLessonTypesParams, options?: Parameters<typeof apiRequest>[1]): Promise<LessonTypePageResponse> => {
@@ -3940,11 +4062,84 @@ export const getLessonTypes = async (params?: GetLessonTypesParams, options?: Pa
 
 
 
+export const getGetLessonTypesInfiniteQueryKey = (params?: GetLessonTypesParams,) => {
+    return [
+    'infinite', `/lesson-types`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetLessonTypesQueryKey = (params?: GetLessonTypesParams,) => {
     return [
     `/lesson-types`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetLessonTypesInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getLessonTypes>>, GetLessonTypesParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(params?: GetLessonTypesParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonTypes>>, TError, TData, QueryKey, GetLessonTypesParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLessonTypesInfiniteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLessonTypes>>, QueryKey, GetLessonTypesParams['page']> = ({ signal, pageParam }) => getLessonTypes({...params, 'page': pageParam ?? params?.['page']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonTypes>>, TError, TData, QueryKey, GetLessonTypesParams['page']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetLessonTypesInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getLessonTypes>>>
+export type GetLessonTypesInfiniteQueryError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse
+
+
+export function useGetLessonTypesInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessonTypes>>, GetLessonTypesParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params: undefined |  GetLessonTypesParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonTypes>>, TError, TData, QueryKey, GetLessonTypesParams['page']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLessonTypes>>,
+          TError,
+          Awaited<ReturnType<typeof getLessonTypes>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLessonTypesInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessonTypes>>, GetLessonTypesParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetLessonTypesParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonTypes>>, TError, TData, QueryKey, GetLessonTypesParams['page']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLessonTypes>>,
+          TError,
+          Awaited<ReturnType<typeof getLessonTypes>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLessonTypesInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessonTypes>>, GetLessonTypesParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetLessonTypesParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonTypes>>, TError, TData, QueryKey, GetLessonTypesParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 수업 유형 목록 조회
+ */
+
+export function useGetLessonTypesInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessonTypes>>, GetLessonTypesParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetLessonTypesParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonTypes>>, TError, TData, QueryKey, GetLessonTypesParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetLessonTypesInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetLessonTypesQueryOptions = <TData = Awaited<ReturnType<typeof getLessonTypes>>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(params?: GetLessonTypesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLessonTypes>>, TError, TData>>, request?: SecondParameter<typeof apiRequest>}
@@ -4026,7 +4221,10 @@ export const getCreateLessonTypeUrl = () => {
 /**
  * 관리자 전용. 등록하면 해당 유형의 권한(`LESSON_CREATE:{code}`, `LESSON_UPDATE:{code}`)이 권한 목록에 추가된다.
  * 수업의 `capacity`는 개설 시점의 유형 정원이 복사된다.
- * - 이미 같은 `code`가 있으면 409 (LESSON_TYPE_CODE_DUPLICATED)
+ * - 이미 같은 `code`가 있으면 409 (LESSON_TYPE_CODE_DUPLICATED). 비활성 유형의 `code`도 포함한다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 코드 중복이면 409 (LESSON_TYPE_CODE_DUPLICATED).
+ * - 새로 등록한 유형은 활성(`active: true`)이다.
  * @summary 수업 유형 등록 (관리자)
  */
 export const createLessonType = async (lessonTypeCreateRequest: LessonTypeCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<LessonType> => {
@@ -4119,6 +4317,9 @@ export const getUpdateLessonTypeUrl = (lessonTypeId: number,) => {
  * - `code`는 변경할 수 없다 (권한 코드에 쓰이기 때문).
  * - 정원(`capacity`)을 바꿔도 이미 개설된 수업의 정원은 바뀌지 않는다.
  * - `active`를 false로 하면 새 수업을 개설할 수 없고, 권한 목록에서도 제외된다. 기존 수업과 부여된 권한은 유지된다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없는 유형이면 404.
+ * - 비활성 유형도 수정할 수 있으며, 다시 활성화하면 권한 목록에 되돌아온다.
  * @summary 수업 유형 수정 (관리자)
  */
 export const updateLessonType = async (lessonTypeId: number,
@@ -4221,6 +4422,9 @@ export const getGetLessonsUrl = (params?: GetLessonsParams,) => {
  * - 관리자: 모든 수업
  * - 강사: 공개된(`PUBLISHED`) 수업 + 본인이 담당하는 수업 + `LESSON_CREATE`/`LESSON_UPDATE` 권한이 있는 유형의 수업
  * - 회원: 공개된(`PUBLISHED`) 수업만 (`status`로 다른 상태를 지정해도 결과에 나오지 않는다)
+ *
+ * 시작 시각이 같으면 id 오름차순이다. 강사의 노출 범위는 호출 시점에 부여된 권한 기준이며, 취소된 수업도 본인이 담당했거나 권한이 있는 유형이면 보인다.
+ * `to`가 `from`보다 늦지 않으면 400 (INVALID_INPUT)이다.
  * @summary 수업 목록 조회
  */
 export const getLessons = async (params?: GetLessonsParams, options?: Parameters<typeof apiRequest>[1]): Promise<LessonPageResponse> => {
@@ -4238,11 +4442,84 @@ export const getLessons = async (params?: GetLessonsParams, options?: Parameters
 
 
 
+export const getGetLessonsInfiniteQueryKey = (params?: GetLessonsParams,) => {
+    return [
+    'infinite', `/lessons`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetLessonsQueryKey = (params?: GetLessonsParams,) => {
     return [
     `/lessons`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetLessonsInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getLessons>>, GetLessonsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(params?: GetLessonsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessons>>, TError, TData, QueryKey, GetLessonsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLessonsInfiniteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLessons>>, QueryKey, GetLessonsParams['page']> = ({ signal, pageParam }) => getLessons({...params, 'page': pageParam ?? params?.['page']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessons>>, TError, TData, QueryKey, GetLessonsParams['page']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetLessonsInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getLessons>>>
+export type GetLessonsInfiniteQueryError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse
+
+
+export function useGetLessonsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessons>>, GetLessonsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params: undefined |  GetLessonsParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessons>>, TError, TData, QueryKey, GetLessonsParams['page']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLessons>>,
+          TError,
+          Awaited<ReturnType<typeof getLessons>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLessonsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessons>>, GetLessonsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetLessonsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessons>>, TError, TData, QueryKey, GetLessonsParams['page']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLessons>>,
+          TError,
+          Awaited<ReturnType<typeof getLessons>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLessonsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessons>>, GetLessonsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetLessonsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessons>>, TError, TData, QueryKey, GetLessonsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 수업 목록 조회
+ */
+
+export function useGetLessonsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessons>>, GetLessonsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetLessonsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessons>>, TError, TData, QueryKey, GetLessonsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetLessonsInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetLessonsQueryOptions = <TData = Awaited<ReturnType<typeof getLessons>>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(params?: GetLessonsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLessons>>, TError, TData>>, request?: SecondParameter<typeof apiRequest>}
@@ -4335,6 +4612,9 @@ export const getCreateLessonUrl = () => {
  * - 같은 시간에 담당 강사의 다른 수업이 있으면 409 (INSTRUCTOR_TIME_CONFLICT). 수업 유형이 개인인지 그룹인지와 무관하게 검사한다.
  * - 같은 시간에 같은 룸에 다른 수업이 있으면 409 (ROOM_TIME_CONFLICT)
  * - 취소된(`CANCELED`) 수업은 시간 충돌로 보지 않는다.
+ * - 영업시간은 센터 현지 시각(Asia/Seoul) 기준이다. 시작과 종료가 현지 시각으로 같은 날이어야 하고, 그 요일의 오픈 시각 이상, 마감 시각 이하여야 한다. 자정을 넘기는 수업은 영업시간 밖이다.
+ * - 확인 순서: 개설 권한이 없으면 403 (PERMISSION_DENIED) → 요청 값 오류와 INVALID_LESSON_TIME 400 → 수업 유형 또는 룸이 없으면 404 → LESSON_TYPE_INACTIVE, INVALID_INSTRUCTOR 400 → 그 외 409. 409 안에서는 OUTSIDE_BUSINESS_HOURS → INSTRUCTOR_UNAVAILABLE → INSTRUCTOR_ABSENT → INSTRUCTOR_RESIGNING → INSTRUCTOR_TIME_CONFLICT → ROOM_TIME_CONFLICT 순이다.
+ * - 권한이 없는 강사에게는 수업 유형의 존재 여부와 관계없이 403이다.
  * @summary 수업 개설 (LESSON_CREATE)
  */
 export const createLesson = async (lessonCreateRequest: LessonCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<Lesson> => {
@@ -4534,6 +4814,9 @@ export const getUpdateLessonUrl = (lessonId: number,) => {
  * - 공개 예약(`SCHEDULED`) 중인 수업의 시작 시각(`startAt`)을 `publishAt`보다 앞으로 옮기면 400 (INVALID_PUBLISH_AT). 먼저 공개 예약을 변경하거나 취소(`UNPUBLISHED`)해야 한다.
  * - 예약(`RESERVED`)이 있는 수업은 시작/종료 시각을 변경할 수 없다 (409, LESSON_HAS_RESERVATIONS). 시간을 바꾸려면 수업을 취소하고 다시 개설한다.
  * - 예약이 있어도 제목, 강사, 룸은 변경할 수 있다.
+ * - 확인 순서: 수정 권한이 없으면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (필드가 하나도 없는 경우 포함) → 수업이나 룸이 없으면 404 → 수업 상태 409 (LESSON_CANCELED → LESSON_ALREADY_STARTED) → INVALID_LESSON_TIME, INVALID_PUBLISH_AT, INVALID_INSTRUCTOR 400 → 그 외 409 (LESSON_HAS_RESERVATIONS → OUTSIDE_BUSINESS_HOURS → INSTRUCTOR_UNAVAILABLE → INSTRUCTOR_ABSENT → INSTRUCTOR_RESIGNING → INSTRUCTOR_TIME_CONFLICT → ROOM_TIME_CONFLICT).
+ * - 시작 시각만 바꾸면 종료 시각은 기존 값을, 종료 시각만 바꾸면 시작 시각은 기존 값을 기준으로 검증한다.
+ * - 시간, 강사, 룸 중 실제로 바뀐 값이 없으면 시간 검증과 충돌 검사는 다시 하지 않는다.
  * @summary 수업 수정 (LESSON_UPDATE)
  */
 export const updateLesson = async (lessonId: number,
@@ -4636,6 +4919,10 @@ export const getChangeLessonStatusUrl = (lessonId: number,) => {
  * - 이미 시작한 수업은 공개할 수 없다 (409, LESSON_ALREADY_STARTED).
  * - 취소된 수업은 상태를 바꿀 수 없다 (409, LESSON_CANCELED). 수업 취소는 `cancelLesson`을 사용한다.
  * - 예약이 있는 수업을 비공개(`UNPUBLISHED`)로 바꿔도 기존 예약은 유지되고, 신규 예약만 막힌다.
+ * - `CREATED`나 `CANCELED`를 보내면 400 (INVALID_INPUT)이다.
+ * - 확인 순서: 권한이 없으면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT, `SCHEDULED`인데 `publishAt`이 없거나 `SCHEDULED`가 아닌데 있는 경우는 INVALID_PUBLISH_AT) → 없는 수업이면 404 → LESSON_CANCELED → LESSON_ALREADY_STARTED → INVALID_STATUS_TRANSITION 409 → `publishAt`이 과거이거나 시작 시각 이후면 400 (INVALID_PUBLISH_AT).
+ * - 공개 예약 시각이 되면 서버가 1분 이내에 `PUBLISHED`로 바꾸고 `publishAt`은 비운다.
+ * - 이미 요청한 상태와 같으면 `SCHEDULED`를 제외하고 409 (INVALID_STATUS_TRANSITION)이다.
  * @summary 수업 공개 상태 변경 (LESSON_UPDATE)
  */
 export const changeLessonStatus = async (lessonId: number,
@@ -4733,7 +5020,10 @@ export const getCancelLessonUrl = (lessonId: number,) => {
  * - 이미 취소된 수업이면 409 (LESSON_CANCELED).
  * - 수업의 모든 예약(`RESERVED`)이 함께 취소된다 (취소 시간 정책과 무관). 예약의 `canceledBy`는 `LESSON_CANCELED`이다.
  * - 취소된 예약에 사용된 이용권의 잔여 횟수가 1회씩 복구된다 (만료된 이용권도 횟수만 증가하고 기간은 바뀌지 않는다).
+ * - 자동 취소된 예약의 취소 사유(`cancelReason`)는 수업의 취소 사유와 같다.
  * - 취소된 예약의 회원에게 인앱 알림이 발송된다.
+ * - 확인 순서: 권한이 없으면 403 (PERMISSION_DENIED) → 사유가 200자를 넘으면 400 (INVALID_INPUT) → 없는 수업이면 404 → LESSON_CANCELED → LESSON_ALREADY_STARTED 409.
+ * - 요청 본문은 생략할 수 있다.
  * @summary 수업 취소 (LESSON_UPDATE)
  */
 export const cancelLesson = async (lessonId: number,
@@ -4830,7 +5120,8 @@ export const getGetPassProductsUrl = (params?: GetPassProductsParams,) => {
 }
 
 /**
- * 관리자 전용. 등록 최신순으로 정렬된다. `keyword`는 상품 이름에 부분 일치한다.
+ * 관리자 전용. 등록 최신순으로 정렬되며, 등록 시각이 같으면 id 내림차순이다.
+ * `keyword`는 상품 이름에 대소문자를 구분하지 않고 부분 일치한다. 공백뿐이면 필터를 적용하지 않는다.
  * @summary 이용권 상품 목록 조회 (관리자)
  */
 export const getPassProducts = async (params?: GetPassProductsParams, options?: Parameters<typeof apiRequest>[1]): Promise<PassProductPageResponse> => {
@@ -4848,11 +5139,84 @@ export const getPassProducts = async (params?: GetPassProductsParams, options?: 
 
 
 
+export const getGetPassProductsInfiniteQueryKey = (params?: GetPassProductsParams,) => {
+    return [
+    'infinite', `/pass-products`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetPassProductsQueryKey = (params?: GetPassProductsParams,) => {
     return [
     `/pass-products`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetPassProductsInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getPassProducts>>, GetPassProductsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(params?: GetPassProductsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPassProducts>>, TError, TData, QueryKey, GetPassProductsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPassProductsInfiniteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPassProducts>>, QueryKey, GetPassProductsParams['page']> = ({ signal, pageParam }) => getPassProducts({...params, 'page': pageParam ?? params?.['page']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPassProducts>>, TError, TData, QueryKey, GetPassProductsParams['page']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPassProductsInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getPassProducts>>>
+export type GetPassProductsInfiniteQueryError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse
+
+
+export function useGetPassProductsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getPassProducts>>, GetPassProductsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params: undefined |  GetPassProductsParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPassProducts>>, TError, TData, QueryKey, GetPassProductsParams['page']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPassProducts>>,
+          TError,
+          Awaited<ReturnType<typeof getPassProducts>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPassProductsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getPassProducts>>, GetPassProductsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetPassProductsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPassProducts>>, TError, TData, QueryKey, GetPassProductsParams['page']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPassProducts>>,
+          TError,
+          Awaited<ReturnType<typeof getPassProducts>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPassProductsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getPassProducts>>, GetPassProductsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetPassProductsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPassProducts>>, TError, TData, QueryKey, GetPassProductsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 이용권 상품 목록 조회 (관리자)
+ */
+
+export function useGetPassProductsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getPassProducts>>, GetPassProductsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetPassProductsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPassProducts>>, TError, TData, QueryKey, GetPassProductsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPassProductsInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetPassProductsQueryOptions = <TData = Awaited<ReturnType<typeof getPassProducts>>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(params?: GetPassProductsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPassProducts>>, TError, TData>>, request?: SecondParameter<typeof apiRequest>}
@@ -4933,6 +5297,7 @@ export const getCreatePassProductUrl = () => {
 
 /**
  * 관리자 전용. 담당 강사는 상품에 포함되지 않는다 (회원에게 발급할 때 지정한다).
+ * 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT).
  * @summary 이용권 상품 등록 (관리자)
  */
 export const createPassProduct = async (passProductCreateRequest: PassProductCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<PassProduct> => {
@@ -5127,10 +5492,12 @@ export const getUpdatePassProductUrl = (passProductId: number,) => {
  * - `name`, `description`: 발급된 이용권에도 즉시 반영된다 (표시용 정보).
  * - `price`: 이미 발급된 이용권에는 영향이 없다 (발급 시점의 가격이 기록으로 남는다).
  * - `totalCount`, `validityDays`: 기본적으로 앞으로 발급하는 이용권부터 적용된다.
- *   `applyToIssued`를 true로 보내면 이 상품으로 발급된 이용권 중 만료되지 않은(`UPCOMING`, `ACTIVE`) 모든 이용권에도 반영된다.
- *   - 총 횟수가 변경되면 변경된 만큼 이용권의 총 횟수와 잔여 횟수를 함께 증감한다. 잔여 횟수는 0 미만이 되지 않는다.
+ *   `applyToIssued`를 true로 보내면 이 상품으로 발급된 이용권 중 만료되지 않은(`UPCOMING`, `ACTIVE`, `PAUSED`) 모든 이용권에도 반영된다.
+ *   - 총 횟수가 변경되면 변경된 만큼 이용권의 총 횟수와 잔여 횟수를 함께 증감한다. 잔여 횟수는 0 미만이 되지 않고, 총 횟수는 1 미만이 되지 않으며, 잔여 횟수는 총 횟수를 넘지 않는다.
  *   - 유효 기간이 변경되면 만료일을 `시작일 + 유효 기간 - 1일`로 다시 계산한다. 개별 수정한 만료일은 덮어써진다. 새 만료일이 과거이면 해당 이용권은 `EXPIRED`가 된다.
  * - `applyToIssued`는 보유 회원 전체에 영향을 주므로, 클라이언트는 영향받는 이용권 수를 먼저 확인시킨 뒤 호출해야 한다. 영향 수는 `GET /passes?passProductId=...`의 `pageInfo.totalElements`로 알 수 있다.
+ * - `description`에 null을 보내면 설명이 지워진다. 전달하지 않은 필드는 바뀌지 않는다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않거나 필드가 하나도 없으면 400 (INVALID_INPUT) → 없는 상품이면 404.
  * @summary 이용권 상품 수정 (관리자)
  */
 export const updatePassProduct = async (passProductId: number,
@@ -5222,6 +5589,8 @@ export const getDeletePassProductUrl = (passProductId: number,) => {
 /**
  * 관리자 전용.
  * - 이 상품으로 발급된 이용권이 하나라도 있으면 삭제할 수 없다 (409, PASS_PRODUCT_IN_USE).
+ * - 삭제하면 행을 실제로 지운다. 발급 이용권이 없는 상품만 지울 수 있으므로 남는 이력이 없다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없는 상품이면 404 → 발급된 이용권이 있으면 409.
  * @summary 이용권 상품 삭제 (관리자)
  */
 export const deletePassProduct = async (passProductId: number, options?: Parameters<typeof apiRequest>[1]): Promise<void> => {
@@ -5305,7 +5674,8 @@ export const getGetPassesUrl = (params?: GetPassesParams,) => {
 /**
  * 관리자 전용. 정렬 기준은 `sortBy`, 방향은 `order`로 지정한다 (기본은 등록일 내림차순).
  * - `keyword`는 회원 이름에 부분 일치한다.
- * - 등록일 범위는 `createdFrom` 이상 `createdTo` 미만이다.
+ * - 등록일 범위는 `createdFrom` 이상 `createdTo` 미만이다. `createdTo`가 `createdFrom`보다 늦지 않으면 400 (INVALID_INPUT)이다.
+ * - 정렬 값이 같으면 id가 정렬 방향과 같은 순서로 정렬된다.
  * @summary 이용권 목록 조회 (관리자)
  */
 export const getPasses = async (params?: GetPassesParams, options?: Parameters<typeof apiRequest>[1]): Promise<PassPageResponse> => {
@@ -5416,6 +5786,7 @@ export const getCreatePassUrl = () => {
  * - 담당 강사가 활성 상태의 강사(`INSTRUCTOR`)가 아니면 400 (INVALID_INSTRUCTOR)
  * - 퇴사일이 등록된 강사는 담당 강사로 지정할 수 없다 (409, INSTRUCTOR_RESIGNING)
  * - 상품 또는 회원, 강사가 없으면 404
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 상품, 회원, 강사가 없으면 404 → INVALID_START_DATE, INVALID_MEMBER, INVALID_INSTRUCTOR 400 → INSTRUCTOR_RESIGNING 409.
  * @summary 이용권 발급 (관리자)
  */
 export const createPass = async (passCreateRequest: PassCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<Pass> => {
@@ -5611,7 +5982,9 @@ export const getUpdatePassUrl = (passId: number,) => {
  * - 만료일을 바꾸면 상태가 다시 계산된다. 미래 날짜로 수정하면 만료된 이용권도 `ACTIVE`로 돌아온다.
  * - 일시정지로 연장된 일수는 이미 만료일에 반영되어 있다. 만료일을 직접 수정하면 그 값이 그대로 적용된다.
  * - 담당 강사가 활성 상태의 강사(`INSTRUCTOR`)가 아니면 400 (INVALID_INSTRUCTOR)
- * - 담당 강사를 바꿀 때 퇴사일이 등록된 강사로는 지정할 수 없다 (409, INSTRUCTOR_RESIGNING)
+ * - 담당 강사를 바꿀 때 퇴사일이 등록된 강사로는 지정할 수 없다 (409, INSTRUCTOR_RESIGNING). 같은 강사로 보내면 바뀌지 않은 것으로 보고 검사하지 않는다.
+ * - 만료일은 시작일과 같아도 된다. 존재하지 않는 강사는 404이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 이용권이나 강사가 없으면 404 → INVALID_REMAINING_COUNT, INVALID_END_DATE, INVALID_INSTRUCTOR 400 → INSTRUCTOR_RESIGNING 409.
  * @summary 이용권 수정 (관리자)
  */
 export const updatePass = async (passId: number,
@@ -5709,7 +6082,7 @@ export const getGetPassPaymentsUrl = (passId: number,
 }
 
 /**
- * 관리자 전용. 결제일 내림차순(같으면 기록 최신순)으로 정렬된다.
+ * 관리자 전용. 결제일 내림차순(같으면 기록 최신순, 즉 id 내림차순)으로 정렬된다.
  * @summary 이용권 결제 기록 조회 (관리자)
  */
 export const getPassPayments = async (passId: number,
@@ -5822,7 +6195,8 @@ export const getRecordPassPaymentUrl = (passId: number,) => {
  * - 여러 번 나누어 기록할 수 있다. 기록된 결제 합계가 이용권 금액(`price`)을 넘으면 409 (PAYMENT_EXCEEDS_PRICE).
  * - 만료된 이용권에도 기록할 수 있다.
  * - 결제일이 오늘(센터 현지 날짜)보다 미래이면 400 (INVALID_PAYMENT_DATE)
- * - 기록하면 이용권의 `paidAmount`, `unpaidAmount`, `paymentStatus`가 갱신된다.
+ * - 기록하면 이용권의 `paidAmount`, `unpaidAmount`, `paymentStatus`가 갱신된다. 결제 상태는 합계가 0이고 금액이 0보다 크면 `UNPAID`, 합계가 금액보다 작으면 `PARTIAL`, 그 외는 `PAID`(금액이 0인 경우 포함)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT, INVALID_PAYMENT_DATE) → 없는 이용권이면 404 → 합계 초과 409 (PAYMENT_EXCEEDS_PRICE).
  * @summary 이용권 결제 기록 (관리자)
  */
 export const recordPassPayment = async (passId: number,
@@ -5919,6 +6293,7 @@ export const getUpdatePassPaymentUrl = (passId: number,
  * - 결제일이 오늘(센터 현지 날짜)보다 미래이면 400 (INVALID_PAYMENT_DATE)
  * - 환불로 체크된 기록은 정정할 수 없다 (409, PAYMENT_REFUNDED). 먼저 환불 체크를 해제해야 한다.
  * - 이용권의 `paidAmount`, `unpaidAmount`, `paymentStatus`가 다시 계산된다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT, INVALID_PAYMENT_DATE) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불로 체크된 기록 409 (PAYMENT_REFUNDED) → 합계 초과 409 (PAYMENT_EXCEEDS_PRICE).
  * @summary 이용권 결제 기록 정정 (관리자)
  */
 export const updatePassPayment = async (passId: number,
@@ -6013,6 +6388,7 @@ export const getDeletePassPaymentUrl = (passId: number,
  * 관리자 전용. 잘못 입력한 결제 기록을 삭제한다. 삭제하면 미수금이 다시 늘어난다.
  * 삭제한 사실은 활동 이력에 남는다. 환불은 삭제가 아니라 `setPassPaymentRefund`로 체크한다.
  * - 환불로 체크된 기록은 삭제할 수 없다 (409, PAYMENT_REFUNDED). 먼저 환불 체크를 해제해야 한다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불로 체크된 기록 409 (PAYMENT_REFUNDED).
  * @summary 이용권 결제 기록 삭제 (관리자)
  */
 export const deletePassPayment = async (passId: number,
@@ -6093,7 +6469,8 @@ export const getSetPassPaymentRefundUrl = (passId: number,
  * - 이용권, 예약, 미수금은 자동으로 바뀌지 않는다. 환불로 체크된 기록도 이용권의 결제 합계(`paidAmount`)에 그대로 포함된다. 이용권을 회수하려면 `updatePass`로 잔여 횟수나 만료일을 직접 조정한다.
  * - `refunded`가 true이면 환불일(`refundedAt`)을 기록한다. 생략하면 오늘(센터 현지 날짜)이다. 환불일이 미래이거나 결제일보다 빠르면 400 (INVALID_PAYMENT_DATE).
  * - `refunded`가 false이면 환불 체크를 해제하고, 환불일과 메모는 지워진다.
- * - 같은 값으로 다시 요청해도 오류 없이 처리된다.
+ * - 같은 값으로 다시 요청해도 오류 없이 처리된다. 이미 환불로 체크된 기록에 `refunded`를 다시 true로 보내면 전달한 환불일과 메모로 갱신하고, 생략한 값은 기존 값을 유지한다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불일 범위 400 (INVALID_PAYMENT_DATE).
  * - 체크와 해제는 활동 이력에 남는다.
  * @summary 결제 기록 환불 여부 체크 (관리자)
  */
@@ -6196,6 +6573,7 @@ export const getGetPaymentsUrl = (params?: GetPaymentsParams,) => {
  * - 월, 일, 년 단위 조회는 결제일 범위(`paidFrom`~`paidTo`)로 표현한다. 두 값 모두 센터 현지 날짜이며 시작일과 종료일을 포함한다.
  * - `keyword`는 회원 이름에 부분 일치한다.
  * - 환불로 체크된 기록도 기본으로 포함된다. `refunded`로 걸러낼 수 있다.
+ * - 정렬 값이 같으면 id가 정렬 방향과 같은 순서로 정렬된다. `paidTo`가 `paidFrom`보다 빠르면 400 (INVALID_INPUT)이다.
  * @summary 전체 결제 기록 조회 (관리자)
  */
 export const getPayments = async (params?: GetPaymentsParams, options?: Parameters<typeof apiRequest>[1]): Promise<PassPaymentPageResponse> => {
@@ -6213,11 +6591,84 @@ export const getPayments = async (params?: GetPaymentsParams, options?: Paramete
 
 
 
+export const getGetPaymentsInfiniteQueryKey = (params?: GetPaymentsParams,) => {
+    return [
+    'infinite', `/payments`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetPaymentsQueryKey = (params?: GetPaymentsParams,) => {
     return [
     `/payments`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetPaymentsInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getPayments>>, GetPaymentsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(params?: GetPaymentsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPayments>>, TError, TData, QueryKey, GetPaymentsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPaymentsInfiniteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPayments>>, QueryKey, GetPaymentsParams['page']> = ({ signal, pageParam }) => getPayments({...params, 'page': pageParam ?? params?.['page']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPayments>>, TError, TData, QueryKey, GetPaymentsParams['page']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPaymentsInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getPayments>>>
+export type GetPaymentsInfiniteQueryError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse
+
+
+export function useGetPaymentsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getPayments>>, GetPaymentsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params: undefined |  GetPaymentsParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPayments>>, TError, TData, QueryKey, GetPaymentsParams['page']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPayments>>,
+          TError,
+          Awaited<ReturnType<typeof getPayments>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPaymentsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getPayments>>, GetPaymentsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetPaymentsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPayments>>, TError, TData, QueryKey, GetPaymentsParams['page']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPayments>>,
+          TError,
+          Awaited<ReturnType<typeof getPayments>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPaymentsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getPayments>>, GetPaymentsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetPaymentsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPayments>>, TError, TData, QueryKey, GetPaymentsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 전체 결제 기록 조회 (관리자)
+ */
+
+export function useGetPaymentsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getPayments>>, GetPaymentsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetPaymentsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getPayments>>, TError, TData, QueryKey, GetPaymentsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPaymentsInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetPaymentsQueryOptions = <TData = Awaited<ReturnType<typeof getPayments>>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(params?: GetPaymentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayments>>, TError, TData>>, request?: SecondParameter<typeof apiRequest>}
@@ -6423,6 +6874,7 @@ export const getCreatePassPauseUrl = (passId: number,) => {
  * - 취소되지 않은 다른 정지 기간과 겹치면 409 (PAUSE_PERIOD_OVERLAP)
  * - 이 이용권으로 한 예약(`RESERVED`) 중 수업일이 정지 기간에 속하는 것이 있으면 409 (PAUSE_HAS_RESERVATIONS). 해당 예약을 먼저 취소해야 한다.
  * - 정지 등록 후에는 이용권의 만료일이 바뀌므로 클라이언트는 이용권을 다시 조회한다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 이용권이면 404 → 만료된 이용권 409 (PASS_EXPIRED) → 기간 오류 400 (INVALID_PAUSE_PERIOD) → 다른 정지와 겹침 409 (PAUSE_PERIOD_OVERLAP) → 정지 기간의 예약 409 (PAUSE_HAS_RESERVATIONS). 만료된 이용권은 기간 검사보다 먼저 거절한다.
  * @summary 이용권 일시정지 등록 (관리자)
  */
 export const createPassPause = async (passId: number,
@@ -6518,6 +6970,7 @@ export const getTerminatePassPauseUrl = (passId: number,
  * - 진행 중인(`ACTIVE`) 정지는 오늘부터 해제된다. 정지 종료일이 어제로 바뀌고(`ENDED`), 사용하지 않은 일수만큼 만료일이 줄어든다. 시작일 당일에 해제하면 사용한 일수가 0이므로 취소와 같이 처리된다.
  * - 이미 끝났거나(`ENDED`) 취소된(`CANCELED`) 정지이면 409 (INVALID_PAUSE_STATUS)
  * - 해제 후에는 이용권의 만료일과 상태가 바뀌므로 클라이언트는 이용권을 다시 조회한다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 이용권이나 그 이용권의 정지가 없으면 404 → 상태 409 (INVALID_PAUSE_STATUS).
  * @summary 이용권 일시정지 해제 (관리자)
  */
 export const terminatePassPause = async (passId: number,
@@ -6600,7 +7053,7 @@ export const getGetMyPassesUrl = (params?: GetMyPassesParams,) => {
 }
 
 /**
- * 로그인한 회원 본인의 이용권만 조회한다. 만료일 오름차순으로 정렬된다 (예약 시 자동으로 선택되는 순서와 같다).
+ * 로그인한 회원 본인의 이용권만 조회한다. 만료일 오름차순으로 정렬된다 (예약 시 자동으로 선택되는 순서와 같다). 만료일이 같으면 id 오름차순이다.
  * 일반 회원이 아닌 계정은 빈 목록이 반환된다.
  * @summary 내 이용권 목록 조회
  */
@@ -6711,7 +7164,8 @@ export const getGetReservationsUrl = (params?: GetReservationsParams,) => {
 
 /**
  * 관리자 또는 `MEMBER_READ` 권한을 가진 강사만 가능하다 (없으면 403, PERMISSION_DENIED). 회원별, 수업별 예약을 조회할 때 사용한다.
- * 수업 시작 시각 기준으로 정렬하며 방향은 `order`로 지정한다 (기본 DESC).
+ * 수업 시작 시각 기준으로 정렬하며 방향은 `order`로 지정한다 (기본 DESC). 같으면 id가 정렬 방향과 같은 순서이다.
+ * `lessonTo`가 `lessonFrom`보다 늦지 않으면 400 (INVALID_INPUT)이다.
  * @summary 예약 목록 조회 (관리자 또는 MEMBER_READ)
  */
 export const getReservations = async (params?: GetReservationsParams, options?: Parameters<typeof apiRequest>[1]): Promise<ReservationPageResponse> => {
@@ -6729,11 +7183,84 @@ export const getReservations = async (params?: GetReservationsParams, options?: 
 
 
 
+export const getGetReservationsInfiniteQueryKey = (params?: GetReservationsParams,) => {
+    return [
+    'infinite', `/reservations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetReservationsQueryKey = (params?: GetReservationsParams,) => {
     return [
     `/reservations`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetReservationsInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getReservations>>, GetReservationsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(params?: GetReservationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getReservations>>, TError, TData, QueryKey, GetReservationsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReservationsInfiniteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReservations>>, QueryKey, GetReservationsParams['page']> = ({ signal, pageParam }) => getReservations({...params, 'page': pageParam ?? params?.['page']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getReservations>>, TError, TData, QueryKey, GetReservationsParams['page']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetReservationsInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getReservations>>>
+export type GetReservationsInfiniteQueryError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse
+
+
+export function useGetReservationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getReservations>>, GetReservationsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params: undefined |  GetReservationsParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getReservations>>, TError, TData, QueryKey, GetReservationsParams['page']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getReservations>>,
+          TError,
+          Awaited<ReturnType<typeof getReservations>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetReservationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getReservations>>, GetReservationsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetReservationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getReservations>>, TError, TData, QueryKey, GetReservationsParams['page']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getReservations>>,
+          TError,
+          Awaited<ReturnType<typeof getReservations>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetReservationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getReservations>>, GetReservationsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetReservationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getReservations>>, TError, TData, QueryKey, GetReservationsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 예약 목록 조회 (관리자 또는 MEMBER_READ)
+ */
+
+export function useGetReservationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getReservations>>, GetReservationsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(
+ params?: GetReservationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getReservations>>, TError, TData, QueryKey, GetReservationsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetReservationsInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetReservationsQueryOptions = <TData = Awaited<ReturnType<typeof getReservations>>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | InternalServerErrorResponse>(params?: GetReservationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getReservations>>, TError, TData>>, request?: SecondParameter<typeof apiRequest>}
@@ -6817,11 +7344,13 @@ export const getCreateReservationUrl = () => {
  * 사용할 이용권은 서버가 자동으로 선택한다.
  * - 수업일(센터 현지 날짜)이 시작일~만료일 안에 있고, 일시정지 기간에 속하지 않으며, 잔여 횟수가 1회 이상인 이용권 중, 만료일이 가장 이른 것 (같으면 먼저 발급된 것)을 사용한다.
  * - 예약 정책에서 미수 예약을 허용하지 않으면(`allowUnpaidReservation`이 false) 완납(`PAID`)한 이용권만 대상이다.
- * - 공개된(`PUBLISHED`) 수업만 예약할 수 있다. 존재하지 않거나 볼 수 없는 수업은 404.
+ * - 공개된(`PUBLISHED`) 수업만 예약할 수 있다. 존재하지 않는 수업은 404.
  * - 비공개, 취소, 이미 시작한 수업이면 409 (LESSON_NOT_RESERVABLE)
  * - 정원이 찼으면 409 (LESSON_FULL). 대기 예약은 없다.
  * - 이미 같은 수업을 예약 중(`RESERVED`)이면 409 (ALREADY_RESERVED). 취소한 수업은 다시 예약할 수 있다.
  * - 사용할 수 있는 이용권이 없으면 409 (NO_AVAILABLE_PASS). 미수 예약이 허용되지 않아서 완납하지 않은 이용권만 있는 경우에는 409 (PASS_UNPAID)이다.
+ * - 정원은 취소되지 않은 예약(`RESERVED`, `ATTENDED`, `NO_SHOW`)의 수로 센다. 수업의 `reservedCount`도 같은 값이다.
+ * - 확인 순서: 일반 회원이 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT) → 없는 수업 404 → LESSON_NOT_RESERVABLE → ALREADY_RESERVED → LESSON_FULL → NO_AVAILABLE_PASS 또는 PASS_UNPAID 409.
  * @summary 수업 예약 (회원)
  */
 export const createReservation = async (reservationCreateRequest: ReservationCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<Reservation> => {
@@ -7019,6 +7548,8 @@ export const getCancelReservationUrl = (reservationId: number,) => {
  * - 이미 시작한 수업의 예약은 누구도 취소할 수 없다 (409, LESSON_ALREADY_STARTED). 출결로 처리한다.
  * - `RESERVED`가 아닌 예약은 409 (INVALID_RESERVATION_STATUS)
  * - 본인 예약이 아니면 403, 볼 수 없는 예약이면 404
+ * - 복구되는 횟수는 이용권의 총 횟수를 넘지 않는다.
+ * - 확인 순서: 사유가 200자를 넘으면 400 (INVALID_INPUT) → 없거나 볼 수 없는 예약 404 → 본인도 관리자도 아니면 403 (PERMISSION_DENIED) → INVALID_RESERVATION_STATUS → LESSON_ALREADY_STARTED → CANCELLATION_DEADLINE_PASSED 409.
  * @summary 예약 취소
  */
 export const cancelReservation = async (reservationId: number,
@@ -7111,8 +7642,9 @@ export const getConfirmAttendanceUrl = (reservationId: number,) => {
  * 관리자 또는 해당 수업의 담당 강사만 가능하다 (아니면 403). 출석(`ATTENDED`) 또는 노쇼(`NO_SHOW`)를 기록하며, 이미 기록된 출결도 같은 API로 정정한다.
  * - 이용권 횟수는 예약할 때 이미 차감되었으므로, 출석과 노쇼 모두 횟수에 영향이 없다. 노쇼도 차감이 유지되며 출석으로 기록되지 않는다.
  * - 수업이 시작되기 전이면 409 (LESSON_NOT_STARTED). 정정은 기간 제한이 없다.
- * - 이미 강사 정산에 포함된 수업은 출결을 정정할 수 없다 (409, LESSON_SETTLED). 정산을 폐기(`discardSettlement`)하면 다시 정정할 수 있다.
+ * - 이미 강사 정산에 포함된 수업은 출결을 정정할 수 없다 (409, LESSON_SETTLED). 정산을 폐기(`discardSettlement`)하면 다시 정정할 수 있다. 수업이 시작되었는지 확인한 뒤에 확인한다.
  * - 취소된(`CANCELED`) 예약은 409 (INVALID_RESERVATION_STATUS)
+ * - 확인 순서: 관리자나 담당 강사가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT) → 없는 예약 404 → INVALID_RESERVATION_STATUS → LESSON_NOT_STARTED → LESSON_SETTLED 409.
  * @summary 출결 기록 (관리자 또는 담당 강사)
  */
 export const confirmAttendance = async (reservationId: number,
@@ -7210,7 +7742,8 @@ export const getGetLessonReservationsUrl = (lessonId: number,
 }
 
 /**
- * 관리자 또는 해당 수업의 담당 강사만 가능하다 (아니면 403). 예약한 시각 오름차순으로 정렬된다. 출결 화면에서 사용한다.
+ * 관리자 또는 해당 수업의 담당 강사만 가능하다 (아니면 403). 예약한 시각 오름차순으로 정렬되며 같으면 id 오름차순이다. 출결 화면에서 사용한다.
+ * 확인 순서: 관리자나 담당 강사가 아니면 403 (PERMISSION_DENIED) → 없는 수업이면 404.
  * @summary 수업 예약자 목록 조회 (관리자 또는 담당 강사)
  */
 export const getLessonReservations = async (lessonId: number,
@@ -7430,6 +7963,7 @@ export const getGetReservationPolicyUrl = () => {
 
 /**
  * 로그인한 모든 사용자가 조회할 수 있다 (회원 화면에 취소 마감 시간과 미수 예약 가능 여부를 안내하기 위해).
+ * 설정한 적이 없으면 취소 마감 24시간, 미수 예약 허용(`true`)이다.
  * @summary 예약 정책 조회
  */
 export const getReservationPolicy = async ( options?: Parameters<typeof apiRequest>[1]): Promise<ReservationPolicy> => {
@@ -7533,6 +8067,7 @@ export const getUpdateReservationPolicyUrl = () => {
 /**
  * 관리자 전용. 정책 값을 교체한다. 이미 예약된 건에도 변경된 값이 적용되며, 이후 취소 요청부터 새 마감 시간으로 판단한다.
  * 미수 예약 허용 여부는 이후 예약부터 적용되고, 이미 한 예약에는 영향이 없다.
+ * 두 필드가 모두 필요하며, 범위를 벗어나거나 빠지면 400 (INVALID_INPUT)이다. 관리자가 아니면 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
  * @summary 예약 정책 설정 (관리자)
  */
 export const updateReservationPolicy = async (reservationPolicy: ReservationPolicy, options?: Parameters<typeof apiRequest>[1]): Promise<ReservationPolicy> => {
@@ -7633,6 +8168,23 @@ export const getGetActivityLogsUrl = (params?: GetActivityLogsParams,) => {
  * - 사용 가능한 카테고리와 행위 코드는 `GET /activity-log-actions`로 조회한다.
  * - 특정 이용권의 이력은 `targetType=PASS&targetId={passId}`로, 특정 수업의 이력은 `targetType=LESSON&targetId={lessonId}`로 조회한다.
  * - `actorId`는 행동을 한 사람, `subjectMemberId`는 그 행동의 영향을 받은 회원이다. 예를 들어 강사 A가 수업을 변경했다면 `actorId`가 A이다.
+ *
+ * **기록 규칙**
+ * - 성공한 변경 행위만 업무 변경과 같은 트랜잭션에서 기록한다. 거절된 요청(4xx)은 기록하지 않으며, 예외로 로그인 실패(`LOGIN_FAILED`)는 기록한다.
+ * - 조회, 토큰 재발급, 이메일 인증 코드 발송·확인, 비밀번호 재설정 메일 요청, 알림 읽음 처리는 기록하지 않는다.
+ * - 이력은 추가만 하며 수정·삭제하지 않는다. `actor`와 `subjectMember`의 이름은 조회 시점의 회원 이름이다.
+ * - 로그인 실패는 이메일이 가입된 계정이면 그 회원을 `actor`로, 가입되지 않은 이메일이면 `actor`를 null로 기록한다. 이메일은 `summary`에 마스킹해 남기고 비밀번호는 남기지 않는다.
+ * - 회원이 자신에게 하는 행위(로그인, 비밀번호 변경 등)와 이용권·예약·결제·정산·강사 설정처럼 특정 회원의 데이터를 바꾸는 행위는 그 회원을 `subjectMember`로 기록한다. 대상 회원이 여럿이거나 없는 행위(수업 개설·수정·취소, 설정 변경 등)는 null이다.
+ * - 수업 취소로 자동 취소되는 예약은 개별 이력을 남기지 않고 수업 취소 이력의 `summary`에 취소된 예약 수를 적는다.
+ * - 부재 승인으로 자동 취소되는 수업은 수업마다 `LESSON_CANCELED`로 기록하며 `actor`는 승인한 관리자이다. 시스템이 자동으로 한 처리(`LESSON_PUBLISHED`, `PASS_EXPIRED`)는 `actor`가 null이다.
+ * - 대상 종류(`targetType`)와 대상 ID: 결제 이력은 `PASS_PAYMENT`(결제 기록 ID), 일시정지 이력은 `PASS_PAUSE`(정지 ID), 예약과 출결 이력은 `RESERVATION`, 이용권 자체의 이력(발급·수정·만료)은 `PASS`이다. 결제·일시정지 이력의 이용권 ID는 `summary`에 `이용권 #{id}`로 적는다. 수당 단가, 권한, 수업 가능시간, 퇴사, 수업 인계처럼 강사 설정에 대한 이력은 `MEMBER`(강사 ID)이다. 삭제되거나 폐기된 대상(룸, 이용권 상품, 정산, 결제 기록)의 이력도 대상 ID로 계속 조회된다.
+ * - `changes`에는 값이 바뀐 필드만 담으며, 값은 문자열이다. 개인정보는 마스킹한다: 전화번호 `010****5678`, 생년월일 `1990-**-**`, 주소는 첫 단어만(`서울시 ***`), 이메일 `a***@example.com`. 비밀번호와 토큰은 기록하지 않는다.
+ *
+ * **조회 규칙**
+ * - 확인 순서: 인증(401) → 관리자(403) → 필터 형식(400).
+ * - 형식 오류는 400 `INVALID_INPUT`이며 `invalidParams`에 해당 필드를 담는다. `from`이 `to`보다 늦거나 같을 때, `targetId`만 있고 `targetType`이 없을 때, `actorRole`·`order`·`from`·`to`·숫자 필드의 형식이 맞지 않을 때가 해당한다.
+ * - `category`, `action`, `targetType`은 알 수 없는 값이어도 400이 아니며 결과가 없을 뿐이다.
+ * - 발생 시각이 같으면 `id`를 같은 방향으로 정렬한다.
  * @summary 활동 이력 조회 (관리자)
  */
 export const getActivityLogs = async (params?: GetActivityLogsParams, options?: Parameters<typeof apiRequest>[1]): Promise<ActivityLogPageResponse> => {
@@ -7736,7 +8288,27 @@ export const getGetActivityLogActionsUrl = () => {
 /**
  * 관리자 전용. 이력 조회 화면의 필터를 그리기 위한 카테고리별 행위 코드 목록을 반환한다. 카테고리는 이력을 묶어 보는 태그 역할을 한다.
  * 새로운 기능이 추가되면 카테고리나 행위 코드가 늘어날 수 있으므로, 클라이언트는 이 목록을 기준으로 필터를 구성하고 알 수 없는 값도 그대로 표시할 수 있어야 한다.
- * 페이징을 사용하지 않는다.
+ * 페이징을 사용하지 않는다. 카테고리와 행위 코드는 아래 순서로 반환하며, 아직 기록된 적 없는 행위 코드도 포함한다.
+ *
+ * | 카테고리 | 행위 코드 |
+ * |---|---|
+ * | AUTH 인증 | SIGN_UP 회원가입, LOGIN 로그인, LOGIN_FAILED 로그인 실패, LOGOUT 로그아웃, PASSWORD_CHANGED 비밀번호 변경, PASSWORD_RESET 비밀번호 재설정, ACCOUNT_WITHDRAWN 회원탈퇴 |
+ * | MEMBER 회원 | MEMBER_CREATED 강사/관리자 등록, MEMBER_PROFILE_UPDATED 내 정보 수정, MEMBER_UPDATED 회원 정보 수정, MEMBER_STATUS_CHANGED 회원 상태 변경 |
+ * | PERMISSION 권한 | PERMISSIONS_UPDATED 권한 설정 |
+ * | LESSON 수업 | LESSON_CREATED 수업 개설, LESSON_UPDATED 수업 수정, LESSON_STATUS_CHANGED 수업 공개 상태 변경, LESSON_CANCELED 수업 취소, LESSON_PUBLISHED 수업 자동 공개 |
+ * | RESERVATION 예약 | RESERVATION_CREATED 예약 생성, RESERVATION_CANCELED 예약 취소 |
+ * | ATTENDANCE 출결 | ATTENDANCE_RECORDED 출결 기록 |
+ * | PASS 이용권 | PASS_ISSUED 이용권 발급, PASS_UPDATED 이용권 수정, PASS_PAUSED 일시정지 등록, PASS_PAUSE_TERMINATED 일시정지 해제, PASS_EXPIRED 이용권 만료 |
+ * | PAYMENT 결제 | PAYMENT_RECORDED 결제 기록, PAYMENT_UPDATED 결제 정정, PAYMENT_DELETED 결제 삭제, PAYMENT_REFUND_CHECKED 환불 체크, PAYMENT_REFUND_UNCHECKED 환불 체크 해제 |
+ * | PASS_PRODUCT 이용권 상품 | PASS_PRODUCT_CREATED 등록, PASS_PRODUCT_UPDATED 수정, PASS_PRODUCT_DELETED 삭제 |
+ * | LESSON_TYPE 수업 유형 | LESSON_TYPE_CREATED 등록, LESSON_TYPE_UPDATED 수정 |
+ * | ROOM 룸 | ROOM_CREATED 등록, ROOM_UPDATED 수정, ROOM_DELETED 삭제 |
+ * | BUSINESS_HOUR 영업시간 | BUSINESS_HOURS_UPDATED 영업시간 설정 |
+ * | POLICY 예약 정책 | RESERVATION_POLICY_UPDATED 예약 정책 설정 |
+ * | PAY_RATE 수당 단가 | PAY_RATES_UPDATED 수당 단가 설정 |
+ * | SETTLEMENT 정산 | SETTLEMENT_CREATED 정산 계산, SETTLEMENT_DISCARDED 정산 폐기, SETTLEMENT_REVIEW_REQUESTED 검토 요청, SETTLEMENT_CONFIRMED 정산 확정, SETTLEMENT_PAID 지급 기록 |
+ * | INSTRUCTOR 강사 | AVAILABILITY_UPDATED 수업 가능시간 설정, RESIGNATION_REGISTERED 퇴사일 등록, RESIGNATION_CANCELED 퇴사일 등록 취소, RESIGNATION_COMPLETED 퇴사 처리, LESSONS_REASSIGNED 수업 인계 |
+ * | ABSENCE 부재 | ABSENCE_REQUESTED 부재 신청, ABSENCE_APPROVED 부재 승인, ABSENCE_REJECTED 부재 반려, ABSENCE_CANCELED 부재 취소 |
  * @summary 활동 이력 카테고리와 행위 코드 목록 조회 (관리자)
  */
 export const getActivityLogActions = async ( options?: Parameters<typeof apiRequest>[1]): Promise<ActivityLogActionCatalogResponse> => {
@@ -7845,7 +8417,8 @@ export const getGetMyNotificationsUrl = (params?: GetMyNotificationsParams,) => 
 }
 
 /**
- * 로그인한 사용자 본인의 알림만 조회한다. 최신순으로 정렬된다.
+ * 로그인한 사용자 본인의 알림만 조회한다. 최신순으로 정렬되며, 같으면 id 내림차순이다.
+ * `unread`를 false로 보내거나 생략하면 읽은 알림도 포함한다.
  * @summary 내 알림 목록 조회
  */
 export const getMyNotifications = async (params?: GetMyNotificationsParams, options?: Parameters<typeof apiRequest>[1]): Promise<NotificationPageResponse> => {
@@ -8200,8 +8773,8 @@ export const getGetPayRatesUrl = (memberId: number,) => {
 }
 
 /**
- * 관리자 전용. 단가가 설정된 수업 유형만 반환한다.
- * 대상이 강사(`INSTRUCTOR`)가 아니면 404이다.
+ * 관리자 전용. 단가가 설정된 수업 유형만 반환하며 수업 유형 id 오름차순으로 정렬된다. 비활성 수업 유형의 단가도 포함한다.
+ * 대상이 강사(`INSTRUCTOR`)가 아니면 404이다. 퇴사한 강사도 조회할 수 있다.
  * @summary 강사의 수당 단가 조회 (관리자)
  */
 export const getPayRates = async (memberId: number, options?: Parameters<typeof apiRequest>[1]): Promise<PayRatesResponse> => {
@@ -8307,7 +8880,8 @@ export const getUpdatePayRatesUrl = (memberId: number,) => {
  * 단가는 수업에 출석한 인원 수와 무관하게 수업 유형으로만 정해진다.
  * - 변경된 단가는 이후에 계산하는 정산부터 적용된다. 이미 계산된 정산은 계산 시점의 단가를 유지한다.
  * - 대상이 강사(`INSTRUCTOR`)가 아니면 400 (INVALID_INSTRUCTOR). 퇴사한 강사의 단가도 설정할 수 있다.
- * - 수업 유형이 중복되거나 존재하지 않으면 400 (INVALID_PAY_RATE)
+ * - 수업 유형이 중복되거나 존재하지 않으면 400 (INVALID_PAY_RATE). 비활성 수업 유형의 단가도 설정할 수 있다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 회원이면 404 → 강사가 아니면 400 (INVALID_INSTRUCTOR) → 단가 목록 오류 400 (INVALID_PAY_RATE).
  * @summary 강사의 수당 단가 설정 (관리자)
  */
 export const updatePayRates = async (memberId: number,
@@ -8404,7 +8978,8 @@ export const getGetSettlementsUrl = (params?: GetSettlementsParams,) => {
 }
 
 /**
- * 관리자 전용. 생성 최신순으로 정렬된다.
+ * 관리자 전용. 생성 최신순으로 정렬되며, 같으면 id 내림차순이다.
+ * `periodTo`가 `periodFrom`보다 빠르면 400 (INVALID_INPUT)이다.
  * @summary 정산 목록 조회 (관리자)
  */
 export const getSettlements = async (params?: GetSettlementsParams, options?: Parameters<typeof apiRequest>[1]): Promise<SettlementPageResponse> => {
@@ -8517,6 +9092,9 @@ export const getCreateSettlementUrl = () => {
  * - 정산 대상 수업 중 단가가 설정되지 않은 수업 유형이 있으면 409 (PAY_RATE_NOT_SET). 해당 수업 유형이 `invalidParams`에 담긴다.
  * - 같은 강사의 폐기되지 않은 정산과 기간이 겹치면 409 (SETTLEMENT_PERIOD_OVERLAP). 한 수업은 하나의 정산에만 포함된다.
  * - 대상이 강사(`INSTRUCTOR`)가 아니면 400 (INVALID_INSTRUCTOR). 퇴사한 강사도 정산할 수 있다 (퇴사 후 정산은 관리자가 직접 처리한다).
+ * - 대상 수업이 하나도 없어도 정산은 만들어진다 (금액 0, 수업 수 0). 이미 다른 정산에 포함된 수업은 대상에서 제외한다.
+ * - `invalidParams`의 각 항목은 UNRECORDED_ATTENDANCE_EXISTS의 경우 `field`에 수업 ID를, PAY_RATE_NOT_SET의 경우 `field`에 수업 유형 ID를 담고, `reason`에 에러 코드를 담는다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → INVALID_PERIOD 400 → 없는 회원이면 404 → INVALID_INSTRUCTOR 400 → SETTLEMENT_PERIOD_OVERLAP → UNRECORDED_ATTENDANCE_EXISTS → PAY_RATE_NOT_SET 409.
  * @summary 정산 계산 (관리자)
  */
 export const createSettlement = async (settlementCreateRequest: SettlementCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<SettlementDetail> => {
@@ -8605,7 +9183,7 @@ export const getGetSettlementUrl = (settlementId: number,) => {
 }
 
 /**
- * 관리자 전용. 수업별 내역(`items`)을 포함한다.
+ * 관리자 전용. 수업별 내역(`items`)을 포함하며 수업 시작 시각 오름차순이다.
  * @summary 정산 상세 조회 (관리자)
  */
 export const getSettlement = async (settlementId: number, options?: Parameters<typeof apiRequest>[1]): Promise<SettlementDetail> => {
@@ -8709,6 +9287,7 @@ export const getDiscardSettlementUrl = (settlementId: number,) => {
 /**
  * 관리자 전용. 정산을 폐기하면 포함됐던 수업이 정산에서 풀려 다시 출결을 정정하고 새로 계산할 수 있다.
  * - `CALCULATED`, `REVIEW_REQUESTED` 상태에서만 가능하다. 확정(`CONFIRMED`) 이후는 409 (INVALID_SETTLEMENT_STATUS).
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없는 정산이면 404 → 상태 409.
  * - 폐기 이력은 활동 이력에 남는다.
  * @summary 정산 폐기 (관리자)
  */
@@ -8786,6 +9365,7 @@ export const getRequestSettlementReviewUrl = (settlementId: number,) => {
 /**
  * 관리자 전용. `CALCULATED`에서 `REVIEW_REQUESTED`로 바뀐다.
  * - `CALCULATED`가 아니면 409 (INVALID_SETTLEMENT_STATUS)
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없는 정산이면 404 → 상태 409.
  * @summary 정산 검토 요청 (관리자)
  */
 export const requestSettlementReview = async (settlementId: number, options?: Parameters<typeof apiRequest>[1]): Promise<Settlement> => {
@@ -8862,6 +9442,7 @@ export const getConfirmSettlementUrl = (settlementId: number,) => {
 /**
  * 관리자 전용. `REVIEW_REQUESTED`에서 `CONFIRMED`로 바뀌며, 확정되면 금액을 더 이상 바꿀 수 없다.
  * - `REVIEW_REQUESTED`가 아니면 409 (INVALID_SETTLEMENT_STATUS)
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없는 정산이면 404 → 상태 409.
  * @summary 정산 확정 (관리자)
  */
 export const confirmSettlement = async (settlementId: number, options?: Parameters<typeof apiRequest>[1]): Promise<Settlement> => {
@@ -8938,6 +9519,8 @@ export const getRecordSettlementPaymentUrl = (settlementId: number,) => {
 /**
  * 관리자 전용. 실제 지급은 시스템 밖에서 이뤄지며, 지급했다는 사실만 기록한다. 지급 금액은 정산의 확정 금액과 같고 분할 지급은 지원하지 않는다.
  * - `CONFIRMED`에서 `PAID`로 바뀐다. `CONFIRMED`가 아니면 409 (INVALID_SETTLEMENT_STATUS).
+ * - 지급일에는 제한이 없다 (과거와 미래 모두 가능하다).
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 정산이면 404 → 상태 409.
  * @summary 외부 지급 기록 (관리자)
  */
 export const recordSettlementPayment = async (settlementId: number,
@@ -9030,6 +9613,7 @@ export const getGetInstructorAvailabilityUrl = (memberId: number,) => {
  * 관리자 또는 해당 강사 본인만 가능하다. 대상이 강사(`INSTRUCTOR`)가 아니거나 다른 강사의 가능시간이면 404이다.
  * 요일별로 시간대가 여러 개일 수 있다. 가능시간이 설정되지 않았으면 빈 목록이며, 그 강사에게는 수업을 배정할 수 없다.
  * 가능시간을 별도 목록이 아닌 요일별 시간대 모음으로 반환하므로 페이징을 사용하지 않는다.
+ * 관리자와 본인이 아닌 호출자(회원, 다른 강사 포함)는 존재 여부를 숨기기 위해 404이다. 시간대는 요일(월~일), 시작 시각 순으로 정렬된다.
  * @summary 강사의 수업 가능시간 조회 (관리자 또는 본인)
  */
 export const getInstructorAvailability = async (memberId: number, options?: Parameters<typeof apiRequest>[1]): Promise<AvailabilityResponse> => {
@@ -9137,6 +9721,7 @@ export const getUpdateInstructorAvailabilityUrl = (memberId: number,) => {
  * - 이미 개설된 수업에는 영향을 주지 않는다. 이후 개설과 수정 때만 검증한다.
  * - 시작 시각이 종료 시각보다 늦거나 같은 시간대, 같은 요일 안에서 겹치는 시간대가 있으면 400 (INVALID_AVAILABILITY)
  * - 대상이 강사(`INSTRUCTOR`)가 아니면 404
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식과 시간대 오류 400 (INVALID_INPUT, INVALID_AVAILABILITY) → 강사가 아니거나 없는 회원이면 404.
  * @summary 강사의 수업 가능시간 설정 (관리자)
  */
 export const updateInstructorAvailability = async (memberId: number,
@@ -9231,6 +9816,7 @@ export const getRegisterResignationUrl = (memberId: number,) => {
  * - 퇴사일 이후에 시작하는 기존 수업은 `reassignLessons`로 다른 강사에게 인계한다.
  * - 퇴사일이 오늘(센터 현지 날짜)보다 과거이면 400 (INVALID_RESIGNATION_DATE)
  * - 대상이 활성 상태의 강사(`INSTRUCTOR`)가 아니면 400 (INVALID_INSTRUCTOR). 이미 퇴사한 강사이면 409 (MEMBER_RESIGNED).
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 회원이면 404 → 이미 퇴사한 강사이면 409 (MEMBER_RESIGNED) → 활성 강사가 아니면 400 (INVALID_INSTRUCTOR) → 퇴사일이 과거이면 400 (INVALID_RESIGNATION_DATE).
  * @summary 강사 퇴사일 등록 (관리자)
  */
 export const registerResignation = async (memberId: number,
@@ -9323,6 +9909,7 @@ export const getCancelResignationUrl = (memberId: number,) => {
  * 관리자 전용. 등록된 퇴사일을 없애고 새 배정 차단을 푼다. 퇴사 처리가 끝난 강사(`RESIGNED`)에는 사용할 수 없다.
  * - 등록된 퇴사일이 없으면 409 (RESIGNATION_NOT_REGISTERED)
  * - 이미 퇴사한 강사이면 409 (MEMBER_RESIGNED)
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 강사가 아니거나 없는 회원이면 404 → 이미 퇴사한 강사이면 409 (MEMBER_RESIGNED) → 퇴사일이 없으면 409 (RESIGNATION_NOT_REGISTERED).
  * @summary 강사 퇴사일 등록 취소 (관리자)
  */
 export const cancelResignation = async (memberId: number, options?: Parameters<typeof apiRequest>[1]): Promise<void> => {
@@ -9398,13 +9985,14 @@ export const getCompleteResignationUrl = (memberId: number,) => {
 
 /**
  * 관리자 전용. 퇴사일이 등록된 강사를 퇴사 처리한다. 상태가 `RESIGNED`가 된다.
- * - 처리하면 로그인할 수 없고, Refresh Token이 모두 폐기되며, 부여된 권한이 모두 회수된다. 승인 대기 중이거나 앞으로 시작하는 부재는 취소된다.
+ * - 처리하면 로그인할 수 없고, Refresh Token이 모두 폐기되며, 부여된 권한이 모두 회수된다. 승인 대기 중인 부재와 아직 시작하지 않은 승인된 부재는 취소되며, 처리자는 퇴사 처리한 관리자이다.
  * - 담당 이용권은 그대로 남는다 (필요하면 `updatePass`로 담당 강사를 바꾼다).
  * - 퇴사한 강사의 수당 단가와 정산은 계속 처리할 수 있다.
  * - 등록된 퇴사일이 없으면 409 (RESIGNATION_NOT_REGISTERED)
  * - 퇴사일이 아직 오지 않았으면 409 (RESIGNATION_DATE_NOT_REACHED)
  * - 시작 전이고 취소되지 않은 담당 수업이 남아 있으면 409 (INSTRUCTOR_HAS_UPCOMING_LESSONS). `reassignLessons`로 먼저 인계해야 한다.
  * - 이미 퇴사한 강사이면 409 (MEMBER_RESIGNED)
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 강사가 아니거나 없는 회원이면 404 → MEMBER_RESIGNED → RESIGNATION_NOT_REGISTERED → RESIGNATION_DATE_NOT_REACHED → INSTRUCTOR_HAS_UPCOMING_LESSONS 409. 퇴사일 당일부터 처리할 수 있다.
  * @summary 강사 퇴사 처리 (관리자)
  */
 export const completeResignation = async (memberId: number, options?: Parameters<typeof apiRequest>[1]): Promise<Member> => {
@@ -9483,9 +10071,13 @@ export const getReassignLessonsUrl = (memberId: number,) => {
  * - 모두 성공하거나 모두 실패한다. 넘기려는 수업 중 하나라도 새 강사에게 배정할 수 없으면 아무것도 바뀌지 않고 409 (REASSIGNMENT_FAILED)이며, 실패한 수업 ID와 사유가 `invalidParams`에 담긴다.
  * - 새 강사는 `updateLesson`으로 강사를 바꿀 때와 같은 검증(활성 상태, 수업 가능시간, 부재, 퇴사일, 시간 겹침)을 통과해야 한다.
  * - `from`을 생략하면 현재 시각이다.
+ * - `from`이 과거여도 이미 시작한 수업은 넘기지 않는다.
  * - 예약이 있는 수업도 넘길 수 있다 (예약은 그대로 유지된다).
  * - 새 강사가 활성 상태의 강사(`INSTRUCTOR`)가 아니거나 대상 강사와 같으면 400 (INVALID_INSTRUCTOR)
  * - 대상 강사가 강사(`INSTRUCTOR`)가 아니거나 새 강사가 없으면 404
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 대상 강사나 새 강사가 없으면 404 → 새 강사가 활성 강사가 아니거나 대상 강사와 같으면 400 (INVALID_INSTRUCTOR) → 수업별 검증 실패 409 (REASSIGNMENT_FAILED).
+ * - `invalidParams`의 각 항목은 `field`에 실패한 수업 ID, `reason`에 실패 사유의 에러 코드(예: `INSTRUCTOR_TIME_CONFLICT`)를 담는다. 한 수업에서 여러 검증이 실패하면 확인 순서상 가장 먼저 걸린 것 하나만 담는다.
+ * - 인계할 수업이 없으면 `reassignedCount`가 0인 200이다.
  * @summary 강사의 미래 수업 인계 (관리자)
  */
 export const reassignLessons = async (memberId: number,
@@ -9584,6 +10176,7 @@ export const getGetAbsencesUrl = (params?: GetAbsencesParams,) => {
 /**
  * 관리자는 모든 부재를, 강사는 본인의 부재만 조회한다 (강사가 다른 강사의 `instructorId`를 지정해도 본인 것만 반환된다). 시작 시각 내림차순으로 정렬된다.
  * `from` 이상 `to` 미만과 기간이 겹치는 부재를 조회한다.
+ * 시작 시각이 같으면 id 내림차순이다. 회원(`MEMBER`)이 호출하면 빈 목록이다. `to`가 `from`보다 늦지 않으면 400 (INVALID_INPUT)이다.
  * @summary 부재 목록 조회
  */
 export const getAbsences = async (params?: GetAbsencesParams, options?: Parameters<typeof apiRequest>[1]): Promise<AbsencePageResponse> => {
@@ -9601,11 +10194,84 @@ export const getAbsences = async (params?: GetAbsencesParams, options?: Paramete
 
 
 
+export const getGetAbsencesInfiniteQueryKey = (params?: GetAbsencesParams,) => {
+    return [
+    'infinite', `/absences`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetAbsencesQueryKey = (params?: GetAbsencesParams,) => {
     return [
     `/absences`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetAbsencesInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getAbsences>>, GetAbsencesParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(params?: GetAbsencesParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getAbsences>>, TError, TData, QueryKey, GetAbsencesParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAbsencesInfiniteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAbsences>>, QueryKey, GetAbsencesParams['page']> = ({ signal, pageParam }) => getAbsences({...params, 'page': pageParam ?? params?.['page']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getAbsences>>, TError, TData, QueryKey, GetAbsencesParams['page']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAbsencesInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getAbsences>>>
+export type GetAbsencesInfiniteQueryError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse
+
+
+export function useGetAbsencesInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getAbsences>>, GetAbsencesParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params: undefined |  GetAbsencesParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getAbsences>>, TError, TData, QueryKey, GetAbsencesParams['page']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAbsences>>,
+          TError,
+          Awaited<ReturnType<typeof getAbsences>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAbsencesInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getAbsences>>, GetAbsencesParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetAbsencesParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getAbsences>>, TError, TData, QueryKey, GetAbsencesParams['page']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAbsences>>,
+          TError,
+          Awaited<ReturnType<typeof getAbsences>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAbsencesInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getAbsences>>, GetAbsencesParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetAbsencesParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getAbsences>>, TError, TData, QueryKey, GetAbsencesParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 부재 목록 조회
+ */
+
+export function useGetAbsencesInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getAbsences>>, GetAbsencesParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetAbsencesParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getAbsences>>, TError, TData, QueryKey, GetAbsencesParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAbsencesInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetAbsencesQueryOptions = <TData = Awaited<ReturnType<typeof getAbsences>>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(params?: GetAbsencesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAbsences>>, TError, TData>>, request?: SecondParameter<typeof apiRequest>}
@@ -9688,6 +10354,7 @@ export const getCreateAbsenceUrl = () => {
  * 강사(`INSTRUCTOR`)만 본인 명의로 신청할 수 있다 (그 외 역할은 403, PERMISSION_DENIED). `REQUESTED` 상태로 등록되며 관리자에게 인앱 알림이 발송된다.
  * - 시작 시각이 종료 시각보다 늦거나 같거나, 시작 시각이 과거이면 400 (INVALID_ABSENCE_PERIOD)
  * - 같은 강사의 승인 대기(`REQUESTED`) 또는 승인된(`APPROVED`) 부재와 기간이 겹치면 409 (ABSENCE_PERIOD_OVERLAP)
+ * - 확인 순서: 강사가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT, INVALID_ABSENCE_PERIOD) → 기간 겹침 409.
  * @summary 부재 신청 (강사)
  */
 export const createAbsence = async (absenceCreateRequest: AbsenceCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<Absence> => {
@@ -9880,9 +10547,12 @@ export const getApproveAbsenceUrl = (absenceId: number,) => {
 /**
  * 관리자 전용. `REQUESTED`에서 `APPROVED`로 바뀌며 신청한 강사에게 인앱 알림이 발송된다.
  * - 부재 기간과 겹치는 그 강사의 수업(취소되지 않은 것)에 예약이 하나라도 있으면 승인할 수 없다 (409, ABSENCE_HAS_RESERVATIONS). 해당 수업 ID가 `invalidParams`에 담기며, 부재는 `REQUESTED`로 남는다. 관리자는 예약을 정리하거나 반려할 수 있다.
+ * - `invalidParams`의 각 항목은 `field`에 수업 ID, `reason`에 `ABSENCE_HAS_RESERVATIONS`를 담는다. 이미 시작한 수업은 확인하지 않는다.
  * - 예약이 없는 수업은 승인과 동시에 자동으로 취소된다 (예약이 없으면 진행되지 않는 수업이므로 영향이 없다).
  * - 승인된 부재 기간에는 그 강사에게 수업을 배정할 수 없다 (수업 개설, 수정, 인계가 거부된다).
  * - `REQUESTED`가 아니면 409 (INVALID_ABSENCE_STATUS)
+ * - 자동 취소되는 수업은 아직 시작하지 않은 수업이며, 취소 사유는 "강사 부재 승인으로 자동 취소"이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없는 부재이면 404 → 상태 409 (INVALID_ABSENCE_STATUS) → 예약이 있는 수업 409 (ABSENCE_HAS_RESERVATIONS).
  * @summary 부재 승인 (관리자)
  */
 export const approveAbsence = async (absenceId: number, options?: Parameters<typeof apiRequest>[1]): Promise<Absence> => {
@@ -9959,6 +10629,8 @@ export const getRejectAbsenceUrl = (absenceId: number,) => {
 /**
  * 관리자 전용. `REQUESTED`에서 `REJECTED`로 바뀌며 신청한 강사에게 인앱 알림이 발송된다.
  * - `REQUESTED`가 아니면 409 (INVALID_ABSENCE_STATUS)
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 사유가 200자를 넘으면 400 (INVALID_INPUT) → 없는 부재이면 404 → 상태 409 (INVALID_ABSENCE_STATUS).
+ * - 요청 본문은 생략할 수 있다.
  * @summary 부재 반려 (관리자)
  */
 export const rejectAbsence = async (absenceId: number,
@@ -10053,6 +10725,8 @@ export const getCancelAbsenceUrl = (absenceId: number,) => {
  * - 관리자는 `REQUESTED`와 `APPROVED` 모두 취소할 수 있다. 승인 때 자동으로 취소된 수업은 되살아나지 않는다.
  * - 그 외 상태이면 409 (INVALID_ABSENCE_STATUS)
  * - 다른 강사의 부재이면 404
+ * - 확인 순서: 없는 부재이거나 관리자와 신청한 강사가 아니면 404 → 강사가 승인된 부재를 취소하면 403 (PERMISSION_DENIED) → 상태 409 (INVALID_ABSENCE_STATUS).
+ * - 처리자(`processedBy`)는 취소한 사람이다.
  * @summary 부재 취소
  */
 export const cancelAbsence = async (absenceId: number, options?: Parameters<typeof apiRequest>[1]): Promise<Absence> => {
@@ -10134,7 +10808,7 @@ export const getGetInstructorsUrl = (params?: GetInstructorsParams,) => {
 }
 
 /**
- * 활동 중인(`ACTIVE`) 강사의 ID와 이름만 이름 오름차순으로 반환한다. 수업을 개설하거나 이용권을 발급할 때 담당 강사를 고르는 용도이다.
+ * 활동 중인(`ACTIVE`) 강사의 ID와 이름만 이름 오름차순(같으면 id 오름차순)으로 반환한다. 수업을 개설하거나 이용권을 발급할 때 담당 강사를 고르는 용도이다.
  * `MEMBER_READ` 권한이 없는 강사도 담당 강사를 선택할 수 있도록, 로그인한 모든 사용자가 조회할 수 있다. 연락처 같은 개인정보는 포함하지 않는다.
  * @summary 강사 목록 조회
  */
@@ -10153,11 +10827,84 @@ export const getInstructors = async (params?: GetInstructorsParams, options?: Pa
 
 
 
+export const getGetInstructorsInfiniteQueryKey = (params?: GetInstructorsParams,) => {
+    return [
+    'infinite', `/instructors`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetInstructorsQueryKey = (params?: GetInstructorsParams,) => {
     return [
     `/instructors`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetInstructorsInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getInstructors>>, GetInstructorsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(params?: GetInstructorsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInstructors>>, TError, TData, QueryKey, GetInstructorsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInstructorsInfiniteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInstructors>>, QueryKey, GetInstructorsParams['page']> = ({ signal, pageParam }) => getInstructors({...params, 'page': pageParam ?? params?.['page']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInstructors>>, TError, TData, QueryKey, GetInstructorsParams['page']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInstructorsInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getInstructors>>>
+export type GetInstructorsInfiniteQueryError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse
+
+
+export function useGetInstructorsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInstructors>>, GetInstructorsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params: undefined |  GetInstructorsParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInstructors>>, TError, TData, QueryKey, GetInstructorsParams['page']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInstructors>>,
+          TError,
+          Awaited<ReturnType<typeof getInstructors>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetInstructorsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInstructors>>, GetInstructorsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetInstructorsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInstructors>>, TError, TData, QueryKey, GetInstructorsParams['page']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInstructors>>,
+          TError,
+          Awaited<ReturnType<typeof getInstructors>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetInstructorsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInstructors>>, GetInstructorsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetInstructorsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInstructors>>, TError, TData, QueryKey, GetInstructorsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 강사 목록 조회
+ */
+
+export function useGetInstructorsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInstructors>>, GetInstructorsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetInstructorsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInstructors>>, TError, TData, QueryKey, GetInstructorsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetInstructorsInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetInstructorsQueryOptions = <TData = Awaited<ReturnType<typeof getInstructors>>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(params?: GetInstructorsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInstructors>>, TError, TData>>, request?: SecondParameter<typeof apiRequest>}
@@ -10244,7 +10991,9 @@ export const getGetRoomsUrl = (params?: GetRoomsParams,) => {
 }
 
 /**
- * 이름 오름차순으로 정렬된다.
+ * 이름 오름차순으로 정렬되며, 이름이 같으면 `id` 오름차순이다.
+ * - 로그인한 모든 역할이 조회할 수 있다.
+ * - 삭제된 룸은 포함하지 않는다.
  * @summary 룸 목록 조회
  */
 export const getRooms = async (params?: GetRoomsParams, options?: Parameters<typeof apiRequest>[1]): Promise<RoomPageResponse> => {
@@ -10262,11 +11011,84 @@ export const getRooms = async (params?: GetRoomsParams, options?: Parameters<typ
 
 
 
+export const getGetRoomsInfiniteQueryKey = (params?: GetRoomsParams,) => {
+    return [
+    'infinite', `/rooms`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetRoomsQueryKey = (params?: GetRoomsParams,) => {
     return [
     `/rooms`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetRoomsInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getRooms>>, GetRoomsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(params?: GetRoomsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData, QueryKey, GetRoomsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRoomsInfiniteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRooms>>, QueryKey, GetRoomsParams['page']> = ({ signal, pageParam }) => getRooms({...params, 'page': pageParam ?? params?.['page']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData, QueryKey, GetRoomsParams['page']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetRoomsInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getRooms>>>
+export type GetRoomsInfiniteQueryError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse
+
+
+export function useGetRoomsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getRooms>>, GetRoomsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params: undefined |  GetRoomsParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData, QueryKey, GetRoomsParams['page']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getRooms>>,
+          TError,
+          Awaited<ReturnType<typeof getRooms>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetRoomsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getRooms>>, GetRoomsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetRoomsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData, QueryKey, GetRoomsParams['page']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getRooms>>,
+          TError,
+          Awaited<ReturnType<typeof getRooms>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetRoomsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getRooms>>, GetRoomsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetRoomsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData, QueryKey, GetRoomsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 룸 목록 조회
+ */
+
+export function useGetRoomsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getRooms>>, GetRoomsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(
+ params?: GetRoomsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData, QueryKey, GetRoomsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetRoomsInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetRoomsQueryOptions = <TData = Awaited<ReturnType<typeof getRooms>>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | InternalServerErrorResponse>(params?: GetRoomsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRooms>>, TError, TData>>, request?: SecondParameter<typeof apiRequest>}
@@ -10347,7 +11169,10 @@ export const getCreateRoomUrl = () => {
 
 /**
  * 관리자 전용.
- * - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED)
+ * - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED). 삭제된 룸의 이름은 다시 사용할 수 있다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 이름 중복이면 409 (ROOM_NAME_DUPLICATED).
+ * - 이름의 앞뒤 공백은 제거해 저장한다.
  * @summary 룸 등록 (관리자)
  */
 export const createRoom = async (roomCreateRequest: RoomCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<Room> => {
@@ -10436,6 +11261,7 @@ export const getGetRoomUrl = (roomId: number,) => {
 }
 
 /**
+ * 로그인한 모든 역할이 조회할 수 있다. 없거나 삭제된 룸이면 404이다.
  * @summary 룸 상세 조회
  */
 export const getRoom = async (roomId: number, options?: Parameters<typeof apiRequest>[1]): Promise<Room> => {
@@ -10538,7 +11364,10 @@ export const getUpdateRoomUrl = (roomId: number,) => {
 
 /**
  * 관리자 전용. 전달한 필드만 수정한다 (부분 수정). 최소 1개 필드가 필요하다.
- * - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED)
+ * - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED). 자기 자신과 같은 이름으로 수정하는 것은 허용한다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없거나 삭제된 룸이면 404 → 이름 중복이면 409 (ROOM_NAME_DUPLICATED).
+ * - 이름의 앞뒤 공백은 제거해 저장한다.
  * @summary 룸 수정 (관리자)
  */
 export const updateRoom = async (roomId: number,
@@ -10630,6 +11459,9 @@ export const getDeleteRoomUrl = (roomId: number,) => {
 /**
  * 관리자 전용.
  * - 시작 전이고 취소되지 않은 수업이 있는 룸은 삭제할 수 없다 (409, ROOM_IN_USE). 취소된 수업은 포함하지 않는다.
+ * - 지난 수업이 참조하므로 데이터는 지우지 않고 삭제 처리만 한다. 삭제된 룸은 조회, 수정, 삭제 모두 404이다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 403 (PERMISSION_DENIED)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없거나 이미 삭제된 룸이면 404 → 시작 전 수업이 있으면 409 (ROOM_IN_USE).
  * @summary 룸 삭제 (관리자)
  */
 export const deleteRoom = async (roomId: number, options?: Parameters<typeof apiRequest>[1]): Promise<void> => {
@@ -10706,6 +11538,8 @@ export const getGetBusinessHoursUrl = () => {
 /**
  * 요일별 영업시간을 조회한다. 항상 7개 요일이 모두 반환되므로(고정 크기) 페이징을 사용하지 않는다.
  * 아직 설정한 적이 없으면 모든 요일이 휴무(`closed: true`)로 반환된다.
+ * - 로그인한 모든 역할이 조회할 수 있다.
+ * - 월요일(`MON`)부터 일요일(`SUN`) 순으로 반환한다.
  * @summary 영업시간 조회
  */
 export const getBusinessHours = async ( options?: Parameters<typeof apiRequest>[1]): Promise<BusinessHoursResponse> => {
@@ -10811,6 +11645,12 @@ export const getUpdateBusinessHoursUrl = () => {
  * - 요일이 누락되거나 중복되면 400 (INVALID_BUSINESS_HOURS)
  * - `closed`가 false인 요일은 `openTime`이 `closeTime`보다 빨라야 한다 (400, INVALID_BUSINESS_HOURS)
  * - 이미 개설된 수업에는 영향을 주지 않는다. 이후 수업 개설 시 검증에만 적용된다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식이 올바르지 않으면 400 (INVALID_INPUT) → 요일 구성이나 시각이 올바르지 않으면 400 (INVALID_BUSINESS_HOURS).
+ * - 요일은 `MON`~`SUN` 7개가 정확히 한 번씩 있어야 한다. 개수가 7개가 아니거나 중복되면 400 (INVALID_BUSINESS_HOURS)이다.
+ * - `closed`가 true인 요일에 `openTime` 또는 `closeTime`을 보내면 400 (INVALID_BUSINESS_HOURS)이다. `closed`가 false인 요일은 두 시각이 모두 있어야 한다.
+ * - 형식이 올바르지 않은 값(`HH:mm`이 아닌 시각, 정의되지 않은 요일 등)은 400 (INVALID_INPUT)이다.
+ * - 응답은 월요일부터 일요일 순이다.
  * @summary 영업시간 설정 (관리자)
  */
 export const updateBusinessHours = async (businessHoursRequest: BusinessHoursRequest, options?: Parameters<typeof apiRequest>[1]): Promise<BusinessHoursResponse> => {
