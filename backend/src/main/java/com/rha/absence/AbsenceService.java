@@ -7,6 +7,7 @@ import com.rha.common.validation.RequestValidator;
 import com.rha.instructor.InstructorSummary;
 import com.rha.lesson.Lesson;
 import com.rha.lesson.LessonRepository;
+import com.rha.reservation.ReservationRepository;
 import com.rha.member.AdminGuard;
 import com.rha.member.Member;
 import com.rha.member.MemberRepository;
@@ -32,8 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 강사 부재 신청·조회·승인·반려·취소.
  *
- * <p>승인 때 예약이 있는 수업의 확인(ABSENCE_HAS_RESERVATIONS)과 관리자·강사 알림은 예약·알림 기능이
- * 구현될 때 추가한다.
+ * <p>관리자·강사 알림은 알림 기능이 구현될 때 추가한다.
  */
 @Service
 public class AbsenceService {
@@ -43,14 +43,17 @@ public class AbsenceService {
     private final AbsenceRepository absenceRepository;
     private final MemberRepository memberRepository;
     private final LessonRepository lessonRepository;
+    private final ReservationRepository reservationRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
     public AbsenceService(AbsenceRepository absenceRepository, MemberRepository memberRepository,
-            LessonRepository lessonRepository, AdminGuard adminGuard, RequestValidator requestValidator) {
+            LessonRepository lessonRepository, ReservationRepository reservationRepository,
+            AdminGuard adminGuard, RequestValidator requestValidator) {
         this.absenceRepository = absenceRepository;
         this.memberRepository = memberRepository;
         this.lessonRepository = lessonRepository;
+        this.reservationRepository = reservationRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
     }
@@ -145,9 +148,20 @@ public class AbsenceService {
         requireRequested(absence);
 
         Instant now = Instant.now();
+        List<Lesson> overlapping = lessonRepository.findUpcomingOverlapping(absence.getInstructorId(),
+                absence.getStartAt(), absence.getEndAt(), now);
+        if (!overlapping.isEmpty()) {
+            List<ApiException.Detail> withReservations = reservationRepository
+                    .lessonIdsWithReserved(overlapping.stream().map(Lesson::getId).toList()).stream()
+                    .sorted()
+                    .map(id -> new ApiException.Detail(String.valueOf(id), ErrorCode.ABSENCE_HAS_RESERVATIONS.name()))
+                    .toList();
+            if (!withReservations.isEmpty()) {
+                throw new ApiException(ErrorCode.ABSENCE_HAS_RESERVATIONS, withReservations);
+            }
+        }
         absence.approve(callerId, now);
-        for (Lesson lesson : lessonRepository.findUpcomingOverlapping(absence.getInstructorId(),
-                absence.getStartAt(), absence.getEndAt(), now)) {
+        for (Lesson lesson : overlapping) {
             lesson.cancel(AUTO_CANCEL_REASON, now);
         }
         return toResponses(List.of(absence)).get(0);

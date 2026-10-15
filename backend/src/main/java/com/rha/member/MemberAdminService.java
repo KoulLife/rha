@@ -8,6 +8,7 @@ import com.rha.common.paging.PageInfo;
 import com.rha.common.validation.RequestValidator;
 import com.rha.lesson.LessonRepository;
 import com.rha.lesson.LessonStatus;
+import com.rha.reservation.ReservationRepository;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ public class MemberAdminService {
     private final PasswordResetService passwordResetService;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LessonRepository lessonRepository;
+    private final ReservationRepository reservationRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
@@ -41,6 +43,7 @@ public class MemberAdminService {
             PasswordResetService passwordResetService,
             RefreshTokenRepository refreshTokenRepository,
             LessonRepository lessonRepository,
+            ReservationRepository reservationRepository,
             AdminGuard adminGuard,
             RequestValidator requestValidator) {
         this.memberRepository = memberRepository;
@@ -48,6 +51,7 @@ public class MemberAdminService {
         this.passwordResetService = passwordResetService;
         this.refreshTokenRepository = refreshTokenRepository;
         this.lessonRepository = lessonRepository;
+        this.reservationRepository = reservationRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
     }
@@ -121,7 +125,7 @@ public class MemberAdminService {
 
     /**
      * 계정을 ACTIVE 또는 INACTIVE로 바꾼다. 비활성화하면 Refresh Token을 모두 폐기한다.
-     * 시작 전 예약(MEMBER_HAS_UPCOMING_RESERVATIONS) 확인은 예약 기능이 구현될 때 추가한다.
+     * 비활성화하려는 회원에게 시작 전 예약이 있으면 거절한다.
      */
     @Transactional
     public MemberResponse changeMemberStatus(Long callerId, Long memberId, MemberStatusChangeRequest request) {
@@ -145,6 +149,9 @@ public class MemberAdminService {
             }
             if (member.isRole(MemberRole.INSTRUCTOR)) {
                 requireNoUpcomingLessons(memberId);
+            }
+            if (reservationRepository.existsUpcomingOf(memberId, Instant.now())) {
+                throw new ApiException(ErrorCode.MEMBER_HAS_UPCOMING_RESERVATIONS);
             }
         }
 

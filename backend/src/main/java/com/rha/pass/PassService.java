@@ -13,6 +13,7 @@ import com.rha.member.MemberStatus;
 import com.rha.passproduct.PassProduct;
 import com.rha.payment.PassPayment;
 import com.rha.payment.PassPaymentRepository;
+import com.rha.reservation.ReservationRepository;
 import com.rha.passproduct.PassProductRepository;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -39,8 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 이용권 발급·조회·수정과 일시정지, 날짜에 따른 상태 전환.
  *
- * <p>정지 기간의 예약 확인(PAUSE_HAS_RESERVATIONS)은 예약 기능이 구현될 때 추가한다.
- * 상태는 조회·수정할 때와 주기적으로 {@link #refreshStatuses}가 최신으로 맞춘다.
+ * <p>상태는 조회·수정할 때와 주기적으로 {@link #refreshStatuses}가 최신으로 맞춘다.
  */
 @Service
 public class PassService {
@@ -58,17 +58,19 @@ public class PassService {
     private final PassPauseRepository pauseRepository;
     private final PassProductRepository productRepository;
     private final PassPaymentRepository paymentRepository;
+    private final ReservationRepository reservationRepository;
     private final MemberRepository memberRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
     public PassService(PassRepository passRepository, PassPauseRepository pauseRepository,
             PassProductRepository productRepository, PassPaymentRepository paymentRepository,
-            MemberRepository memberRepository, AdminGuard adminGuard, RequestValidator requestValidator) {
+            ReservationRepository reservationRepository, MemberRepository memberRepository, AdminGuard adminGuard, RequestValidator requestValidator) {
         this.passRepository = passRepository;
         this.pauseRepository = pauseRepository;
         this.productRepository = productRepository;
         this.paymentRepository = paymentRepository;
+        this.reservationRepository = reservationRepository;
         this.memberRepository = memberRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
@@ -318,6 +320,11 @@ public class PassService {
         }
         if (pauseRepository.existsOverlap(passId, start, end)) {
             throw new ApiException(ErrorCode.PAUSE_PERIOD_OVERLAP);
+        }
+        // 정지 기간(현지 날짜 start~end)에 시작하는 수업을 이 이용권으로 예약한 것이 있으면 먼저 취소해야 한다.
+        if (reservationRepository.existsReservedOnPassBetween(passId,
+                start.atStartOfDay(CENTER_ZONE).toInstant(), end.plusDays(1).atStartOfDay(CENTER_ZONE).toInstant())) {
+            throw new ApiException(ErrorCode.PAUSE_HAS_RESERVATIONS);
         }
 
         Instant now = Instant.now();

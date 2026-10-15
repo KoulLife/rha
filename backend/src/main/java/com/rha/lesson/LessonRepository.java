@@ -1,6 +1,9 @@
 package com.rha.lesson;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -8,6 +11,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface LessonRepository extends JpaRepository<Lesson, Long>, JpaSpecificationExecutor<Lesson> {
+
+    /** 예약의 정원 확인과 저장 사이에 다른 예약이 끼어들지 못하도록 수업 행을 잠근다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select l from Lesson l where l.id = :id")
+    Optional<Lesson> findByIdForUpdate(@Param("id") Long id);
 
     /** 시작 전이고 취소되지 않은 수업이 룸에 있는지. */
     boolean existsByRoomIdAndStatusNotAndStartAtAfter(Long roomId, LessonStatus status, Instant now);
