@@ -3,6 +3,7 @@ package com.rha.absence;
 import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.PageInfo;
+import com.rha.common.persistence.RowLock;
 import com.rha.common.validation.RequestValidator;
 import com.rha.instructor.InstructorSummary;
 import com.rha.lesson.Lesson;
@@ -55,12 +56,14 @@ public class AbsenceService {
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
     private final ActivityLogRecorder activityLogRecorder;
+    private final RowLock rowLock;
 
     public AbsenceService(AbsenceRepository absenceRepository, MemberRepository memberRepository,
             LessonRepository lessonRepository, ReservationRepository reservationRepository,
             NotificationPublisher notificationPublisher, AdminGuard adminGuard,
-            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
+            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder, RowLock rowLock) {
         this.activityLogRecorder = activityLogRecorder;
+        this.rowLock = rowLock;
         this.absenceRepository = absenceRepository;
         this.memberRepository = memberRepository;
         this.lessonRepository = lessonRepository;
@@ -138,7 +141,7 @@ public class AbsenceService {
             throw new ApiException(ErrorCode.INVALID_ABSENCE_PERIOD);
         }
         // 같은 강사의 신청이 동시에 들어와 서로의 겹침 검사를 지나치지 못하도록 강사 행을 잠근다.
-        memberRepository.findByIdForUpdate(callerId);
+        rowLock.lock(caller);
         if (absenceRepository.existsActiveOverlap(callerId, start, end)) {
             throw new ApiException(ErrorCode.ABSENCE_PERIOD_OVERLAP);
         }
@@ -161,9 +164,14 @@ public class AbsenceService {
         adminGuard.requireAdmin(callerId);
         Absence absence = find(absenceId);
         requireRequested(absence);
+        // 강사 → 부재 → 수업 순으로 잠근다. 강사를 잠가야 그 강사의 수업 개설과 겹치지 않고, 부재를 잠근 뒤 다시 읽어야
+        // 동시에 들어온 다른 처리와 중복되지 않는다.
+        memberRepository.findByIdForUpdate(absence.getInstructorId());
+        rowLock.lock(absence);
+        requireRequested(absence);
 
         Instant now = Instant.now();
-        List<Lesson> overlapping = lessonRepository.findUpcomingOverlapping(absence.getInstructorId(),
+        List<Lesson> overlapping = lessonRepository.findUpcomingOverlappingForUpdate(absence.getInstructorId(),
                 absence.getStartAt(), absence.getEndAt(), now);
         if (!overlapping.isEmpty()) {
             List<ApiException.Detail> withReservations = reservationRepository
@@ -198,7 +206,7 @@ public class AbsenceService {
         adminGuard.requireAdmin(callerId);
         AbsenceRejectRequest body = request != null ? request : new AbsenceRejectRequest(null);
         requestValidator.validate(body);
-        Absence absence = find(absenceId);
+        Absence absence = rowLock.lock(find(absenceId));
         requireRequested(absence);
 
         absence.reject(callerId, body.reason(), Instant.now());
@@ -217,7 +225,7 @@ public class AbsenceService {
     @Transactional
     public AbsenceResponse cancelAbsence(Long callerId, Long absenceId) {
         Member caller = findCaller(callerId);
-        Absence absence = find(absenceId);
+        Absence absence = rowLock.lock(find(absenceId));
         boolean admin = isAdmin(caller);
         if (!admin && !absence.getInstructorId().equals(callerId)) {
             throw new ApiException(ErrorCode.NOT_FOUND);

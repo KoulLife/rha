@@ -3,6 +3,7 @@ package com.rha.reservation;
 import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.PageInfo;
+import com.rha.common.persistence.RowLock;
 import com.rha.common.validation.RequestValidator;
 import com.rha.lesson.Lesson;
 import com.rha.lesson.LessonRepository;
@@ -77,6 +78,7 @@ public class ReservationService {
     private final SettlementItemRepository settlementItemRepository;
     private final RequestValidator requestValidator;
     private final ActivityLogRecorder activityLogRecorder;
+    private final RowLock rowLock;
 
     public ReservationService(ReservationRepository reservationRepository, LessonRepository lessonRepository,
             LessonTypeRepository lessonTypeRepository, RoomRepository roomRepository,
@@ -84,8 +86,9 @@ public class ReservationService {
             PassRepository passRepository, PassProductRepository productRepository,
             PassPaymentRepository paymentRepository, ReservationPolicyRepository policyRepository,
             NotificationPublisher notificationPublisher, SettlementItemRepository settlementItemRepository,
-            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
+            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder, RowLock rowLock) {
         this.activityLogRecorder = activityLogRecorder;
+        this.rowLock = rowLock;
         this.reservationRepository = reservationRepository;
         this.lessonRepository = lessonRepository;
         this.lessonTypeRepository = lessonTypeRepository;
@@ -121,7 +124,11 @@ public class ReservationService {
         if (lesson.getStatus() != LessonStatus.PUBLISHED || lesson.hasStarted(now)) {
             throw new ApiException(ErrorCode.LESSON_NOT_RESERVABLE);
         }
-        memberRepository.findByIdForUpdate(callerId);
+        // 비활성화·탈퇴와 동시에 들어온 예약이 그 확인을 지나치지 않도록, 잠근 뒤의 상태로 다시 확인한다.
+        rowLock.lock(caller);
+        if (!caller.isActive() || !caller.isRole(MemberRole.MEMBER)) {
+            throw new ApiException(ErrorCode.PERMISSION_DENIED);
+        }
         if (reservationRepository.existsByLessonIdAndMemberIdAndStatusNot(lesson.getId(), callerId,
                 ReservationStatus.CANCELED)) {
             throw new ApiException(ErrorCode.ALREADY_RESERVED);
@@ -158,8 +165,9 @@ public class ReservationService {
                 skippedUnpaid = true;
                 continue;
             }
-            Pass locked = passRepository.findByIdForUpdate(candidate.getId()).orElse(null);
-            if (locked != null && locked.getRemainingCount() > 0) {
+            // 후보는 잠그기 전에 고른 것이므로, 잠근 뒤 그 사이 등록된 일시정지나 바뀐 횟수·기간을 다시 확인한다.
+            Pass locked = rowLock.lock(candidate);
+            if (passRepository.isReservableOn(locked.getId(), lessonDate)) {
                 return locked;
             }
         }
@@ -178,7 +186,9 @@ public class ReservationService {
         Member caller = findCaller(callerId);
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
-        Lesson lesson = lessonRepository.findById(reservation.getLessonId()).orElseThrow();
+        // 수업 → 예약 순으로 잠근 뒤 다시 읽어, 같은 예약의 중복 취소나 수업 취소와 겹쳐 횟수가 두 번 복구되지 않게 한다.
+        Lesson lesson = lessonRepository.findByIdForUpdate(reservation.getLessonId()).orElseThrow();
+        rowLock.lock(reservation);
         if (!canView(caller, reservation, lesson)) {
             throw new ApiException(ErrorCode.NOT_FOUND);
         }
@@ -221,7 +231,12 @@ public class ReservationService {
     public ReservationResponse confirmAttendance(Long callerId, Long reservationId, AttendanceRequest request) {
         Member caller = findCaller(callerId);
         Reservation reservation = reservationRepository.findById(reservationId).orElse(null);
-        Lesson lesson = reservation == null ? null : lessonRepository.findById(reservation.getLessonId()).orElse(null);
+        // 수업을 잠가 정산 계산·예약 취소와 겹치지 않게 하고, 그 사이 바뀌었을 수 있는 예약을 다시 읽는다.
+        Lesson lesson = reservation == null ? null
+                : lessonRepository.findByIdForUpdate(reservation.getLessonId()).orElse(null);
+        if (reservation != null) {
+            rowLock.lock(reservation);
+        }
         // 담당 강사가 아니면 수업이 없어도 존재 여부를 숨기기 위해 403이다.
         boolean allowed = isAdmin(caller) || (caller.isActive() && caller.isRole(MemberRole.INSTRUCTOR)
                 && lesson != null && lesson.getInstructorId().equals(callerId));

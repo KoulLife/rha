@@ -6,6 +6,7 @@ import com.rha.businesshour.BusinessHourRepository;
 import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.PageInfo;
+import com.rha.common.persistence.RowLock;
 import com.rha.common.validation.RequestValidator;
 import com.rha.instructor.InstructorAvailabilityRepository;
 import com.rha.lessontype.LessonType;
@@ -79,6 +80,7 @@ public class LessonService {
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
     private final ActivityLogRecorder activityLogRecorder;
+    private final RowLock rowLock;
 
     public LessonService(LessonRepository lessonRepository, LessonTypeRepository lessonTypeRepository,
             RoomRepository roomRepository, MemberRepository memberRepository,
@@ -86,8 +88,9 @@ public class LessonService {
             InstructorAvailabilityRepository availabilityRepository, AbsenceRepository absenceRepository,
             ReservationRepository reservationRepository, PassRepository passRepository,
             NotificationPublisher notificationPublisher, AdminGuard adminGuard,
-            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
+            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder, RowLock rowLock) {
         this.activityLogRecorder = activityLogRecorder;
+        this.rowLock = rowLock;
         this.lessonRepository = lessonRepository;
         this.lessonTypeRepository = lessonTypeRepository;
         this.roomRepository = roomRepository;
@@ -211,6 +214,14 @@ public class LessonService {
         }
         Room newRoom = request.roomId() == null ? null : roomRepository.findActiveForUpdate(request.roomId())
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+        // 개설·부재 승인과 같은 순서(룸 → 강사 → 수업)로 잠근 뒤 수업을 다시 읽는다. 수업을 잠가야 예약 확인과
+        // 시간 변경 사이에 예약이 끼어들지 못하고, 동시에 취소된 수업을 덮어쓰지 않는다.
+        if (newRoom == null) {
+            roomRepository.findActiveForUpdate(lesson.getRoomId());
+        }
+        memberRepository.findByIdForUpdate(request.instructorId() != null ? request.instructorId()
+                : lesson.getInstructorId());
+        rowLock.lock(lesson);
 
         Instant now = Instant.now();
         requireModifiable(lesson, now);
@@ -266,7 +277,7 @@ public class LessonService {
      */
     @Transactional
     public LessonResponse changeLessonStatus(Long callerId, Long lessonId, LessonStatusChangeRequest request) {
-        Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
+        Lesson lesson = lessonRepository.findByIdForUpdate(lessonId).orElse(null);
         authorize(callerId, UPDATE_PREFIX, lesson == null ? null : typeCodeOf(lesson));
 
         LessonStatus target = requestedStatus(request.status());
@@ -298,10 +309,13 @@ public class LessonService {
         return toResponse(lesson);
     }
 
-    /** 확인 순서: 권한(403) → 입력(400) → 수업(404) → 이미 취소(409) → 이미 시작(409). */
+    /**
+     * 확인 순서: 권한(403) → 입력(400) → 수업(404) → 이미 취소(409) → 이미 시작(409).
+     * 수업을 잠가 취소 중에 새 예약이 들어와 취소된 수업에 남지 않게 한다.
+     */
     @Transactional
     public LessonResponse cancelLesson(Long callerId, Long lessonId, LessonCancelRequest request) {
-        Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
+        Lesson lesson = lessonRepository.findByIdForUpdate(lessonId).orElse(null);
         authorize(callerId, UPDATE_PREFIX, lesson == null ? null : typeCodeOf(lesson));
         LessonCancelRequest body = request != null ? request : new LessonCancelRequest(null);
         requestValidator.validate(body);
@@ -343,19 +357,26 @@ public class LessonService {
         Instant now = Instant.now();
         Instant from = request.from() == null ? now : parseInstant(request.from());
 
-        Member fromInstructor = memberRepository.findById(fromInstructorId)
+        // 두 강사를 id 순으로 잠가, 같은 강사들이 얽힌 다른 인계·수업 개설·부재 승인과 엇갈려 기다리지 않게 한다.
+        Map<Long, Member> locked = new java.util.HashMap<>();
+        for (Long id : new java.util.TreeSet<>(List.of(fromInstructorId, request.toInstructorId()))) {
+            memberRepository.findById(id).map(rowLock::lock).ifPresent(member -> locked.put(id, member));
+        }
+        Member fromInstructor = java.util.Optional.ofNullable(locked.get(fromInstructorId))
                 .filter(member -> member.isRole(MemberRole.INSTRUCTOR))
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
-        Member toInstructor = memberRepository.findById(request.toInstructorId())
+        Member toInstructor = java.util.Optional.ofNullable(locked.get(request.toInstructorId()))
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
         if (!toInstructor.isRole(MemberRole.INSTRUCTOR) || !toInstructor.isActive()
                 || toInstructor.getId().equals(fromInstructor.getId())) {
             throw new ApiException(ErrorCode.INVALID_INSTRUCTOR);
         }
-        lockInstructor(toInstructor.getId());
 
-        // 이미 시작한 수업은 from이 과거여도 넘기지 않는다.
-        List<Lesson> lessons = lessonRepository.findUpcomingOf(fromInstructorId, from.isAfter(now) ? from : now);
+        // 이미 시작한 수업은 from이 과거여도 넘기지 않는다. 잠근 뒤 시작 시각 순으로 확인한다.
+        List<Lesson> lessons = lessonRepository.findUpcomingOfForUpdate(fromInstructorId,
+                from.isAfter(now) ? from : now).stream()
+                .sorted(java.util.Comparator.comparing(Lesson::getStartAt).thenComparing(Lesson::getId))
+                .toList();
         List<ApiException.Detail> failures = new ArrayList<>();
         for (Lesson lesson : lessons) {
             try {
@@ -381,7 +402,7 @@ public class LessonService {
     /** 공개 예약 시각이 지난 수업을 공개하고 공개한 수업 수를 반환한다. */
     @Transactional
     public int publishDueLessons(Instant now) {
-        List<Lesson> due = lessonRepository.findByStatusAndPublishAtLessThanEqual(LessonStatus.SCHEDULED, now);
+        List<Lesson> due = lessonRepository.findDueForPublishForUpdate(now);
         for (Lesson lesson : due) {
             lesson.changeStatus(LessonStatus.PUBLISHED, null, now);
             activityLogRecorder.record(ActivityAction.LESSON_PUBLISHED, null, null, "LESSON", lesson.getId(),
@@ -492,9 +513,12 @@ public class LessonService {
         }
     }
 
-    /** 담당 강사는 활성 상태의 강사여야 한다. 시간 충돌 검사를 위해 행을 잠근다. */
+    /**
+     * 담당 강사는 활성 상태의 강사여야 한다. 시간 충돌 검사를 위해 행을 잠그고, 그 사이 역할·상태가 바뀌었을 수 있으므로
+     * 잠근 뒤의 값으로 확인한다.
+     */
     private Member lockInstructor(Long instructorId) {
-        return memberRepository.findByIdForUpdate(instructorId)
+        return memberRepository.findById(instructorId).map(rowLock::lock)
                 .filter(member -> member.isRole(MemberRole.INSTRUCTOR) && member.isActive())
                 .orElseThrow(() -> new ApiException(ErrorCode.INVALID_INSTRUCTOR));
     }

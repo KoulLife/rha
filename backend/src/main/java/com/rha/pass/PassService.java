@@ -423,7 +423,7 @@ public class PassService {
         LocalDate today = today();
         refreshStatuses(today);
         Instant now = Instant.now();
-        List<Pass> passes = passRepository.findByPassProductIdAndStatusIn(passProductId, NOT_EXPIRED);
+        List<Pass> passes = passRepository.findByPassProductIdAndStatusInForUpdate(passProductId, NOT_EXPIRED);
         for (Pass pass : passes) {
             if (countDelta != null) {
                 pass.applyCountDelta(countDelta, now);

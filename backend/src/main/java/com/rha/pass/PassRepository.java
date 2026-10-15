@@ -17,7 +17,15 @@ public interface PassRepository extends JpaRepository<Pass, Long>, JpaSpecificat
 
     boolean existsByPassProductId(Long passProductId);
 
-    List<Pass> findByPassProductIdAndStatusIn(Long passProductId, Collection<PassStatus> statuses);
+    /** 상품 변경을 반영할 이용권. 반영 중에 들어온 예약 차감이 덮어써지지 않도록 잠근다(id 순). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select p from Pass p
+            where p.passProductId = :passProductId and p.status in :statuses
+            order by p.id
+            """)
+    List<Pass> findByPassProductIdAndStatusInForUpdate(@Param("passProductId") Long passProductId,
+            @Param("statuses") Collection<PassStatus> statuses);
 
     /** 정지 등록·해제처럼 만료일을 바꾸는 작업이 서로 겹치지 않도록 행을 잠근다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -39,6 +47,17 @@ public interface PassRepository extends JpaRepository<Pass, Long>, JpaSpecificat
             """)
     List<Pass> findReservableCandidates(@Param("memberId") Long memberId,
             @Param("lessonDate") LocalDate lessonDate);
+
+    /** 잠근 이용권이 지금도 그 수업일에 예약할 수 있는지. 조건은 {@link #findReservableCandidates}와 같다. */
+    @Query("""
+            select count(p) > 0 from Pass p
+            where p.id = :passId and p.remainingCount > 0
+              and p.startDate <= :lessonDate and p.endDate >= :lessonDate
+              and not exists (select 1 from PassPause pp
+                              where pp.passId = p.id and pp.status <> com.rha.pass.PassPauseStatus.CANCELED
+                                and pp.startDate <= :lessonDate and pp.endDate >= :lessonDate)
+            """)
+    boolean isReservableOn(@Param("passId") Long passId, @Param("lessonDate") LocalDate lessonDate);
 
     /**
      * 만료일이 지났지만 아직 EXPIRED가 아닌 이용권. 이용권마다 활동 이력을 남기기 위해 한 건씩 바꾸며,

@@ -5,6 +5,7 @@ import com.rha.auth.RefreshTokenRepository;
 import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.PageInfo;
+import com.rha.common.persistence.RowLock;
 import com.rha.common.validation.RequestValidator;
 import com.rha.lesson.LessonRepository;
 import com.rha.lesson.LessonStatus;
@@ -43,6 +44,7 @@ public class MemberAdminService {
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
     private final ActivityLogRecorder activityLogRecorder;
+    private final RowLock rowLock;
 
     public MemberAdminService(MemberRepository memberRepository,
             MemberPermissionRepository permissionRepository,
@@ -52,8 +54,9 @@ public class MemberAdminService {
             ReservationRepository reservationRepository,
             AdminGuard adminGuard,
             RequestValidator requestValidator,
-            ActivityLogRecorder activityLogRecorder) {
+            ActivityLogRecorder activityLogRecorder, RowLock rowLock) {
         this.activityLogRecorder = activityLogRecorder;
+        this.rowLock = rowLock;
         this.memberRepository = memberRepository;
         this.permissionRepository = permissionRepository;
         this.passwordResetService = passwordResetService;
@@ -112,7 +115,7 @@ public class MemberAdminService {
         if (!request.hasAnyField()) {
             throw new ApiException(ErrorCode.INVALID_INPUT);
         }
-        Member member = findMember(memberId);
+        Member member = lockMember(memberId);
 
         MemberRole requestedRole = request.getRole() == null ? null : MemberRole.valueOf(request.getRole());
         boolean roleChanged = requestedRole != null && !member.isRole(requestedRole);
@@ -157,7 +160,7 @@ public class MemberAdminService {
     public MemberResponse changeMemberStatus(Long callerId, Long memberId, MemberStatusChangeRequest request) {
         requireAdmin(callerId);
         validate(request);
-        Member member = findMember(memberId);
+        Member member = lockMember(memberId);
         if (callerId.equals(memberId)) {
             throw new ApiException(ErrorCode.CANNOT_CHANGE_OWN_STATUS);
         }
@@ -209,6 +212,14 @@ public class MemberAdminService {
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+    }
+
+    /**
+     * 바꿀 회원을 잠가 읽는다. 예약·수업 개설도 이 행을 잠그므로, "시작 전 예약·수업 없음" 확인과 변경 사이에
+     * 새 예약이나 수업이 끼어들지 못한다.
+     */
+    private Member lockMember(Long memberId) {
+        return rowLock.lock(findMember(memberId));
     }
 
     private List<String> permissionsOf(Long memberId) {

@@ -4,6 +4,7 @@ import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.LikePattern;
 import com.rha.common.paging.PageInfo;
+import com.rha.common.persistence.RowLock;
 import com.rha.common.validation.RequestValidator;
 import com.rha.member.AdminGuard;
 import com.rha.pass.PassRepository;
@@ -31,16 +32,18 @@ public class PassProductService {
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
     private final ActivityLogRecorder activityLogRecorder;
+    private final RowLock rowLock;
 
     public PassProductService(PassProductRepository passProductRepository, PassRepository passRepository,
             PassService passService, AdminGuard adminGuard, RequestValidator requestValidator,
-            ActivityLogRecorder activityLogRecorder) {
+            ActivityLogRecorder activityLogRecorder, RowLock rowLock) {
         this.passProductRepository = passProductRepository;
         this.passRepository = passRepository;
         this.passService = passService;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
         this.activityLogRecorder = activityLogRecorder;
+        this.rowLock = rowLock;
     }
 
     /** 등록 최신순(같으면 id 내림차순). {@code page}는 1부터 시작한다. */
@@ -90,7 +93,8 @@ public class PassProductService {
         if (!request.hasAnyField()) {
             throw new ApiException(ErrorCode.INVALID_INPUT);
         }
-        PassProduct product = find(passProductId);
+        // 동시에 들어온 수정이 같은 이전 값으로 변경량을 계산해 발급 이용권에 두 번 반영하지 않도록 잠근다.
+        PassProduct product = rowLock.lock(find(passProductId));
 
         Integer countDelta = request.getTotalCount() != null && request.getTotalCount() != product.getTotalCount()
                 ? request.getTotalCount() - product.getTotalCount() : null;
