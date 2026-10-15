@@ -87,6 +87,9 @@
     min-width: 0;
     gap: var(--dashboard-gap);
   }
+  .dashboard-column > .dashboard-panel:last-child {
+    flex: 1;
+  }
   .dashboard-panel-heading {
     display: flex;
     justify-content: space-between;
@@ -107,6 +110,15 @@
     margin: 0;
     padding: 0;
   }
+  .dashboard-notification-scroll {
+    max-height: var(--dashboard-notification-max-height);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+  .dashboard-notification-scroll:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: var(--space-tight);
+  }
   .dashboard-short-list > li {
     display: flex;
     align-items: center;
@@ -115,8 +127,12 @@
     padding-block: var(--dashboard-row-padding);
     border-bottom: 1px solid var(--border);
   }
+  .dashboard-short-list > li:first-child {
+    padding-top: 0;
+  }
   .dashboard-short-list > li:last-child {
-    border-bottom-color: transparent;
+    border-bottom: 0;
+    padding-bottom: 0;
   }
   .dashboard-short-list h3, .dashboard-lesson-info h3, .dashboard-pass-heading h3 {
     margin: 0;
@@ -317,9 +333,13 @@
   .dashboard-roster-table tr > :first-child { width: var(--dashboard-roster-number-width); }
   .dashboard-lessons-table [data-state="selected"] [data-slot="table-cell"] { background: var(--accent); }
   .home-main .dashboard-panel-table { --table-scroll-max-height: none; }
+  .home-main .dashboard-page [data-slot="table"][data-variant="management"] [data-slot="table-cell"],
+  .home-main .dashboard-page [data-slot="table"][data-variant="management"] [data-slot="table-head"] {
+    padding: var(--table-cell-padding);
+  }
   .dashboard-lesson-placeholder:hover { background: transparent; }
-  .dashboard-page .dashboard-panel-table { gap: 0; padding-block: 0; }
-  .dashboard-panel-table > .dashboard-panel-heading { padding-block: var(--space-detail); }
+  .dashboard-page .dashboard-panel-table { gap: 0; padding-bottom: 0; }
+  .dashboard-panel-table:not(:has(> [data-slot="card-header"])) { padding-top: 0; }
   .dashboard-panel-table > [data-slot="card-content"] { padding: 0; }
   .dashboard-dated-list > li {
     display: grid;
@@ -351,21 +371,4 @@
   .member-info-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-detail); padding-block: var(--space-detail); border-bottom: 1px solid var(--border); }
   .member-info-facts dt { color: var(--muted-foreground); font-size: var(--font-size-body); }
   .member-info-facts dd { margin: 0; text-align: right; font-size: var(--font-size-body); font-weight: 500; }
-}
-
-@layer utilities {
-  /* 목록 바깥의 여백 없이 모든 행에 동일한 간격을 적용한다. */
-  .home-main .dashboard-panel { gap: 0; padding-block: 0; }
-  .home-main .dashboard-panel-heading { padding-block: var(--space-detail); }
-  .home-main .dashboard-panel > [data-slot="card-content"] { padding-block: 0; }
-}
-
-@media (min-width: 1100px) and (min-height: 700px) {
-  .home-main > .content > .dashboard-page { height: 100%; grid-template-rows: auto auto minmax(0, 1fr); }
-  .home-main .dashboard-panel-heading { padding-block: var(--space-control); }
-  .home-main .dashboard-panel-heading [data-slot="button"],
-  .home-main .dashboard-row-actions [data-slot="button"] { height: var(--home-fit-action-height); }
-  .home-main .dashboard-short-list > li { padding-block: var(--space-control); }
-  .home-main [data-slot="table-cell"], .home-main [data-slot="table-head"] { padding-block: var(--space-control); }
-  .home-main .dashboard-dated-list > li { grid-template-columns: minmax(0, 1fr) auto auto; }
 }

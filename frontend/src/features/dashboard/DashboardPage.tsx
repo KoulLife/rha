@@ -37,11 +37,11 @@ function DashboardEmpty({ title, description }: { title: string; description: st
 }
 
 function NotificationList({ items, detail }: { items: api.Notification[]; detail: ReturnType<typeof useNotificationDetail> }) {
-  return items.length ? <PaginatedList items={items}>{pageItems => <ul className="dashboard-short-list dashboard-dated-list">{pageItems.map(item => <li key={item.id}>
+  return items.length ? <div className="dashboard-notification-scroll" role="region" aria-label="최근 알림 목록" tabIndex={0}><ul className="dashboard-short-list dashboard-dated-list">{items.map(item => <li key={item.id}>
     <h3>{item.title}</h3>
     <time className="dashboard-list-date" dateTime={item.createdAt}><span>{seoulDate(item.createdAt)}</span><span>{seoulTime(item.createdAt)}</span></time>
-    <div className="dashboard-row-actions"><StatusBadge domain="notification" status={item.read ? "READ" : "UNREAD"} /><Button variant="ghost" aria-label={`${item.title} 알림 상세 보기`} onClick={() => void detail.open(item)}>상세 보기</Button></div>
-  </li>)}</ul>}</PaginatedList> : <DashboardEmpty title="새로운 알림이 없습니다" description="새 알림이 도착하면 여기에서 확인할 수 있습니다." />;
+    <div className="dashboard-row-actions"><StatusBadge domain="notification" status={item.read ? "READ" : "UNREAD"} /><Button variant="outline" size="table-action" aria-label={`${item.title} 알림 상세 보기`} onClick={() => void detail.open(item)}>상세 보기</Button></div>
+  </li>)}</ul></div> : <DashboardEmpty title="새로운 알림이 없습니다" description="새 알림이 도착하면 여기에서 확인할 수 있습니다." />;
 }
 
 export function DashboardPage({ user, data, screen = "home", onNavigate, onRecordAttendance, empty = false }: Props) {
@@ -49,7 +49,7 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onRecor
   const notificationQuery = api.useGetMyNotifications({ page: 1, size: 100 }, { query: { enabled: screen === "home" && user.role !== "MEMBER" && !empty } });
   const unreadQuery = api.useGetMyUnreadNotificationCount({ query: { enabled: screen === "home" && user.role !== "MEMBER" && !empty } });
   const detail = useNotificationDetail(user.role, onNavigate);
-  const recentNotifications = empty ? [] : (notificationQuery.data?.content ?? []).slice(0, 6);
+  const recentNotifications = empty ? [] : (notificationQuery.data?.content ?? []);
   const member = user.role === "MEMBER";
   const admin = user.role === "ADMIN";
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
@@ -65,14 +65,14 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onRecor
         <div className="dashboard-lesson-info"><h3>{lesson.title}</h3><p>{lesson.instructor} · {lesson.room}</p></div>
         <div className="dashboard-row-actions"><StatusBadge domain="reservation" status={reservation.status} /><Button variant="ghost" onClick={() => onNavigate("reservation-detail", reservation.id)}>예약 상세</Button></div>
       </CardContent></Card>;
-    })}</div> : <PaginatedList items={items}>{pageItems => <Table variant="management" className="dashboard-lessons-table dashboard-lessons-schedule">
+    })}</div> : <PaginatedList items={items} alwaysShowPagination={preview && !admin}>{pageItems => <Table variant="management" className="dashboard-lessons-table dashboard-lessons-schedule">
       <TableHeader><TableRow><TableHead>룸</TableHead><TableHead>시간</TableHead><TableHead>수업</TableHead><TableHead>강사</TableHead><TableHead>예약 / 정원</TableHead><TableHead>출결</TableHead><TableHead>상세</TableHead></TableRow></TableHeader>
       <TableBody>{pageItems.map(lesson => {
         const roster = snapshot.reservations.filter(item => item.lessonId === lesson.id);
         const recorded = roster.filter(item => item.status === "ATTENDED" || item.status === "NO_SHOW").length;
         return <TableRow key={lesson.id} data-state={selectedLesson?.id === lesson.id ? "selected" : undefined}><TableCell>{lesson.room}</TableCell><TableCell>{seoulTime(lesson.startAt)}–{seoulTime(lesson.endAt)}</TableCell>
           <TableCell><strong>{lesson.title}</strong></TableCell><TableCell>{lesson.instructor}</TableCell><TableCell>{roster.length} / {lesson.capacity}명</TableCell>
-          <TableCell>{recorded} / {roster.length}명</TableCell><TableCell><Button variant="outline" size="sm"
+          <TableCell>{recorded} / {roster.length}명</TableCell><TableCell><Button variant="outline" size="table-action"
             onClick={() => { if (admin) { onNavigate("admin-lesson-detail", lesson.id); return; } setSelectedLessonId(lesson.id); if (screen !== "today-lessons") onNavigate("today-lessons"); }}
             aria-label={`${lesson.title} ${admin ? "예약자 보기" : "상세 보기"}`}
             aria-expanded={screen === "today-lessons" ? selectedLesson?.id === lesson.id : undefined}
@@ -82,7 +82,7 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onRecor
     </Table>}</PaginatedList>;
 
   const absenceList = !snapshot.absences.length ? <DashboardEmpty title="승인 대기 중인 부재 신청이 없습니다" description={admin ? "새 부재 신청이 접수되면 표시됩니다." : "내 부재 신청의 승인 대기 상태를 확인할 수 있습니다."} /> :
-    <PaginatedList items={snapshot.absences}>{pageItems => <ul className="dashboard-short-list dashboard-dated-list">{pageItems.map(item => <li key={item.id}><h3>{item.instructor} · {item.reason}</h3><div className="dashboard-list-date"><time dateTime={item.from}>{item.from}</time>{item.from !== item.to && <time dateTime={item.to}>~ {item.to}</time>}</div><StatusBadge domain="absence" status={item.status} /></li>)}</ul>}</PaginatedList>;
+    <PaginatedList items={snapshot.absences} alwaysShowPagination={!admin}>{pageItems => <ul className="dashboard-short-list dashboard-dated-list">{pageItems.map(item => <li key={item.id}><h3>{item.instructor} · {item.reason}</h3><div className="dashboard-list-date"><time dateTime={item.from}>{item.from}</time>{item.from !== item.to && <time dateTime={item.to}>~ {item.to}</time>}</div><StatusBadge domain="absence" status={item.status} /></li>)}</ul>}</PaginatedList>;
 
   if (screen === "notifications") return <NotificationsPage role={user.role} onNavigate={onNavigate} />;
 
