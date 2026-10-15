@@ -2252,6 +2252,23 @@ paths:
         - 사용 가능한 카테고리와 행위 코드는 `GET /activity-log-actions`로 조회한다.
         - 특정 이용권의 이력은 `targetType=PASS&targetId={passId}`로, 특정 수업의 이력은 `targetType=LESSON&targetId={lessonId}`로 조회한다.
         - `actorId`는 행동을 한 사람, `subjectMemberId`는 그 행동의 영향을 받은 회원이다. 예를 들어 강사 A가 수업을 변경했다면 `actorId`가 A이다.
+
+        **기록 규칙**
+        - 성공한 변경 행위만 업무 변경과 같은 트랜잭션에서 기록한다. 거절된 요청(4xx)은 기록하지 않으며, 예외로 로그인 실패(`LOGIN_FAILED`)는 기록한다.
+        - 조회, 토큰 재발급, 이메일 인증 코드 발송·확인, 비밀번호 재설정 메일 요청, 알림 읽음 처리는 기록하지 않는다.
+        - 이력은 추가만 하며 수정·삭제하지 않는다. `actor`와 `subjectMember`의 이름은 조회 시점의 회원 이름이다.
+        - 로그인 실패는 이메일이 가입된 계정이면 그 회원을 `actor`로, 가입되지 않은 이메일이면 `actor`를 null로 기록한다. 이메일은 `summary`에 마스킹해 남기고 비밀번호는 남기지 않는다.
+        - 회원이 자신에게 하는 행위(로그인, 비밀번호 변경 등)와 이용권·예약·결제·정산·강사 설정처럼 특정 회원의 데이터를 바꾸는 행위는 그 회원을 `subjectMember`로 기록한다. 대상 회원이 여럿이거나 없는 행위(수업 개설·수정·취소, 설정 변경 등)는 null이다.
+        - 수업 취소로 자동 취소되는 예약은 개별 이력을 남기지 않고 수업 취소 이력의 `summary`에 취소된 예약 수를 적는다.
+        - 부재 승인으로 자동 취소되는 수업은 수업마다 `LESSON_CANCELED`로 기록하며 `actor`는 승인한 관리자이다. 시스템이 자동으로 한 처리(`LESSON_PUBLISHED`, `PASS_EXPIRED`)는 `actor`가 null이다.
+        - 대상 종류(`targetType`)와 대상 ID: 결제 이력은 `PASS_PAYMENT`(결제 기록 ID), 일시정지 이력은 `PASS_PAUSE`(정지 ID), 예약과 출결 이력은 `RESERVATION`, 이용권 자체의 이력(발급·수정·만료)은 `PASS`이다. 결제·일시정지 이력의 이용권 ID는 `summary`에 `이용권 #{id}`로 적는다. 수당 단가, 권한, 수업 가능시간, 퇴사, 수업 인계처럼 강사 설정에 대한 이력은 `MEMBER`(강사 ID)이다. 삭제되거나 폐기된 대상(룸, 이용권 상품, 정산, 결제 기록)의 이력도 대상 ID로 계속 조회된다.
+        - `changes`에는 값이 바뀐 필드만 담으며, 값은 문자열이다. 개인정보는 마스킹한다: 전화번호 `010****5678`, 생년월일 `1990-**-**`, 주소는 첫 단어만(`서울시 ***`), 이메일 `a***@example.com`. 비밀번호와 토큰은 기록하지 않는다.
+
+        **조회 규칙**
+        - 확인 순서: 인증(401) → 관리자(403) → 필터 형식(400).
+        - 형식 오류는 400 `INVALID_INPUT`이며 `invalidParams`에 해당 필드를 담는다. `from`이 `to`보다 늦거나 같을 때, `targetId`만 있고 `targetType`이 없을 때, `actorRole`·`order`·`from`·`to`·숫자 필드의 형식이 맞지 않을 때가 해당한다.
+        - `category`, `action`, `targetType`은 알 수 없는 값이어도 400이 아니며 결과가 없을 뿐이다.
+        - 발생 시각이 같으면 `id`를 같은 방향으로 정렬한다.
       parameters:
         - $ref: '#/components/parameters/PageQuery'
         - $ref: '#/components/parameters/SizeQuery'
@@ -2346,7 +2363,27 @@ paths:
       description: |
         관리자 전용. 이력 조회 화면의 필터를 그리기 위한 카테고리별 행위 코드 목록을 반환한다. 카테고리는 이력을 묶어 보는 태그 역할을 한다.
         새로운 기능이 추가되면 카테고리나 행위 코드가 늘어날 수 있으므로, 클라이언트는 이 목록을 기준으로 필터를 구성하고 알 수 없는 값도 그대로 표시할 수 있어야 한다.
-        페이징을 사용하지 않는다.
+        페이징을 사용하지 않는다. 카테고리와 행위 코드는 아래 순서로 반환하며, 아직 기록된 적 없는 행위 코드도 포함한다.
+
+        | 카테고리 | 행위 코드 |
+        |---|---|
+        | AUTH 인증 | SIGN_UP 회원가입, LOGIN 로그인, LOGIN_FAILED 로그인 실패, LOGOUT 로그아웃, PASSWORD_CHANGED 비밀번호 변경, PASSWORD_RESET 비밀번호 재설정, ACCOUNT_WITHDRAWN 회원탈퇴 |
+        | MEMBER 회원 | MEMBER_CREATED 강사/관리자 등록, MEMBER_PROFILE_UPDATED 내 정보 수정, MEMBER_UPDATED 회원 정보 수정, MEMBER_STATUS_CHANGED 회원 상태 변경 |
+        | PERMISSION 권한 | PERMISSIONS_UPDATED 권한 설정 |
+        | LESSON 수업 | LESSON_CREATED 수업 개설, LESSON_UPDATED 수업 수정, LESSON_STATUS_CHANGED 수업 공개 상태 변경, LESSON_CANCELED 수업 취소, LESSON_PUBLISHED 수업 자동 공개 |
+        | RESERVATION 예약 | RESERVATION_CREATED 예약 생성, RESERVATION_CANCELED 예약 취소 |
+        | ATTENDANCE 출결 | ATTENDANCE_RECORDED 출결 기록 |
+        | PASS 이용권 | PASS_ISSUED 이용권 발급, PASS_UPDATED 이용권 수정, PASS_PAUSED 일시정지 등록, PASS_PAUSE_TERMINATED 일시정지 해제, PASS_EXPIRED 이용권 만료 |
+        | PAYMENT 결제 | PAYMENT_RECORDED 결제 기록, PAYMENT_UPDATED 결제 정정, PAYMENT_DELETED 결제 삭제, PAYMENT_REFUND_CHECKED 환불 체크, PAYMENT_REFUND_UNCHECKED 환불 체크 해제 |
+        | PASS_PRODUCT 이용권 상품 | PASS_PRODUCT_CREATED 등록, PASS_PRODUCT_UPDATED 수정, PASS_PRODUCT_DELETED 삭제 |
+        | LESSON_TYPE 수업 유형 | LESSON_TYPE_CREATED 등록, LESSON_TYPE_UPDATED 수정 |
+        | ROOM 룸 | ROOM_CREATED 등록, ROOM_UPDATED 수정, ROOM_DELETED 삭제 |
+        | BUSINESS_HOUR 영업시간 | BUSINESS_HOURS_UPDATED 영업시간 설정 |
+        | POLICY 예약 정책 | RESERVATION_POLICY_UPDATED 예약 정책 설정 |
+        | PAY_RATE 수당 단가 | PAY_RATES_UPDATED 수당 단가 설정 |
+        | SETTLEMENT 정산 | SETTLEMENT_CREATED 정산 계산, SETTLEMENT_DISCARDED 정산 폐기, SETTLEMENT_REVIEW_REQUESTED 검토 요청, SETTLEMENT_CONFIRMED 정산 확정, SETTLEMENT_PAID 지급 기록 |
+        | INSTRUCTOR 강사 | AVAILABILITY_UPDATED 수업 가능시간 설정, RESIGNATION_REGISTERED 퇴사일 등록, RESIGNATION_CANCELED 퇴사일 등록 취소, RESIGNATION_COMPLETED 퇴사 처리, LESSONS_REASSIGNED 수업 인계 |
+        | ABSENCE 부재 | ABSENCE_REQUESTED 부재 신청, ABSENCE_APPROVED 부재 승인, ABSENCE_REJECTED 부재 반려, ABSENCE_CANCELED 부재 취소 |
       responses:
         '200':
           description: 조회 성공
