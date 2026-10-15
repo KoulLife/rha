@@ -1,5 +1,6 @@
 package com.rha.lessontype;
 
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,4 +13,6 @@ public interface LessonTypeRepository extends JpaRepository<LessonType, Long> {
     Page<LessonType> findByActive(boolean active, Pageable pageable);
 
     List<LessonType> findByActiveTrueOrderByCodeAsc();
+
+    List<LessonType> findByCodeIn(Collection<String> codes);
 }
