@@ -23,7 +23,7 @@ export function StatusBadge(props: Props) {
   return <Badge variant="outline" className={`status-badge-${tone}`}>{label}</Badge>;
 }
 
-export function AttendanceCount({ status, count }: { status: "ATTENDED" | "NO_SHOW"; count: number }) {
+export function AttendanceCount({ status, count, unit = "" }: { status: "ATTENDED" | "NO_SHOW"; count: number; unit?: string }) {
   const [, tone] = statuses.reservation[status];
-  return <Badge variant="outline" className={`status-badge-${tone} status-badge-count`}><span>{status === "ATTENDED" ? "출석" : "노쇼"}</span><strong>{count}</strong></Badge>;
+  return <Badge variant="outline" className={`status-badge-${tone} status-badge-count`}><span>{status === "ATTENDED" ? "출석" : "노쇼"}</span><strong>{count}{unit}</strong></Badge>;
 }

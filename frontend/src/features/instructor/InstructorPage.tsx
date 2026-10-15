@@ -5,7 +5,8 @@ import { seoulDate, type DashboardData, type DashboardUser } from "../dashboard/
 import { dashboardPreviewTime } from "../dashboard/preview";
 import { InstructorLessonsPage } from "./InstructorLessonsPage";
 import { InstructorAbsencesPage } from "./InstructorAbsencesPage";
-import { absenceRestriction, attendanceRestriction, canWithdrawAbsence, type InstructorState } from "./model";
+import { absenceRestriction, canWithdrawAbsence, type InstructorState } from "./model";
+import type { RecordAttendance } from "./AttendanceActions";
 import "./instructor.css";
 
 export type InstructorScreen = "attendees" | "attendance" | "attendance-corrections" | "absences";
@@ -13,7 +14,8 @@ export function isInstructorScreen(screen: Screen): screen is InstructorScreen {
   return ["attendees", "attendance", "attendance-corrections", "absences"].includes(screen);
 }
 
-export function InstructorPage({ screen, user, data, setData, state, setState, selectedId, onNavigate }: {
+export function InstructorPage({ screen, user, data, setData, state, setState, selectedId, onNavigate, onRecord }: {
+  onRecord: RecordAttendance;
   screen: InstructorScreen; user: DashboardUser; data: DashboardData; setData: Dispatch<SetStateAction<DashboardData>>;
   state: InstructorState; setState: Dispatch<SetStateAction<InstructorState>>; selectedId: number; onNavigate: (screen: Screen, id?: number) => void;
 }) {
@@ -31,14 +33,5 @@ export function InstructorPage({ screen, user, data, setData, state, setState, s
     setState(previous => ({ ...previous, absenceDetails: { ...previous.absenceDetails, [id]: { ...previous.absenceDetails[id], processedAt: dashboardPreviewTime } } }));
     toast.success("부재 신청을 철회했습니다.");
   }} />;
-  return <InstructorLessonsPage key={`${screen}-${selectedId}`} mode={screen} user={user} data={data} selectedId={selectedId} changes={state.changes} onNavigate={onNavigate} onRecord={(id, status, reason) => {
-    const error = attendanceRestriction(data, user, id, dashboardPreviewTime);
-    if (error) { toast.error(error); return; }
-    const reservation = data.reservations.find(item => item.id === id)!;
-    if (reservation.status === status) return;
-    if (reservation.status !== "RESERVED" && !reason.trim()) { toast.error("정정 사유를 입력해 주세요."); return; }
-    setData(previous => ({ ...previous, reservations: previous.reservations.map(item => item.id === id ? { ...item, status } : item) }));
-    setState(previous => ({ ...previous, changes: [{ id: (previous.changes[0]?.id ?? 0) + 1, reservationId: id, before: reservation.status, after: status, reason, at: dashboardPreviewTime }, ...previous.changes] }));
-    toast.success(reason ? "출결을 정정했습니다." : "출결을 기록했습니다.");
-  }} />;
+  return <InstructorLessonsPage key={`${screen}-${selectedId}`} mode={screen === "attendance-corrections" ? "attendance" : screen} user={user} data={data} selectedId={selectedId} changes={state.changes} onNavigate={onNavigate} onRecord={onRecord} />;
 }

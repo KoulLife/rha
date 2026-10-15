@@ -1,0 +1,6 @@
+@layer utilities {
+  .attendance-actions { display: flex; justify-content: center; align-items: center; gap: var(--space-control); }
+  .attendance-actions [data-slot="button"], .attendance-detail [data-slot="button"] { height: var(--table-action-height); min-width: var(--control-height); font-size: var(--font-size-caption); }
+  .attendance-correction { display: grid; gap: var(--space-panel); }
+  .attendance-current { display: flex; align-items: center; justify-content: space-between; gap: var(--space-detail); }
+}
