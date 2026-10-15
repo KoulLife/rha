@@ -10,6 +10,22 @@ npm install
 npm run dev
 ```
 
+## 관리자 실제 API 연결 (2026-10-15)
+
+`npm run dev`는 DB 없이 사용할 수 있는 미리보기 모드다. 로그인 화면의 **회원 화면 열기 / 강사 화면 열기 / 관리자 화면 열기** 버튼으로 바로 들어갈 수 있다. 관리자 예시 계정(`admin@rha.example` / `RhaDemo123!`)을 직접 입력해도 된다. 회원가입은 필요하지 않다.
+
+실제 연동은 백엔드·DB·관리자 계정을 준비한 뒤 `npm run dev:api`로 실행한다. 백엔드를 `http://localhost:8080`에서 실행하면 Vite가 `/v1` 요청을 전달한다. 실제 관리자 계정으로 로그인하며 토큰 갱신·새로고침 세션 복원·로그아웃을 지원한다. 다른 백엔드는 `.env.local`의 `API_PROXY_TARGET`으로 설정한다. 배포에서는 같은 출처의 `/v1` 프록시와 HTTPS를 구성한다. 프로덕션 빌드는 항상 실제 API를 사용한다.
+
+미리보기 버튼은 모의 모드에서만 표시한다. 아래의 과거 미리보기 설명은 모의 모드 기준이다. 모드 변경 시 개발 서버를 재시작한다.
+
+- 타입체크: `npm run typecheck`
+- 테스트: `npm test`
+- 빌드: `npm run build`
+- API 재생성: `npm run generate:api` (`../api-spec/openapi.yaml` 기준)
+- [연동 범위·없는 API·실행 및 검증 기록](../docs/admin-api-integration.md)
+
+실제 메일 발송과 초기 관리자 계정 준비는 백엔드 후속 작업이다. 인증/초대/재설정 API는 존재하지만 현재 메일러는 개발 로그만 출력한다.
+
 ## 공통 UI
 
 - 화면 구성: `../docs/wireframes/wireframes.html`
