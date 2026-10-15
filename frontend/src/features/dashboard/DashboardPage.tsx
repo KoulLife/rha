@@ -1,22 +1,23 @@
 import { useState, type ReactNode } from "react";
-import { Dialog } from "@/components/ui/Dialog";
+import * as api from "@/api/generated/api";
 import type { Screen } from "@/app/routes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { AttendanceCount, StatusBadge } from "@/components/ui/StatusBadge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getDashboardSnapshot, seoulDate, seoulTime, type DashboardData, type DashboardLesson, type DashboardNotification, type DashboardUser } from "./model";
+import { getDashboardSnapshot, seoulDate, seoulTime, type DashboardData, type DashboardLesson, type DashboardUser } from "./model";
 import { dashboardPreviewTime } from "./preview";
 import { MemberHomePage } from "./MemberHomePage";
 import { ReservationRoster } from "./ReservationRoster";
 import { NotificationsPage } from "@/features/member/pages/NotificationsPage";
+import { useNotificationDetail } from "@/features/member/pages/NotificationDetail";
+import { QueryState } from "@/features/admin/AdminUI";
 import "./dashboard.css";
 
 type Props = {
   user: DashboardUser; data: DashboardData; screen?: Screen;
   onNavigate: (screen: Screen, id?: number) => void;
-  onReadNotification: (id: number) => void;
   empty?: boolean;
 };
 
@@ -31,24 +32,20 @@ function DashboardEmpty({ title, description }: { title: string; description: st
   return <Empty className="dashboard-empty"><EmptyHeader><EmptyTitle>{title}</EmptyTitle><EmptyDescription>{description}</EmptyDescription></EmptyHeader></Empty>;
 }
 
-function NotificationDetail({ notification, onRead }: { notification: DashboardNotification; onRead: (id: number) => void }) {
-  const [open, setOpen] = useState(false);
-  return <>
-    <Button variant="ghost" aria-label={`${notification.title} 알림 상세 보기`} onClick={() => setOpen(true)}>상세 보기</Button>
-    {open && <Dialog dialog={{ title: notification.title, body: `${notification.message}\n\n${seoulDate(notification.createdAt)} ${seoulTime(notification.createdAt)}`, action: notification.read ? undefined : "읽음으로 표시" }} onClose={() => setOpen(false)} onConfirm={() => onRead(notification.id)} />}
-  </>;
-}
-
-function NotificationList({ items, onRead }: { items: DashboardNotification[]; onRead: (id: number) => void }) {
+function NotificationList({ items, detail }: { items: api.Notification[]; detail: ReturnType<typeof useNotificationDetail> }) {
   return items.length ? <ul className="dashboard-short-list dashboard-dated-list">{items.map(item => <li key={item.id}>
     <h3>{item.title}</h3>
     <time className="dashboard-list-date" dateTime={item.createdAt}><span>{seoulDate(item.createdAt)}</span><span>{seoulTime(item.createdAt)}</span></time>
-    <div className="dashboard-row-actions"><StatusBadge domain="notification" status={item.read ? "READ" : "UNREAD"} /><NotificationDetail notification={item} onRead={onRead} /></div>
+    <div className="dashboard-row-actions"><StatusBadge domain="notification" status={item.read ? "READ" : "UNREAD"} /><Button variant="ghost" aria-label={`${item.title} 알림 상세 보기`} onClick={() => void detail.open(item)}>상세 보기</Button></div>
   </li>)}</ul> : <DashboardEmpty title="새로운 알림이 없습니다" description="새 알림이 도착하면 여기에서 확인할 수 있습니다." />;
 }
 
-export function DashboardPage({ user, data, screen = "home", onNavigate, onReadNotification, empty = false }: Props) {
+export function DashboardPage({ user, data, screen = "home", onNavigate, empty = false }: Props) {
   const snapshot = getDashboardSnapshot(data, user, dashboardPreviewTime);
+  const notificationQuery = api.useGetMyNotifications({ page: 1, size: 100 }, { query: { enabled: screen === "home" && user.role !== "MEMBER" && !empty } });
+  const unreadQuery = api.useGetMyUnreadNotificationCount({ query: { enabled: screen === "home" && user.role !== "MEMBER" && !empty } });
+  const detail = useNotificationDetail(user.role, onNavigate);
+  const recentNotifications = empty ? [] : (notificationQuery.data?.content ?? []).slice(0, 6);
   const member = user.role === "MEMBER";
   const admin = user.role === "ADMIN";
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
@@ -107,7 +104,7 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onReadN
     { label: admin ? "오늘 전체 수업" : "오늘 담당 수업", value: `${snapshot.todayLessons.length}개`, target: lessonsScreen },
     { label: "오늘 예약", value: `${snapshot.reservations.length}명`, attendance: true, target: "attendance-overview" as const },
     { label: admin ? "부재 승인 대기" : "출결 처리 대기", value: `${admin ? snapshot.absences.length : snapshot.attendancePending}건`, target: "absence-requests" as const },
-    { label: "읽지 않은 알림", value: `${snapshot.unread}건`, target: "notifications" as const },
+    { label: "읽지 않은 알림", value: `${empty ? 0 : unreadQuery.data?.unreadCount ?? 0}건`, target: "notifications" as const },
   ];
   return <div className="dashboard-page">
     <div className="dashboard-heading"><h1>{admin ? "오늘의 센터 운영" : "오늘의 담당 수업"}</h1></div>
@@ -120,8 +117,9 @@ export function DashboardPage({ user, data, screen = "home", onNavigate, onReadN
         <DashboardPanel title={admin ? "부재 승인 대기" : "내 부재 승인 대기"} action={<Button variant="ghost" onClick={() => onNavigate("absence-requests")}>전체 보기</Button>}>{absenceList}</DashboardPanel>
       </div>
       <div className="dashboard-column">
-        <DashboardPanel title="최근 알림" action={notificationAction}><NotificationList items={snapshot.notifications.slice(0, 6)} onRead={onReadNotification} /></DashboardPanel>
+        <DashboardPanel title="최근 알림" action={notificationAction}>{empty ? <NotificationList items={[]} detail={detail} /> : <QueryState query={notificationQuery}><NotificationList items={recentNotifications} detail={detail} /></QueryState>}</DashboardPanel>
       </div>
     </div>
+    {detail.dialog}
   </div>;
 }

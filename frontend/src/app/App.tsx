@@ -1,6 +1,7 @@
 import { Collapsible } from "radix-ui";
 import { BookOpen, CalendarCheck, CalendarDays, CalendarOff, ChartColumn, ChevronRight, ClipboardCheck, Clock, CreditCard, DoorOpen, GraduationCap, Grid2X2, History, House, List, ListChecks, Package, Receipt, Repeat, Settings, SlidersHorizontal, Ticket, TrendingUp, UserMinus, UserRound, UsersRound, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import * as api from "@/api/generated/api";
 import type { CSSProperties } from "react";
 import { AppFooter } from "../components/layout/AppFooter";
 import { AppHeader } from "../components/layout/AppHeader";
@@ -14,8 +15,8 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHead
 import { HomePage } from "../features/member/pages/HomePage";
 import { AccountPage } from "../features/member/pages/AccountPage";
 import { LessonDetailPage, LessonsPage } from "../features/member/pages/LessonsPage";
-import { dashboardPreview, dashboardPreviewTime } from "@/features/dashboard/preview";
-import { getDashboardSnapshot, roleLabels, type DashboardUser } from "@/features/dashboard/model";
+import { dashboardPreview } from "@/features/dashboard/preview";
+import { roleLabels, type DashboardUser } from "@/features/dashboard/model";
 import { PassDetailPage, PassesPage } from "../features/member/pages/PassesPage";
 import { reservationDialog, ReservationsPage } from "../features/member/pages/ReservationsPage";
 import { NotificationsPage } from "../features/member/pages/NotificationsPage";
@@ -69,13 +70,12 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   const [homeView, setHomeView] = useState(initialHomeView);
   const [screen, setScreen] = useState<Screen>("home");
   const [selectedId, setSelectedId] = useState(101);
-  const [data, setData] = useState(() => initialHomeView === "empty" ? { lessons: [], reservations: [], absences: [], notifications: [] } : dashboardPreview);
+  const data = initialHomeView === "empty" ? { lessons: [], reservations: [], absences: [], notifications: [] } : dashboardPreview;
   const admin = useAdminDashboard(user.role === "ADMIN");
   const viewData = user.role === "ADMIN" && homeView !== "empty" ? admin.data : data;
-  const snapshot = getDashboardSnapshot(viewData, user, dashboardPreviewTime);
-  const unreadCount = user.role === "ADMIN" ? admin.unread : snapshot.unread;
+  const unread = api.useGetMyUnreadNotificationCount();
+  const unreadCount = homeView === "empty" ? 0 : unread.data?.unreadCount ?? 0;
   const navigation = getNavigation(user.role, currentUser.permissions);
-  const onReadNotification = (id: number) => setData(previous => ({ ...previous, notifications: previous.notifications.map(item => item.id === id && item.recipientId === user.id ? { ...item, read: true } : item) }));
   const [dialog, setDialog] = useState<DialogState>(null);
 
   const go = (next: Screen, id?: number) => {
@@ -106,7 +106,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
           onLogout={onLogout}
         />
         <div className="content">
-          {screen === "notifications" ? <NotificationsPage role={user.role} onNavigate={go} /> : screen === "timetable" ? <TimetablePage user={user} onNavigate={go} canReserve={can("reservation.create")} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} onReadNotification={admin.read} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onReadNotification={onReadNotification} /> : <MemberScreen
+          {screen === "notifications" ? <NotificationsPage role={user.role} onNavigate={go} /> : screen === "timetable" ? <TimetablePage user={user} onNavigate={go} canReserve={can("reservation.create")} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} /> : <MemberScreen
             screen={screen}
             selectedId={selectedId}
             onNavigate={go}

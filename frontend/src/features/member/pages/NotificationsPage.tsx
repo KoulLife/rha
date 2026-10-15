@@ -1,50 +1,25 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import * as api from "@/api/generated/api";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Dialog } from "@/components/ui/Dialog";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { AdminPage, ActionDialog, DataTable, QueryState, dateTime, errorMessage, type Action } from "@/features/admin/AdminUI";
+import { AdminPage, ActionDialog, DataTable, QueryState, dateTime, type Action } from "@/features/admin/AdminUI";
 import { Pagination, PAGE_SIZE } from "@/components/ui/Pagination";
 import type { Screen } from "@/app/routes";
 import type { UserRole } from "@/config/access";
+import { notificationCategories, useNotificationDetail } from "./NotificationDetail";
 
 type Navigate = (screen: Screen, id?: number) => void;
-
-function notificationDestination(role: UserRole, notification: api.Notification): [Screen, number?] | null {
-  if (!notification.relatedType || !notification.relatedId) return null;
-  const id = notification.relatedId;
-  switch (notification.relatedType.toUpperCase()) {
-    case "LESSON": return [role === "ADMIN" ? "admin-lesson-detail" : role === "MEMBER" ? "lesson-detail" : "today-lessons", id];
-    case "RESERVATION": return [role === "MEMBER" ? "reservation-detail" : role === "INSTRUCTOR" ? "attendance-overview" : "admin-lessons", id];
-    case "ABSENCE": return role === "ADMIN" ? ["admin-absence-detail", id] : role === "INSTRUCTOR" ? ["absence-requests"] : null;
-    case "PASS": return role === "ADMIN" ? ["admin-pass-detail", id] : role === "MEMBER" ? ["pass-detail", id] : null;
-    case "SETTLEMENT": return role === "ADMIN" ? ["admin-settlement-detail", id] : null;
-    case "MEMBER": return role === "ADMIN" ? ["admin-member-detail", id] : null;
-    case "INSTRUCTOR": return role === "ADMIN" ? ["admin-instructor-detail", id] : null;
-    case "PAYMENT": return role === "ADMIN" ? ["admin-payments"] : null;
-    default: return null;
-  }
-}
-
-const notificationCategories: Record<string, string> = {
-  ABSENCE_REQUESTED: "부재 신청", ABSENCE_APPROVED: "부재 승인", ABSENCE_REJECTED: "부재 반려",
-  LESSON_CANCELED: "수업 취소", RESERVATION_CANCELED: "예약 취소",
-};
 
 export function NotificationsPage({ role, onNavigate }: { role: UserRole; onNavigate: Navigate }) {
   const [page, setPage] = useState(1);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [action, setAction] = useState<Action | null>(null);
-  const [selected, setSelected] = useState<api.Notification | null>(null);
-  const client = useQueryClient();
+  const detail = useNotificationDetail(role, onNavigate);
   const query = api.useGetMyNotifications({ page: 1, size: 100 });
   const unread = api.useGetMyUnreadNotificationCount();
-  const read = api.useReadNotification();
   const readAll = api.useReadAllNotifications();
   const unreadCount = unread.data?.unreadCount ?? 0;
   const notifications = query.data?.content ?? [];
@@ -53,18 +28,6 @@ export function NotificationsPage({ role, onNavigate }: { role: UserRole; onNavi
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const currentRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-  const openNotification = async (notification: api.Notification) => {
-    try {
-      if (!notification.read) {
-        await read.mutateAsync({ notificationId: notification.id });
-        await client.invalidateQueries();
-      }
-      setSelected({ ...notification, read: true });
-    } catch (error) {
-      toast.error(errorMessage(error));
-    }
-  };
 
   return <AdminPage title="내 알림" description="계정으로 받은 알림을 확인하고 관련 화면으로 이동합니다.">
     <div className="admin-notification-controls">
@@ -86,11 +49,11 @@ export function NotificationsPage({ role, onNavigate }: { role: UserRole; onNavi
         { label: "분류", render: notification => notificationCategories[notification.type] ?? "안내" },
         { label: "받은 시간", render: notification => <time dateTime={notification.createdAt}>{dateTime(notification.createdAt)}</time> },
         { label: "상태", render: notification => <StatusBadge domain="notification" status={notification.read ? "READ" : "UNREAD"} /> },
-        { label: "확인", render: notification => <Button variant="outline" aria-label={`${notification.title} 알림 상세 보기`} onClick={() => void openNotification(notification)}>상세 보기</Button> },
+        { label: "확인", render: notification => <Button variant="ghost" aria-label={`${notification.title} 알림 상세 보기`} onClick={() => void detail.open(notification)}>상세 보기</Button> },
       ]} />
     </QueryState>
     <Pagination total={filtered.length} page={currentPage} totalPages={totalPages} onPageChange={setPage} />
     {action && <ActionDialog action={action} onClose={() => setAction(null)} />}
-    {selected && <Dialog dialog={{ title: selected.title, body: `${selected.message}\n\n분류: ${notificationCategories[selected.type] ?? "안내"}\n받은 시간: ${dateTime(selected.createdAt)}`, action: notificationDestination(role, selected) ? "관련 페이지로 이동" : undefined }} onClose={() => setSelected(null)} onConfirm={() => { const destination = notificationDestination(role, selected); if (destination) onNavigate(...destination); }} />}
+    {detail.dialog}
   </AdminPage>;
 }
