@@ -47,6 +47,8 @@ public class Member {
 
     private Instant withdrawnAt;
 
+    private Instant resignedAt;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -134,8 +136,27 @@ public class Member {
         if (status == MemberStatus.ACTIVE) {
             this.withdrawnAt = null;
             this.resignationDate = null;
+            this.resignedAt = null;
         }
         this.status = status;
+        this.updatedAt = now;
+    }
+
+    /** 퇴사일을 등록하거나 바꾼다. 퇴사 처리는 {@link #resign}으로 따로 한다. */
+    public void registerResignation(LocalDate resignationDate, Instant now) {
+        this.resignationDate = resignationDate;
+        this.updatedAt = now;
+    }
+
+    public void cancelResignation(Instant now) {
+        this.resignationDate = null;
+        this.updatedAt = now;
+    }
+
+    /** 퇴사 처리. 데이터는 지우지 않고 상태만 RESIGNED로 바꾼다. */
+    public void resign(Instant now) {
+        this.status = MemberStatus.RESIGNED;
+        this.resignedAt = now;
         this.updatedAt = now;
     }
 

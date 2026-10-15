@@ -6,7 +6,9 @@ import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.PageInfo;
 import com.rha.common.validation.RequestValidator;
+import com.rha.instructor.InstructorAvailabilityRepository;
 import com.rha.lessontype.LessonType;
+import com.rha.member.AdminGuard;
 import com.rha.lessontype.LessonTypeRepository;
 import com.rha.member.Member;
 import com.rha.member.MemberPermission;
@@ -58,11 +60,14 @@ public class LessonService {
     private final MemberRepository memberRepository;
     private final MemberPermissionRepository permissionRepository;
     private final BusinessHourRepository businessHourRepository;
+    private final InstructorAvailabilityRepository availabilityRepository;
+    private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
     public LessonService(LessonRepository lessonRepository, LessonTypeRepository lessonTypeRepository,
             RoomRepository roomRepository, MemberRepository memberRepository,
             MemberPermissionRepository permissionRepository, BusinessHourRepository businessHourRepository,
+            InstructorAvailabilityRepository availabilityRepository, AdminGuard adminGuard,
             RequestValidator requestValidator) {
         this.lessonRepository = lessonRepository;
         this.lessonTypeRepository = lessonTypeRepository;
@@ -70,6 +75,8 @@ public class LessonService {
         this.memberRepository = memberRepository;
         this.permissionRepository = permissionRepository;
         this.businessHourRepository = businessHourRepository;
+        this.availabilityRepository = availabilityRepository;
+        this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
     }
 
@@ -261,6 +268,50 @@ public class LessonService {
         return toResponse(lesson);
     }
 
+    /**
+     * 강사의 시작 전 수업을 모두 다른 강사에게 넘긴다. 하나라도 배정할 수 없으면 아무것도 바꾸지 않고
+     * 실패한 수업 ID와 사유를 담아 거절한다. 확인 순서: 관리자(403) → 입력(400) → 강사들(404)
+     * → 새 강사 자격(400) → 수업별 검증(409).
+     */
+    @Transactional
+    public LessonReassignmentResponse reassignLessons(Long callerId, Long fromInstructorId,
+            LessonReassignmentRequest request) {
+        adminGuard.requireAdmin(callerId);
+        requestValidator.validate(request);
+        Instant now = Instant.now();
+        Instant from = request.from() == null ? now : parseInstant(request.from());
+
+        Member fromInstructor = memberRepository.findById(fromInstructorId)
+                .filter(member -> member.isRole(MemberRole.INSTRUCTOR))
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+        Member toInstructor = memberRepository.findById(request.toInstructorId())
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+        if (!toInstructor.isRole(MemberRole.INSTRUCTOR) || !toInstructor.isActive()
+                || toInstructor.getId().equals(fromInstructor.getId())) {
+            throw new ApiException(ErrorCode.INVALID_INSTRUCTOR);
+        }
+        lockInstructor(toInstructor.getId());
+
+        // 이미 시작한 수업은 from이 과거여도 넘기지 않는다.
+        List<Lesson> lessons = lessonRepository.findUpcomingOf(fromInstructorId, from.isAfter(now) ? from : now);
+        List<ApiException.Detail> failures = new ArrayList<>();
+        for (Lesson lesson : lessons) {
+            try {
+                checkAssignable(toInstructor, lesson.getRoomId(), lesson.getStartAt(), lesson.getEndAt(),
+                        lesson.getId());
+            } catch (ApiException e) {
+                failures.add(new ApiException.Detail(String.valueOf(lesson.getId()), e.errorCode().name()));
+            }
+        }
+        if (!failures.isEmpty()) {
+            throw new ApiException(ErrorCode.REASSIGNMENT_FAILED, failures);
+        }
+
+        lessons.forEach(lesson -> lesson.reschedule(lesson.getTitle(), toInstructor.getId(), lesson.getRoomId(),
+                lesson.getStartAt(), lesson.getEndAt(), now));
+        return new LessonReassignmentResponse(lessons.size());
+    }
+
     /** 공개 예약 시각이 지난 수업을 공개하고 공개한 수업 수를 반환한다. */
     @Transactional
     public int publishDueLessons(Instant now) {
@@ -378,6 +429,7 @@ public class LessonService {
     /** 영업시간 → 퇴사일 → 강사 시간 충돌 → 룸 시간 충돌 순으로 확인한다. {@code excludeId}는 충돌에서 제외할 수업이다. */
     private void checkAssignable(Member instructor, Long roomId, Instant start, Instant end, Long excludeId) {
         checkBusinessHours(start, end);
+        checkAvailability(instructor.getId(), start, end);
         LocalDate resignationDate = instructor.getResignationDate();
         if (resignationDate != null && !start.atZone(CENTER_ZONE).toLocalDate().isBefore(resignationDate)) {
             throw new ApiException(ErrorCode.INSTRUCTOR_RESIGNING);
@@ -387,6 +439,16 @@ public class LessonService {
         }
         if (lessonRepository.existsRoomConflict(roomId, start, end, excludeId)) {
             throw new ApiException(ErrorCode.ROOM_TIME_CONFLICT);
+        }
+    }
+
+    /** 수업 시간이 강사의 그 요일 가능 시간대 하나 안에 모두 들어와야 한다. 설정이 없으면 배정할 수 없다. */
+    private void checkAvailability(Long instructorId, Instant start, Instant end) {
+        ZonedDateTime localStart = start.atZone(CENTER_ZONE);
+        String day = localStart.getDayOfWeek().name().substring(0, 3);
+        if (!availabilityRepository.existsCovering(instructorId, day, localStart.toLocalTime(),
+                end.atZone(CENTER_ZONE).toLocalTime())) {
+            throw new ApiException(ErrorCode.INSTRUCTOR_UNAVAILABLE);
         }
     }
 

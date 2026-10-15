@@ -32,6 +32,15 @@ public interface LessonRepository extends JpaRepository<Lesson, Long>, JpaSpecif
     boolean existsRoomConflict(@Param("roomId") Long roomId, @Param("start") Instant start,
             @Param("end") Instant end, @Param("excludeId") Long excludeId);
 
+    /** 강사가 담당하는 수업 중 {@code from} 이후에 시작하고 취소되지 않은 것을 시작 시각 순으로 조회한다. */
+    @Query("""
+            select l from Lesson l
+            where l.instructorId = :instructorId and l.status <> com.rha.lesson.LessonStatus.CANCELED
+            and l.startAt > :from
+            order by l.startAt, l.id
+            """)
+    java.util.List<Lesson> findUpcomingOf(@Param("instructorId") Long instructorId, @Param("from") Instant from);
+
     /** 공개 예약 시각이 지난 수업을 공개한다. 바뀐 수업 수를 반환한다. */
     @Modifying(clearAutomatically = true)
     @Query("""

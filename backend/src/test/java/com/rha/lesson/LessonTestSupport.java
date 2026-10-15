@@ -57,8 +57,24 @@ abstract class LessonTestSupport extends ApiTestSupport {
                 """, Long.class, code, name, capacity, active);
     }
 
+    /** 모든 요일 00:00~23:59에 수업이 가능한 강사. 가능시간이 필요한 테스트는 따로 설정한다. */
     long insertInstructor(String email, String name) {
-        return insertMember(email, name, "INSTRUCTOR", "ACTIVE", Instant.parse("2026-10-01T00:00:00Z"));
+        long id = insertMember(email, name, "INSTRUCTOR", "ACTIVE", Instant.parse("2026-10-01T00:00:00Z"));
+        for (String day : new String[] {"MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"}) {
+            insertAvailability(id, day, "00:00", "23:59");
+        }
+        return id;
+    }
+
+    void insertAvailability(long instructorId, String day, String start, String end) {
+        jdbc.update("""
+                INSERT INTO instructor_availabilities (instructor_id, day_of_week, start_time, end_time)
+                VALUES (?, ?, ?::time, ?::time)
+                """, instructorId, day, start, end);
+    }
+
+    void clearAvailability(long instructorId) {
+        jdbc.update("DELETE FROM instructor_availabilities WHERE instructor_id = ?", instructorId);
     }
 
     long insertLesson(String title, long typeId, long instructorId, long roomId, Instant start, Instant end,
