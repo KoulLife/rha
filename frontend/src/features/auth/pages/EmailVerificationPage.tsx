@@ -1,3 +1,5 @@
+import * as api from "@/api/generated/api";
+import { mocksEnabled } from "@/api/runtime";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -8,14 +10,15 @@ import { AuthField, AuthLayout } from "../components/AuthLayout";
 import { authPreview, emailRule, errorMessage, previewDelay, type VerifiedEmail } from "../preview";
 
 export function EmailVerificationPage({ onLogin, onVerified }: { onLogin: () => void; onVerified: (value: VerifiedEmail) => void }) {
+  const request = api.useRequestEmailVerification(), confirm = api.useConfirmEmailVerification();
   const [sentEmail, setSentEmail] = useState("");
   const [demoCode, setDemoCode] = useState("");
   const [error, setError] = useState("");
   const [resending, setResending] = useState(false);
   const { register, handleSubmit, resetField, formState: { errors, isSubmitting } } = useForm<{ email: string; code: string }>({ mode: "onTouched", shouldUnregister: true });
   const send = async (email: string) => {
-    await previewDelay();
-    setDemoCode(authPreview.requestVerification(email));
+    if (mocksEnabled) { await previewDelay(); setDemoCode(authPreview.requestVerification(email)); }
+    else await request.mutateAsync({ data: { email } });
     setSentEmail(email);
     resetField("code");
     toast.success("인증 코드를 요청했습니다.");
@@ -27,7 +30,11 @@ export function EmailVerificationPage({ onLogin, onVerified }: { onLogin: () => 
         setError("");
         try {
           if (!sentEmail) await send(email.trim());
-          else { await previewDelay(); onVerified(authPreview.confirmVerification(sentEmail, code)); toast.success("이메일 인증이 완료되었습니다."); }
+          else {
+            if (mocksEnabled) { await previewDelay(); onVerified(authPreview.confirmVerification(sentEmail, code)); }
+            else { const result = await confirm.mutateAsync({ data: { email: sentEmail, code } }); onVerified({ email: sentEmail, token: result.emailVerificationToken }); }
+            toast.success("이메일 인증이 완료되었습니다.");
+          }
         } catch (error) { setError(errorMessage(error)); }
       })}>
         <FieldGroup className="auth-fields">

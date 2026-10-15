@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { mocksEnabled } from '@/api/runtime';
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -11,7 +12,8 @@ import { AuthField, AuthLayout } from "../components/AuthLayout";
 import { authPreview, demoAccount, demoAccounts, emailRule, errorMessage, previewDelay, type PreviewMember } from "../preview";
 
 type LoginValues = { email: string; password: string };
-export function LoginPage({ onPreview, onLogin, onVerify, onReset, initialEmail = "" }: {
+export function LoginPage({ onPreview, onLogin, onAuthenticate, onVerify, onReset, initialEmail = "" }: {
+  onAuthenticate: (email: string, password: string) => Promise<void>;
   onPreview: (member: PreviewMember, view: HomeView) => void; onLogin: (member: PreviewMember) => void;
   onVerify: () => void; onReset: () => void; initialEmail?: string;
 }) {
@@ -21,7 +23,7 @@ export function LoginPage({ onPreview, onLogin, onVerify, onReset, initialEmail 
     defaultValues: { email: initialEmail, password: "" }, mode: "onTouched",
   });
   return (
-    <AuthLayout variant="login" title="로그인" description="R.HA 필라테스 관리 시스템" preview={<>
+    <AuthLayout variant="login" title="로그인" description="R.HA 필라테스 관리 시스템" preview={mocksEnabled && <>
       <details className="auth-demo-account"><summary>계정 정보 보기</summary>{demoAccounts.map(account => <p key={account.email}>{account.role === "MEMBER" ? "회원" : account.role === "INSTRUCTOR" ? "강사" : "관리자"}: {account.email}</p>)}<p>공통 비밀번호: {demoAccount.password}</p></details>
       <details className="auth-demo-account"><summary>화면 상태 · {homeViewLabels[homeView]}</summary>
         <Field className="auth-preview-state"><FieldLabel htmlFor="home-preview-state">홈 화면 상태</FieldLabel>
@@ -32,8 +34,11 @@ export function LoginPage({ onPreview, onLogin, onVerify, onReset, initialEmail 
     </>}>
       <form noValidate onSubmit={handleSubmit(async (values) => {
         setError("");
-        await previewDelay();
-        try { onLogin(authPreview.login(values.email.trim(), values.password)); toast.success("로그인되었습니다."); }
+        try {
+          if (mocksEnabled) { await previewDelay(); onLogin(authPreview.login(values.email.trim(), values.password)); }
+          else await onAuthenticate(values.email.trim(), values.password);
+          toast.success("로그인되었습니다.");
+        }
         catch (error) { setError(errorMessage(error)); }
       })}>
         <FieldGroup className="auth-fields">

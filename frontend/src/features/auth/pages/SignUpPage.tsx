@@ -1,3 +1,5 @@
+import * as api from "@/api/generated/api";
+import { mocksEnabled } from "@/api/runtime";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -11,15 +13,18 @@ type Values = { name: string; phoneNumber: string; birthDate: string; address: s
 export function SignUpPage({ verified, onComplete, onVerify, onLogin }: {
   verified: VerifiedEmail; onComplete: (email: string) => void; onVerify: () => void; onLogin: () => void;
 }) {
+  const signUp = api.useSignUp();
   const [error, setError] = useState("");
   const { register, handleSubmit, getValues, formState: { errors, isSubmitting } } = useForm<Values>({ mode: "onTouched" });
   return (
     <AuthLayout title="회원가입" description="기본 정보를 입력하고 R.HA와 함께 시작하세요.">
       <p className="auth-step">회원가입 2 / 2 · 회원 정보 입력</p>
       <form noValidate onSubmit={handleSubmit(async (values) => {
-        setError(""); await previewDelay();
+        setError("");
         try {
-          authPreview.signUp({ ...values, name: values.name.trim(), phoneNumber: values.phoneNumber.replace(/-/g, ""), email: verified.email, emailVerificationToken: verified.token });
+          const data = { name: values.name.trim(), password: values.password, birthDate: values.birthDate, address: values.address || undefined, phoneNumber: values.phoneNumber.replace(/-/g, ""), email: verified.email, emailVerificationToken: verified.token };
+          if (mocksEnabled) { await previewDelay(); authPreview.signUp(data); }
+          else await signUp.mutateAsync({ data });
           toast.success("회원가입이 완료되었습니다. 로그인해 주세요."); onComplete(verified.email);
         } catch (error) { setError(errorMessage(error)); }
       })}>
