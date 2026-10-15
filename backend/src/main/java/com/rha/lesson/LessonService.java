@@ -16,6 +16,11 @@ import com.rha.member.MemberPermission;
 import com.rha.member.MemberPermissionRepository;
 import com.rha.member.MemberRepository;
 import com.rha.member.MemberRole;
+import com.rha.pass.PassRepository;
+import com.rha.reservation.CanceledBy;
+import com.rha.reservation.Reservation;
+import com.rha.reservation.ReservationRepository;
+import com.rha.reservation.ReservationStatus;
 import com.rha.room.Room;
 import com.rha.room.RoomRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -41,8 +46,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 수업 개설·수정·공개 상태 변경·취소와 조회.
  *
- * <p>영업시간은 센터 현지 시각(Asia/Seoul) 기준이다. 예약이 있는 수업의 시간 변경(LESSON_HAS_RESERVATIONS)과
- * 취소 시 예약·이용권·알림 처리는 해당 기능이 구현될 때 추가한다.
+ * <p>영업시간은 센터 현지 시각(Asia/Seoul) 기준이다. 수업을 취소하면 예약이 자동 취소되고 이용권 횟수가 복구된다
+ * (예약 회원 알림은 알림 기능이 구현될 때 추가한다).
  */
 @Service
 public class LessonService {
@@ -62,6 +67,8 @@ public class LessonService {
     private final BusinessHourRepository businessHourRepository;
     private final InstructorAvailabilityRepository availabilityRepository;
     private final AbsenceRepository absenceRepository;
+    private final ReservationRepository reservationRepository;
+    private final PassRepository passRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
@@ -69,8 +76,8 @@ public class LessonService {
             RoomRepository roomRepository, MemberRepository memberRepository,
             MemberPermissionRepository permissionRepository, BusinessHourRepository businessHourRepository,
             InstructorAvailabilityRepository availabilityRepository, AbsenceRepository absenceRepository,
-            AdminGuard adminGuard,
-            RequestValidator requestValidator) {
+            ReservationRepository reservationRepository, PassRepository passRepository,
+            AdminGuard adminGuard, RequestValidator requestValidator) {
         this.lessonRepository = lessonRepository;
         this.lessonTypeRepository = lessonTypeRepository;
         this.roomRepository = roomRepository;
@@ -79,6 +86,8 @@ public class LessonService {
         this.businessHourRepository = businessHourRepository;
         this.availabilityRepository = availabilityRepository;
         this.absenceRepository = absenceRepository;
+        this.reservationRepository = reservationRepository;
+        this.passRepository = passRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
     }
@@ -165,7 +174,7 @@ public class LessonService {
 
         Lesson lesson = lessonRepository.save(Lesson.create(request.title(), type.getId(), type.getCapacity(),
                 instructor.getId(), room.getId(), start, end, now));
-        return LessonResponse.of(lesson, type, instructor, room);
+        return LessonResponse.of(lesson, type, instructor, room, 0);
     }
 
     /**
@@ -208,6 +217,10 @@ public class LessonService {
                     && !start.isAfter(lesson.getPublishAt())) {
                 throw new ApiException(ErrorCode.INVALID_PUBLISH_AT);
             }
+        }
+        if (timeChanged && reservationRepository.existsByLessonIdAndStatus(lessonId,
+                ReservationStatus.RESERVED)) {
+            throw new ApiException(ErrorCode.LESSON_HAS_RESERVATIONS);
         }
         if (recheck) {
             Room room = newRoom != null ? newRoom : roomRepository.findActiveForUpdate(roomId)
@@ -268,6 +281,11 @@ public class LessonService {
         requireModifiable(lesson, now);
 
         lesson.cancel(body.reason(), now);
+        for (Reservation reservation : reservationRepository.findByLessonIdAndStatus(lessonId,
+                ReservationStatus.RESERVED)) {
+            reservation.cancel(CanceledBy.LESSON_CANCELED, body.reason(), now);
+            passRepository.findByIdForUpdate(reservation.getPassId()).ifPresent(pass -> pass.restoreOne(now));
+        }
         return toResponse(lesson);
     }
 
@@ -519,9 +537,17 @@ public class LessonService {
                 lessons.stream().map(Lesson::getInstructorId).distinct().toList()), Member::getId);
         Map<Long, Room> rooms = byId(roomRepository.findAllById(
                 lessons.stream().map(Lesson::getRoomId).distinct().toList()), Room::getId);
+        Map<Long, Integer> reserved = new java.util.HashMap<>();
+        if (!lessons.isEmpty()) {
+            for (Object[] row : reservationRepository.countsByLessonIds(
+                    lessons.stream().map(Lesson::getId).toList())) {
+                reserved.put((Long) row[0], ((Number) row[1]).intValue());
+            }
+        }
         return lessons.stream()
                 .map(lesson -> LessonResponse.of(lesson, types.get(lesson.getLessonTypeId()),
-                        instructors.get(lesson.getInstructorId()), rooms.get(lesson.getRoomId())))
+                        instructors.get(lesson.getInstructorId()), rooms.get(lesson.getRoomId()),
+                        reserved.getOrDefault(lesson.getId(), 0)))
                 .toList();
     }
 

@@ -96,6 +96,18 @@ public class Pass {
         this.updatedAt = now;
     }
 
+    /** 예약하면 잔여 횟수를 1회 차감한다. */
+    public void consumeOne(Instant now) {
+        this.remainingCount = this.remainingCount - 1;
+        this.updatedAt = now;
+    }
+
+    /** 예약을 취소하면 1회 복구한다. 만료된 이용권도 횟수만 늘고 총 횟수를 넘지 않는다. */
+    public void restoreOne(Instant now) {
+        this.remainingCount = Math.min(this.totalCount, this.remainingCount + 1);
+        this.updatedAt = now;
+    }
+
     public void changeStatus(PassStatus status, Instant now) {
         this.status = status;
         this.updatedAt = now;
