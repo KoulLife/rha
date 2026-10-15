@@ -12,6 +12,7 @@ import com.rha.member.AdminGuard;
 import com.rha.member.Member;
 import com.rha.member.MemberRepository;
 import com.rha.member.MemberRole;
+import com.rha.notification.NotificationPublisher;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -33,7 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 강사 부재 신청·조회·승인·반려·취소.
  *
- * <p>관리자·강사 알림은 알림 기능이 구현될 때 추가한다.
+ * <p>신청은 관리자에게, 승인·반려는 신청한 강사에게 알림이 간다.
  */
 @Service
 public class AbsenceService {
@@ -44,16 +45,19 @@ public class AbsenceService {
     private final MemberRepository memberRepository;
     private final LessonRepository lessonRepository;
     private final ReservationRepository reservationRepository;
+    private final NotificationPublisher notificationPublisher;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
     public AbsenceService(AbsenceRepository absenceRepository, MemberRepository memberRepository,
             LessonRepository lessonRepository, ReservationRepository reservationRepository,
-            AdminGuard adminGuard, RequestValidator requestValidator) {
+            NotificationPublisher notificationPublisher, AdminGuard adminGuard,
+            RequestValidator requestValidator) {
         this.absenceRepository = absenceRepository;
         this.memberRepository = memberRepository;
         this.lessonRepository = lessonRepository;
         this.reservationRepository = reservationRepository;
+        this.notificationPublisher = notificationPublisher;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
     }
@@ -132,6 +136,7 @@ public class AbsenceService {
         }
         Absence absence = absenceRepository.save(
                 Absence.request(callerId, start, end, request.reason(), now));
+        notificationPublisher.absenceRequested(absence, caller.getName());
         return toResponses(List.of(absence)).get(0);
     }
 
@@ -164,6 +169,7 @@ public class AbsenceService {
         for (Lesson lesson : overlapping) {
             lesson.cancel(AUTO_CANCEL_REASON, now);
         }
+        notificationPublisher.absenceApproved(absence);
         return toResponses(List.of(absence)).get(0);
     }
 
@@ -177,6 +183,7 @@ public class AbsenceService {
         requireRequested(absence);
 
         absence.reject(callerId, body.reason(), Instant.now());
+        notificationPublisher.absenceRejected(absence);
         return toResponses(List.of(absence)).get(0);
     }
 
