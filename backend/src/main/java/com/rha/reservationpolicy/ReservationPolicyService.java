@@ -5,6 +5,10 @@ import com.rha.member.AdminGuard;
 import java.time.Instant;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
 
 @Service
 public class ReservationPolicyService {
@@ -12,12 +16,14 @@ public class ReservationPolicyService {
     private final ReservationPolicyRepository policyRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public ReservationPolicyService(ReservationPolicyRepository policyRepository, AdminGuard adminGuard,
-            RequestValidator requestValidator) {
+            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
         this.policyRepository = policyRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     @Transactional(readOnly = true)
@@ -32,7 +38,14 @@ public class ReservationPolicyService {
         requestValidator.validate(request);
 
         ReservationPolicy policy = policy();
+        int beforeHours = policy.getCancelDeadlineHours();
+        boolean beforeAllowUnpaid = policy.isAllowUnpaidReservation();
         policy.replace(request.cancelDeadlineHours(), request.allowUnpaidReservation(), Instant.now());
+        activityLogRecorder.record(ActivityAction.RESERVATION_POLICY_UPDATED, callerId, null, "RESERVATION_POLICY",
+                null, "예약 정책을 설정했다.",
+                ActivityChange.ifChanged("cancelDeadlineHours", beforeHours, policy.getCancelDeadlineHours()),
+                ActivityChange.ifChanged("allowUnpaidReservation", beforeAllowUnpaid,
+                        policy.isAllowUnpaidReservation()));
         return ReservationPolicyResponse.from(policy);
     }
 

@@ -13,6 +13,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
 
 @Service
 public class LessonTypeService {
@@ -20,12 +24,14 @@ public class LessonTypeService {
     private final LessonTypeRepository lessonTypeRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public LessonTypeService(LessonTypeRepository lessonTypeRepository, AdminGuard adminGuard,
-            RequestValidator requestValidator) {
+            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
         this.lessonTypeRepository = lessonTypeRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     /** 등록 순(id 오름차순). {@code active}가 null이면 활성·비활성 유형을 모두 반환한다. */
@@ -47,12 +53,16 @@ public class LessonTypeService {
             throw new ApiException(ErrorCode.LESSON_TYPE_CODE_DUPLICATED);
         }
         LessonType type = LessonType.create(request.code(), request.name(), request.capacity(), Instant.now());
+        LessonType saved;
         try {
-            return LessonTypeResponse.from(lessonTypeRepository.saveAndFlush(type));
+            saved = lessonTypeRepository.saveAndFlush(type);
         } catch (DataIntegrityViolationException e) {
             // existsByCode 이후 같은 코드가 동시에 등록된 경우
             throw new ApiException(ErrorCode.LESSON_TYPE_CODE_DUPLICATED);
         }
+        activityLogRecorder.record(ActivityAction.LESSON_TYPE_CREATED, callerId, null, "LESSON_TYPE", saved.getId(),
+                Josa.eulReul("수업 유형 '" + saved.getName() + "'") + " 등록했다. (코드 " + saved.getCode() + ")");
+        return LessonTypeResponse.from(saved);
     }
 
     @Transactional
@@ -65,7 +75,15 @@ public class LessonTypeService {
         LessonType type = lessonTypeRepository.findById(lessonTypeId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
 
+        String beforeName = type.getName();
+        int beforeCapacity = type.getCapacity();
+        boolean beforeActive = type.isActive();
         type.update(request.name(), request.capacity(), request.active(), Instant.now());
+        activityLogRecorder.record(ActivityAction.LESSON_TYPE_UPDATED, callerId, null, "LESSON_TYPE", type.getId(),
+                Josa.eulReul("수업 유형 '" + type.getName() + "'") + " 수정했다.",
+                ActivityChange.ifChanged("name", beforeName, type.getName()),
+                ActivityChange.ifChanged("capacity", beforeCapacity, type.getCapacity()),
+                ActivityChange.ifChanged("active", beforeActive, type.isActive()));
         return LessonTypeResponse.from(type);
     }
 }

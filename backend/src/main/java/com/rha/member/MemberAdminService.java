@@ -23,6 +23,11 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.Masking;
 
 @Service
 public class MemberAdminService {
@@ -37,6 +42,7 @@ public class MemberAdminService {
     private final ReservationRepository reservationRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public MemberAdminService(MemberRepository memberRepository,
             MemberPermissionRepository permissionRepository,
@@ -45,7 +51,9 @@ public class MemberAdminService {
             LessonRepository lessonRepository,
             ReservationRepository reservationRepository,
             AdminGuard adminGuard,
-            RequestValidator requestValidator) {
+            RequestValidator requestValidator,
+            ActivityLogRecorder activityLogRecorder) {
+        this.activityLogRecorder = activityLogRecorder;
         this.memberRepository = memberRepository;
         this.permissionRepository = permissionRepository;
         this.passwordResetService = passwordResetService;
@@ -78,6 +86,9 @@ public class MemberAdminService {
         }
 
         passwordResetService.invite(member);
+        activityLogRecorder.record(ActivityAction.MEMBER_CREATED, callerId, member.getId(), "MEMBER",
+                member.getId(), (member.isRole(MemberRole.ADMIN) ? "관리자 " : "강사 ")
+                        + Josa.eulReul("'" + member.getName() + "'") + " 계정으로 등록했다.");
         return member;
     }
 
@@ -113,6 +124,11 @@ public class MemberAdminService {
         }
 
         Instant now = Instant.now();
+        String beforeName = member.getName();
+        String beforePhone = member.getPhoneNumber();
+        Object beforeBirthDate = member.getBirthDate();
+        String beforeAddress = member.getAddress();
+        MemberRole beforeRole = member.getRole();
         member.updateProfile(request.getName(), request.getPhoneNumber(), request.getBirthDate(),
                 request.isAddressSpecified(), request.getAddress(), now);
         if (roleChanged) {
@@ -120,6 +136,16 @@ public class MemberAdminService {
             permissionRepository.deleteAllOf(memberId);
             refreshTokenRepository.revokeAllOf(memberId, now);
         }
+        activityLogRecorder.record(ActivityAction.MEMBER_UPDATED, callerId, memberId, "MEMBER", memberId,
+                Josa.eulReul("회원 '" + member.getName() + "'") + " 수정했다.",
+                ActivityChange.ifChanged("name", beforeName, member.getName()),
+                ActivityChange.ifChanged("phoneNumber", Masking.phone(beforePhone),
+                        Masking.phone(member.getPhoneNumber())),
+                ActivityChange.ifChanged("birthDate", Masking.birthDate(beforeBirthDate),
+                        Masking.birthDate(member.getBirthDate())),
+                ActivityChange.ifChanged("address", Masking.address(beforeAddress),
+                        Masking.address(member.getAddress())),
+                ActivityChange.ifChanged("role", beforeRole, member.getRole()));
         return MemberResponse.from(member, permissionsOf(memberId));
     }
 
@@ -156,7 +182,11 @@ public class MemberAdminService {
         }
 
         Instant now = Instant.now();
+        MemberStatus beforeStatus = member.getStatus();
         member.changeStatus(requested, now);
+        activityLogRecorder.record(ActivityAction.MEMBER_STATUS_CHANGED, callerId, memberId, "MEMBER", memberId,
+                Josa.eulReul("회원 '" + member.getName() + "'") + " " + requested.name() + " 상태로 변경했다.",
+                ActivityChange.of("status", beforeStatus, requested));
         if (requested == MemberStatus.INACTIVE) {
             refreshTokenRepository.revokeAllOf(memberId, now);
         }

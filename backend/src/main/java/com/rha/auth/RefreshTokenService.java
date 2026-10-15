@@ -7,6 +7,11 @@ import com.rha.member.MemberRepository;
 import java.time.Instant;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.Masking;
 
 @Service
 public class RefreshTokenService {
@@ -14,13 +19,16 @@ public class RefreshTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final MemberRepository memberRepository;
     private final AuthTokenIssuer tokenIssuer;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public RefreshTokenService(RefreshTokenRepository refreshTokenRepository,
             MemberRepository memberRepository,
-            AuthTokenIssuer tokenIssuer) {
+            AuthTokenIssuer tokenIssuer,
+            ActivityLogRecorder activityLogRecorder) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.memberRepository = memberRepository;
         this.tokenIssuer = tokenIssuer;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     /** Refresh Token을 회전한다. 사용한 토큰은 폐기되고, 새 Access Token과 Refresh Token이 발급된다. */
@@ -53,9 +61,9 @@ public class RefreshTokenService {
      */
     @Transactional
     public void revoke(Long memberId, String rawRefreshToken) {
-        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
-            return;
+        if (rawRefreshToken != null && !rawRefreshToken.isBlank()) {
+            refreshTokenRepository.revokeOwned(TokenHasher.sha256(rawRefreshToken), memberId, Instant.now());
         }
-        refreshTokenRepository.revokeOwned(TokenHasher.sha256(rawRefreshToken), memberId, Instant.now());
+        activityLogRecorder.record(ActivityAction.LOGOUT, memberId, memberId, "MEMBER", memberId, "로그아웃했다.");
     }
 }

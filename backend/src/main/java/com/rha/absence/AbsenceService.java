@@ -30,6 +30,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.ActivityTime;
+import com.rha.lesson.LessonStatus;
 
 /**
  * 강사 부재 신청·조회·승인·반려·취소.
@@ -48,11 +54,13 @@ public class AbsenceService {
     private final NotificationPublisher notificationPublisher;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public AbsenceService(AbsenceRepository absenceRepository, MemberRepository memberRepository,
             LessonRepository lessonRepository, ReservationRepository reservationRepository,
             NotificationPublisher notificationPublisher, AdminGuard adminGuard,
-            RequestValidator requestValidator) {
+            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
+        this.activityLogRecorder = activityLogRecorder;
         this.absenceRepository = absenceRepository;
         this.memberRepository = memberRepository;
         this.lessonRepository = lessonRepository;
@@ -137,6 +145,8 @@ public class AbsenceService {
         Absence absence = absenceRepository.save(
                 Absence.request(callerId, start, end, request.reason(), now));
         notificationPublisher.absenceRequested(absence, caller.getName());
+        activityLogRecorder.record(ActivityAction.ABSENCE_REQUESTED, callerId, callerId, "ABSENCE", absence.getId(),
+                "부재(" + ActivityTime.period(start, end) + ")를 신청했다.");
         return toResponses(List.of(absence)).get(0);
     }
 
@@ -167,9 +177,18 @@ public class AbsenceService {
         }
         absence.approve(callerId, now);
         for (Lesson lesson : overlapping) {
+            LessonStatus beforeLessonStatus = lesson.getStatus();
             lesson.cancel(AUTO_CANCEL_REASON, now);
+            activityLogRecorder.record(ActivityAction.LESSON_CANCELED, callerId, null, "LESSON", lesson.getId(),
+                    "부재 승인으로 " + Josa.eulReul("수업 '" + lesson.getTitle() + "'") + " 자동 취소했다.",
+                    ActivityChange.of("status", beforeLessonStatus, LessonStatus.CANCELED),
+                    ActivityChange.of("reason", null, AUTO_CANCEL_REASON));
         }
         notificationPublisher.absenceApproved(absence);
+        activityLogRecorder.record(ActivityAction.ABSENCE_APPROVED, callerId, absence.getInstructorId(), "ABSENCE",
+                absence.getId(), "부재(" + ActivityTime.period(absence.getStartAt(), absence.getEndAt())
+                        + ")를 승인했다." + (overlapping.isEmpty() ? "" : " 겹치는 수업 " + overlapping.size()
+                        + "건이 자동 취소되었다."));
         return toResponses(List.of(absence)).get(0);
     }
 
@@ -184,6 +203,10 @@ public class AbsenceService {
 
         absence.reject(callerId, body.reason(), Instant.now());
         notificationPublisher.absenceRejected(absence);
+        activityLogRecorder.record(ActivityAction.ABSENCE_REJECTED, callerId, absence.getInstructorId(), "ABSENCE",
+                absence.getId(), "부재(" + ActivityTime.period(absence.getStartAt(), absence.getEndAt())
+                        + ")를 반려했다." + (body.reason() == null || body.reason().isBlank() ? ""
+                        : " 사유: " + body.reason()));
         return toResponses(List.of(absence)).get(0);
     }
 
@@ -207,7 +230,12 @@ public class AbsenceService {
         if (!cancelable) {
             throw new ApiException(ErrorCode.INVALID_ABSENCE_STATUS);
         }
+        AbsenceStatus beforeStatus = absence.getStatus();
         absence.cancel(callerId, Instant.now());
+        activityLogRecorder.record(ActivityAction.ABSENCE_CANCELED, callerId, absence.getInstructorId(), "ABSENCE",
+                absence.getId(), "부재(" + ActivityTime.period(absence.getStartAt(), absence.getEndAt())
+                        + ")를 취소했다.",
+                ActivityChange.of("status", beforeStatus, AbsenceStatus.CANCELED));
         return toResponses(List.of(absence)).get(0);
     }
 

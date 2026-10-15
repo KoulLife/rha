@@ -18,6 +18,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
 
 /** 강사의 수업 유형별 수당 단가(관리자 전용). 변경은 이후에 계산하는 정산부터 적용된다. */
 @Service
@@ -28,14 +32,17 @@ public class PayRateService {
     private final MemberRepository memberRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public PayRateService(PayRateRepository payRateRepository, LessonTypeRepository lessonTypeRepository,
-            MemberRepository memberRepository, AdminGuard adminGuard, RequestValidator requestValidator) {
+            MemberRepository memberRepository, AdminGuard adminGuard, RequestValidator requestValidator,
+            ActivityLogRecorder activityLogRecorder) {
         this.payRateRepository = payRateRepository;
         this.lessonTypeRepository = lessonTypeRepository;
         this.memberRepository = memberRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
+        this.activityLogRecorder = activityLogRecorder;
     }
 
     /** 단가가 설정된 수업 유형만 수업 유형 id 오름차순으로 반환한다. 강사가 아니면 404이다. */
@@ -73,9 +80,30 @@ public class PayRateService {
         }
 
         Instant now = Instant.now();
+        Map<Long, Long> beforePrices = new java.util.TreeMap<>();
+        payRateRepository.findByInstructorIdOrderByLessonTypeIdAsc(memberId)
+                .forEach(rate -> beforePrices.put(rate.getLessonTypeId(), rate.getUnitPrice()));
         payRateRepository.deleteAllOf(memberId);
         List<PayRate> saved = payRateRepository.saveAll(request.payRates().stream()
                 .map(input -> PayRate.of(memberId, input.lessonTypeId(), input.unitPrice(), now)).toList());
+
+        Map<Long, Long> afterPrices = new java.util.TreeMap<>();
+        saved.forEach(rate -> afterPrices.put(rate.getLessonTypeId(), rate.getUnitPrice()));
+        Set<Long> allTypeIds = new java.util.TreeSet<>(beforePrices.keySet());
+        allTypeIds.addAll(afterPrices.keySet());
+        Map<Long, String> codes = lessonTypeRepository.findAllById(allTypeIds).stream()
+                .collect(Collectors.toMap(LessonType::getId, LessonType::getCode));
+        List<ActivityChange> changes = new java.util.ArrayList<>();
+        for (Long typeId : allTypeIds) {
+            ActivityChange change = ActivityChange.ifChanged(codes.get(typeId), beforePrices.get(typeId),
+                    afterPrices.get(typeId));
+            if (change != null) {
+                changes.add(change);
+            }
+        }
+        activityLogRecorder.record(ActivityAction.PAY_RATES_UPDATED, callerId, memberId, "MEMBER", memberId,
+                "강사 " + Josa.eulReul("'" + instructor.getName() + "'") + " 수당 단가를 설정했다.",
+                changes.toArray(new ActivityChange[0]));
         return toResponse(instructor, saved.stream()
                 .sorted((a, b) -> a.getLessonTypeId().compareTo(b.getLessonTypeId())).toList());
     }

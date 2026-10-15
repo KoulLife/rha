@@ -32,10 +32,15 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.rha.activity.ActivityAction;
+import com.rha.activity.ActivityChange;
+import com.rha.activity.ActivityLogRecorder;
+import com.rha.activity.Josa;
+import com.rha.activity.ActivityTime;
 
 /**
  * 이용권 결제 기록(관리자 전용). 이용권을 잠가 같은 이용권의 결제가 동시에 기록·정정되어도 합계가 금액을
- * 넘지 않게 한다. 정정·삭제·환불 체크의 활동 이력 기록은 활동 이력 기능이 구현될 때 추가한다.
+ * 넘지 않게 한다. 기록·정정·삭제·환불 체크는 활동 이력에 남긴다.
  */
 @Service
 public class PaymentService {
@@ -53,10 +58,12 @@ public class PaymentService {
     private final MemberRepository memberRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
+    private final ActivityLogRecorder activityLogRecorder;
 
     public PaymentService(PassPaymentRepository paymentRepository, PassRepository passRepository,
             PassProductRepository productRepository, MemberRepository memberRepository, AdminGuard adminGuard,
-            RequestValidator requestValidator) {
+            RequestValidator requestValidator, ActivityLogRecorder activityLogRecorder) {
+        this.activityLogRecorder = activityLogRecorder;
         this.paymentRepository = paymentRepository;
         this.passRepository = passRepository;
         this.productRepository = productRepository;
@@ -145,6 +152,9 @@ public class PaymentService {
         PassPayment payment = paymentRepository.save(PassPayment.record(passId,
                 PaymentMethod.valueOf(request.method()), request.amount(), paidAt, request.memo(), callerId,
                 Instant.now()));
+        activityLogRecorder.record(ActivityAction.PAYMENT_RECORDED, callerId, pass.getMemberId(), "PASS_PAYMENT",
+                payment.getId(), "이용권 #" + passId + "에 결제 " + won(payment.getAmount()) + "("
+                        + payment.getMethod() + ")을 기록했다.");
         return toResponses(List.of(payment)).get(0);
     }
 
@@ -174,8 +184,18 @@ public class PaymentService {
         }
 
         PaymentMethod method = request.getMethod() == null ? null : PaymentMethod.valueOf(request.getMethod());
+        PaymentMethod beforeMethod = payment.getMethod();
+        long beforeAmount = payment.getAmount();
+        LocalDate beforePaidAt = payment.getPaidAt();
+        String beforeMemo = payment.getMemo();
         payment.correct(method, request.getAmount(), paidAt, request.isMemoSpecified(), request.getMemo(),
                 Instant.now());
+        activityLogRecorder.record(ActivityAction.PAYMENT_UPDATED, callerId, pass.getMemberId(), "PASS_PAYMENT",
+                payment.getId(), "이용권 #" + passId + "의 결제 기록 #" + payment.getId() + "을 정정했다.",
+                ActivityChange.ifChanged("method", beforeMethod, payment.getMethod()),
+                ActivityChange.ifChanged("amount", beforeAmount, payment.getAmount()),
+                ActivityChange.ifChanged("paidAt", beforePaidAt, payment.getPaidAt()),
+                ActivityChange.ifChanged("memo", beforeMemo, payment.getMemo()));
         return toResponses(List.of(payment)).get(0);
     }
 
@@ -183,12 +203,16 @@ public class PaymentService {
     @Transactional
     public void deletePayment(Long callerId, Long passId, Long paymentId) {
         adminGuard.requireAdmin(callerId);
-        lockPass(passId);
+        Pass pass = lockPass(passId);
         PassPayment payment = findPayment(passId, paymentId);
         if (payment.isRefunded()) {
             throw new ApiException(ErrorCode.PAYMENT_REFUNDED);
         }
         paymentRepository.delete(payment);
+        activityLogRecorder.record(ActivityAction.PAYMENT_DELETED, callerId, pass.getMemberId(), "PASS_PAYMENT",
+                payment.getId(), "이용권 #" + passId + "의 결제 " + won(payment.getAmount()) + "("
+                        + payment.getMethod() + ") 기록을 삭제했다.",
+                ActivityChange.of("amount", payment.getAmount(), null));
     }
 
     /**
@@ -202,9 +226,12 @@ public class PaymentService {
         requestValidator.validate(request);
         LocalDate requestedDate = request.refundedAt() == null ? null : parseDate(request.refundedAt());
 
-        lockPass(passId);
+        Pass pass = lockPass(passId);
         PassPayment payment = findPayment(passId, paymentId);
         Instant now = Instant.now();
+        boolean beforeRefunded = payment.isRefunded();
+        LocalDate beforeRefundedAt = payment.getRefundedAt();
+        String beforeRefundMemo = payment.getRefundMemo();
         if (!request.refunded()) {
             payment.clearRefund(now);
         } else {
@@ -217,6 +244,14 @@ public class PaymentService {
             }
             payment.markRefunded(refundedAt, memo, now);
         }
+        activityLogRecorder.record(
+                request.refunded() ? ActivityAction.PAYMENT_REFUND_CHECKED : ActivityAction.PAYMENT_REFUND_UNCHECKED,
+                callerId, pass.getMemberId(), "PASS_PAYMENT", payment.getId(),
+                "이용권 #" + passId + "의 결제 " + won(payment.getAmount()) + "("
+                        + payment.getMethod() + ") 기록의 환불 체크를 " + (request.refunded() ? "했다." : "해제했다."),
+                ActivityChange.ifChanged("refunded", beforeRefunded, payment.isRefunded()),
+                ActivityChange.ifChanged("refundedAt", beforeRefundedAt, payment.getRefundedAt()),
+                ActivityChange.ifChanged("refundMemo", beforeRefundMemo, payment.getRefundMemo()));
         return toResponses(List.of(payment)).get(0);
     }
 
@@ -230,6 +265,10 @@ public class PaymentService {
     private PassPayment findPayment(Long passId, Long paymentId) {
         return paymentRepository.findByIdAndPassId(paymentId, passId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+    }
+
+    private static String won(long amount) {
+        return String.format("%,d원", amount);
     }
 
     private static void requireNotFuture(LocalDate date) {

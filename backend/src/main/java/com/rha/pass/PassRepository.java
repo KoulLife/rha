@@ -40,13 +40,17 @@ public interface PassRepository extends JpaRepository<Pass, Long>, JpaSpecificat
     List<Pass> findReservableCandidates(@Param("memberId") Long memberId,
             @Param("lessonDate") LocalDate lessonDate);
 
-    /** 만료일이 지난 이용권을 EXPIRED로 바꾼다. */
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    /**
+     * 만료일이 지났지만 아직 EXPIRED가 아닌 이용권. 이용권마다 활동 이력을 남기기 위해 한 건씩 바꾸며,
+     * 동시에 상태를 갱신하는 요청이 같은 만료를 두 번 기록하지 않도록 행을 잠근다(id 순).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-            update Pass p set p.status = com.rha.pass.PassStatus.EXPIRED, p.updatedAt = :now
+            select p from Pass p
             where p.endDate < :today and p.status <> com.rha.pass.PassStatus.EXPIRED
+            order by p.id
             """)
-    int expire(@Param("today") LocalDate today, @Param("now") Instant now);
+    List<Pass> findExpiringForUpdate(@Param("today") LocalDate today);
 
     /** 진행 중인 정지가 있는 이용권을 PAUSED로 바꾼다. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
