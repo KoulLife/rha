@@ -2843,7 +2843,7 @@ paths:
       summary: 강사 퇴사 처리 (관리자)
       description: |
         관리자 전용. 퇴사일이 등록된 강사를 퇴사 처리한다. 상태가 `RESIGNED`가 된다.
-        - 처리하면 로그인할 수 없고, Refresh Token이 모두 폐기되며, 부여된 권한이 모두 회수된다. 승인 대기 중이거나 앞으로 시작하는 부재는 취소된다.
+        - 처리하면 로그인할 수 없고, Refresh Token이 모두 폐기되며, 부여된 권한이 모두 회수된다. 승인 대기 중인 부재와 아직 시작하지 않은 승인된 부재는 취소되며, 처리자는 퇴사 처리한 관리자이다.
         - 담당 이용권은 그대로 남는다 (필요하면 `updatePass`로 담당 강사를 바꾼다).
         - 퇴사한 강사의 수당 단가와 정산은 계속 처리할 수 있다.
         - 등록된 퇴사일이 없으면 409 (RESIGNATION_NOT_REGISTERED)
@@ -2923,6 +2923,7 @@ paths:
       description: |
         관리자는 모든 부재를, 강사는 본인의 부재만 조회한다 (강사가 다른 강사의 `instructorId`를 지정해도 본인 것만 반환된다). 시작 시각 내림차순으로 정렬된다.
         `from` 이상 `to` 미만과 기간이 겹치는 부재를 조회한다.
+        시작 시각이 같으면 id 내림차순이다. 회원(`MEMBER`)이 호출하면 빈 목록이다. `to`가 `from`보다 늦지 않으면 400 (INVALID_INPUT)이다.
       parameters:
         - $ref: '#/components/parameters/PageQuery'
         - $ref: '#/components/parameters/SizeQuery'
@@ -2975,6 +2976,7 @@ paths:
         강사(`INSTRUCTOR`)만 본인 명의로 신청할 수 있다 (그 외 역할은 403, PERMISSION_DENIED). `REQUESTED` 상태로 등록되며 관리자에게 인앱 알림이 발송된다.
         - 시작 시각이 종료 시각보다 늦거나 같거나, 시작 시각이 과거이면 400 (INVALID_ABSENCE_PERIOD)
         - 같은 강사의 승인 대기(`REQUESTED`) 또는 승인된(`APPROVED`) 부재와 기간이 겹치면 409 (ABSENCE_PERIOD_OVERLAP)
+        - 확인 순서: 강사가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT, INVALID_ABSENCE_PERIOD) → 기간 겹침 409.
       requestBody:
         required: true
         content:
@@ -3034,6 +3036,8 @@ paths:
         - 예약이 없는 수업은 승인과 동시에 자동으로 취소된다 (예약이 없으면 진행되지 않는 수업이므로 영향이 없다).
         - 승인된 부재 기간에는 그 강사에게 수업을 배정할 수 없다 (수업 개설, 수정, 인계가 거부된다).
         - `REQUESTED`가 아니면 409 (INVALID_ABSENCE_STATUS)
+        - 자동 취소되는 수업은 아직 시작하지 않은 수업이며, 취소 사유는 "강사 부재 승인으로 자동 취소"이다.
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없는 부재이면 404 → 상태 409 (INVALID_ABSENCE_STATUS) → 예약이 있는 수업 409 (ABSENCE_HAS_RESERVATIONS).
       responses:
         '200':
           description: 승인 성공 (변경된 부재)
@@ -3062,6 +3066,8 @@ paths:
       description: |
         관리자 전용. `REQUESTED`에서 `REJECTED`로 바뀌며 신청한 강사에게 인앱 알림이 발송된다.
         - `REQUESTED`가 아니면 409 (INVALID_ABSENCE_STATUS)
+        - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 사유가 200자를 넘으면 400 (INVALID_INPUT) → 없는 부재이면 404 → 상태 409 (INVALID_ABSENCE_STATUS).
+        - 요청 본문은 생략할 수 있다.
       requestBody:
         required: false
         content:
@@ -3101,6 +3107,8 @@ paths:
         - 관리자는 `REQUESTED`와 `APPROVED` 모두 취소할 수 있다. 승인 때 자동으로 취소된 수업은 되살아나지 않는다.
         - 그 외 상태이면 409 (INVALID_ABSENCE_STATUS)
         - 다른 강사의 부재이면 404
+        - 확인 순서: 없는 부재이거나 관리자와 신청한 강사가 아니면 404 → 강사가 승인된 부재를 취소하면 403 (PERMISSION_DENIED) → 상태 409 (INVALID_ABSENCE_STATUS).
+        - 처리자(`processedBy`)는 취소한 사람이다.
       responses:
         '200':
           description: 취소 성공 (변경된 부재)
