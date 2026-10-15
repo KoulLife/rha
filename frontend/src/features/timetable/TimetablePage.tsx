@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StatusBadge, getStatusLabel } from '@/components/ui/StatusBadge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ApiError } from '@/api/client';
 import { fallbackInstructorColor, useInstructorColors } from '@/features/instructor/colors';
 import { dateInSeoul, layoutDay, shiftDate, timeInSeoul, weekRange, weekStart } from './model';
@@ -24,7 +25,7 @@ import './timetable.css';
 
 const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
-export function TimetablePage({ user, onNavigate, canReserve = false }: { user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void; canReserve?: boolean }) {
+export function TimetablePage({ user, onNavigate, canReserve = false, view = 'calendar' }: { user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void; canReserve?: boolean; view?: 'calendar' | 'list' }) {
   const today = dateInSeoul();
   const [date, setDate] = useState(today);
   const [room, setRoom] = useState('all');
@@ -43,12 +44,12 @@ export function TimetablePage({ user, onNavigate, canReserve = false }: { user: 
   if (editor && canEdit) return <LessonEditor id={editor.id} initialValues={editor.initialValues} onNavigate={onNavigate} onBack={() => setEditor(null)} onSaved={lesson => {
     setDate(dateInSeoul(lesson.startAt)); setRoom('all'); setLessonType('all'); setScope('all'); setSelectedId(lesson.id); setEditor(null);
   }} />;
-  const renderToolbar = (legend?: ReactNode) => <div className="timetable-toolbar timetable-main-toolbar" data-editing={editing}>
+  const renderToolbar = (legend?: ReactNode) => <div className="timetable-toolbar timetable-main-toolbar" data-editing={editing} data-view={view}>
       <div className="menu-actions">
         <Field className="timetable-month"><FieldLabel htmlFor="timetable-month" className="sr-only">조회 월</FieldLabel><Input id="timetable-month" type="month" value={date.slice(0, 7)} min="1900-01" max="9998-12" onChange={event => { if (event.target.value && event.target.validity.valid) setDate(`${event.target.value}-01`); }} /></Field>
         <p className="timetable-period" aria-live="polite">{start.slice(5).replace('-', '.')} – {shiftDate(start, 6).slice(5).replace('-', '.')}</p>
       </div>
-      {legend ?? <span aria-hidden="true" />}
+      {legend ?? (view === 'calendar' ? <span aria-hidden="true" /> : null)}
       <div className="menu-actions">
         <div className="timetable-week-nav" role="group" aria-label="주 이동">
           <Button variant="ghost" aria-label="이전 주" title="이전 주" onClick={() => setDate(shiftDate(start, -7))}><ChevronLeft aria-hidden="true" /></Button>
@@ -59,12 +60,12 @@ export function TimetablePage({ user, onNavigate, canReserve = false }: { user: 
       </div>
     </div>;
   return <section className="menu-page timetable-page">
-    <h1 className="sr-only">시간표</h1>
-    <WeekSchedule key={`${user.role}-${user.id}-${start}`} start={start} today={today} user={user} onNavigate={onNavigate} canReserve={canReserve} room={room} setRoom={setRoom} lessonType={lessonType} setLessonType={setLessonType} scope={scope} setScope={setScope} editing={editing && canEdit} onCreate={openCreate} onEdit={id => { if (canEdit) setEditor({ id }); }} selectedId={selectedId} onSelect={setSelectedId} renderToolbar={renderToolbar} />
+    <h1 className="sr-only">{view === 'list' ? '수업 목록' : '시간표'}</h1>
+    <WeekSchedule key={`${user.role}-${user.id}-${start}`} start={start} today={today} user={user} onNavigate={onNavigate} canReserve={canReserve} room={room} setRoom={setRoom} lessonType={lessonType} setLessonType={setLessonType} scope={scope} setScope={setScope} editing={editing && canEdit} onCreate={openCreate} onEdit={id => { if (canEdit) setEditor({ id }); }} selectedId={selectedId} onSelect={setSelectedId} renderToolbar={renderToolbar} view={view} />
   </section>;
 }
 
-type ScheduleProps = { lessonType: string; setLessonType: (value: string) => void; editing: boolean; onCreate: (day: string, hour: number) => void; onEdit: (id: number) => void; selectedId: number | null; onSelect: (id: number) => void; start: string; today: string; user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void; canReserve: boolean; room: string; setRoom: (value: string) => void; scope: string; setScope: (value: string) => void; renderToolbar: (legend?: ReactNode) => ReactNode };
+type ScheduleProps = { view: 'calendar' | 'list'; lessonType: string; setLessonType: (value: string) => void; editing: boolean; onCreate: (day: string, hour: number) => void; onEdit: (id: number) => void; selectedId: number | null; onSelect: (id: number) => void; start: string; today: string; user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void; canReserve: boolean; room: string; setRoom: (value: string) => void; scope: string; setScope: (value: string) => void; renderToolbar: (legend?: ReactNode) => ReactNode };
 
 function WeekSchedule({ start, today, user, onNavigate, renderToolbar, ...filters }: ScheduleProps) {
   const [pages, setPages] = useState<LessonPageResponse[]>([]);
@@ -88,7 +89,7 @@ function WeekSchedule({ start, today, user, onNavigate, renderToolbar, ...filter
   return <Schedule lessons={lessons} start={start} today={today} user={user} onNavigate={onNavigate} renderToolbar={renderToolbar} {...filters} />;
 }
 
-function Schedule({ lessons, start, today, user, onNavigate, canReserve, room, setRoom, lessonType, setLessonType, scope, setScope, editing, onCreate, onEdit, selectedId, onSelect, renderToolbar }: ScheduleProps & { lessons: Lesson[] }) {
+function Schedule({ lessons, start, today, user, onNavigate, canReserve, room, setRoom, lessonType, setLessonType, scope, setScope, editing, onCreate, onEdit, selectedId, onSelect, renderToolbar, view }: ScheduleProps & { lessons: Lesson[] }) {
   const client = useQueryClient();
   const instructorColors = useInstructorColors();
   const reserve = useCreateReservation();
@@ -116,10 +117,10 @@ function Schedule({ lessons, start, today, user, onNavigate, canReserve, room, s
       </div>
     </div>;
   return <>
-    {renderToolbar(instructors.length > 0 ? <div className="timetable-legend" aria-label="강사별 시간표 색상"><span>강사 색상</span><ul>{instructors.map(instructor => <li key={instructor.id}><span className="timetable-legend-swatch" style={{'--instructor-color':instructorColors[instructor.id] ?? fallbackInstructorColor(instructor.id)} as CSSProperties} aria-hidden="true"/>{instructor.name}</li>)}</ul></div> : undefined)}
-    {(editing || !rows.length) && filtersPanel}
-    {!rows.length && !editing ? <MenuPanel><MenuEmpty title="이번 주에 표시할 수업이 없습니다" description="다른 주를 선택하거나 수업 유형·범위·룸을 변경해 주세요." /></MenuPanel> : <div className="timetable-layout" data-editing={editing}>
-      <div className="timetable-scroll" role="region" aria-label="주간 수업 시간표" tabIndex={0}>
+    {renderToolbar(view === 'calendar' && instructors.length > 0 ? <div className="timetable-legend" aria-label="강사별 시간표 색상"><span>강사 색상</span><ul>{instructors.map(instructor => <li key={instructor.id}><span className="timetable-legend-swatch" style={{'--instructor-color':instructorColors[instructor.id] ?? fallbackInstructorColor(instructor.id)} as CSSProperties} aria-hidden="true"/>{instructor.name}</li>)}</ul></div> : undefined)}
+    {(view === 'list' || editing || !rows.length) && filtersPanel}
+    {!rows.length && !editing ? <MenuPanel><MenuEmpty title="이번 주에 표시할 수업이 없습니다" description="다른 주를 선택하거나 수업 유형·범위·룸을 변경해 주세요." /></MenuPanel> : <div className="timetable-layout" data-editing={editing} data-view={view}>
+      {view === 'list' && !editing ? <WeekLessonList lessons={rows} selectedId={selectedId} onSelect={onSelect} /> : <div className="timetable-scroll" role="region" aria-label="주간 수업 시간표" tabIndex={0}>
         <div className="timetable-grid" style={{ '--timetable-hours': hours.length } as CSSProperties}>
           <div className="timetable-header timetable-corner">시간</div>
           {dates.map((date, i) => <div key={date} className="timetable-header" data-today={date === today}><span>{weekdays[i]}</span><strong>{date.slice(5).replace('-', '.')}</strong>{date === today && <span className="timetable-today">오늘</span>}</div>)}
@@ -135,9 +136,9 @@ function Schedule({ lessons, start, today, user, onNavigate, canReserve, room, s
             </button>)}
           </div>)}
         </div>
-      </div>
+      </div>}
       <aside className="timetable-preview" aria-label="선택한 수업 요약" aria-live="polite">
-        {filtersPanel}
+        {view === 'calendar' && filtersPanel}
         <MenuPanel title="선택한 수업">{selected ? <div className="menu-stack">
           <div className="menu-stack"><h3>{selected.title}</h3><StatusBadge domain="lesson" status={selected.status} /></div>
           <dl className="menu-facts">{[['날짜', dateInSeoul(selected.startAt)], ['시간', `${timeInSeoul(selected.startAt)} – ${dateInSeoul(selected.endAt) !== dateInSeoul(selected.startAt) ? `${dateInSeoul(selected.endAt)} ` : ''}${timeInSeoul(selected.endAt)}`], ['수업 유형', selected.lessonType.name], ['담당 강사', selected.instructor.name], ['룸', selected.room.name], ['예약 / 정원', `${selected.reservedCount} / ${selected.capacity}명`]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
@@ -166,4 +167,24 @@ function Schedule({ lessons, start, today, user, onNavigate, canReserve, room, s
       }).catch(error => toast.error(error instanceof Error ? error.message : '수업 신청에 실패했습니다.'));
     }} />}
   </>;
+}
+
+function WeekLessonList({ lessons, selectedId, onSelect }: { lessons: Lesson[]; selectedId: number | null; onSelect: (id: number) => void }) {
+  return <MenuPanel variant="table" className="timetable-list-panel" title="이번 주 수업" action={<span className="timetable-list-count">{lessons.length}개</span>}>
+    <Table variant="management" aria-label="이번 주 수업 목록" className="timetable-list-table">
+      <TableHeader><TableRow>{['일시', '수업', '강사·룸', '예약', '상태', '정보'].map(label => <TableHead key={label}>{label}</TableHead>)}</TableRow></TableHeader>
+      <TableBody>{[...lessons].sort((a, b) => a.startAt.localeCompare(b.startAt)).map(lesson => {
+        const day = dateInSeoul(lesson.startAt);
+        const weekday = weekdays[(new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7];
+        return <TableRow key={lesson.id} data-selected={selectedId === lesson.id}>
+          <TableCell><div className="timetable-list-primary"><strong>{day.slice(5).replace('-', '.')} ({weekday})</strong><span>{timeInSeoul(lesson.startAt)}–{dateInSeoul(lesson.endAt) !== day ? '익일 ' : ''}{timeInSeoul(lesson.endAt)}</span></div></TableCell>
+          <TableCell><div className="timetable-list-primary"><strong>{lesson.title}</strong><span>{lesson.lessonType.name}</span></div></TableCell>
+          <TableCell><div className="timetable-list-primary"><strong>{lesson.instructor.name}</strong><span>{lesson.room.name}</span></div></TableCell>
+          <TableCell>{lesson.reservedCount} / {lesson.capacity}명</TableCell>
+          <TableCell><StatusBadge domain="lesson" status={lesson.status} /></TableCell>
+          <TableCell><Button variant={selectedId === lesson.id ? 'secondary' : 'outline'} size="sm" aria-pressed={selectedId === lesson.id} aria-label={`${lesson.title} 정보 보기`} onClick={() => onSelect(lesson.id)}>{selectedId === lesson.id ? '선택됨' : '정보 보기'}</Button></TableCell>
+        </TableRow>;
+      })}</TableBody>
+    </Table>
+  </MenuPanel>;
 }

@@ -201,6 +201,33 @@
 }
 
 @layer utilities {
+  .lesson-views [data-slot="tabs-list"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    inline-size: min(100%, var(--lesson-view-tabs-width));
+    block-size: var(--control-height);
+    padding: calc(var(--space-tight) / 2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+  }
+  .lesson-views [data-slot="tabs-trigger"] {
+    min-block-size: calc(var(--control-height) - var(--space-control));
+    padding-inline: var(--space-detail);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-heading);
+  }
+  .lesson-views [data-slot="tabs-trigger"][data-active] {
+    border-color: var(--primary);
+    background: var(--card);
+    color: var(--primary);
+  }
+  @media (max-width: 767px) {
+    .lesson-views [data-slot="tabs-list"] { inline-size: 100%; }
+  }
+}
+
+@layer utilities {
   .navigation-disclosure { color: var(--muted-foreground); }
   [data-sidebar="menu-button"][data-state="open"] > .navigation-disclosure { transform: rotate(90deg); }
   .member-subnavigation { border: 0; margin: 0; padding: var(--space-control) 0 var(--space-control) var(--space-panel); gap: var(--space-tight); }
