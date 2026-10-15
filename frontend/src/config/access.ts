@@ -25,13 +25,14 @@ type MenuDefinition = {
 // 배열 순서가 사이드바 순서다. 현재 구현된 화면만 등록한다.
 export const menuItems = [
   { screen: "home", label: "홈", roles: ["MEMBER", "INSTRUCTOR", "ADMIN"], permission: "lesson.read" },
-  { screen: "admin-lessons", label: "수업 조회·관리", roles: ["ADMIN"], permission: "lesson.read" },
-  { screen: "timetable", label: "수업", roles: ["MEMBER", "INSTRUCTOR"], permission: "lesson.read" },
+  { screen: "timetable", label: "시간표", roles: ["MEMBER", "INSTRUCTOR", "ADMIN"], permission: "lesson.read" },
+  { screen: "classes", label: "수업", pageLabel: "수업 목록", roles: ["MEMBER"], permission: "lesson.read" },
   { screen: "passes", label: "내 이용권", roles: ["MEMBER"], permission: "pass.read" },
   { screen: "reservations", label: "내 예약·출결", roles: ["MEMBER"], permission: "reservation.read" },
   { screen: "profile", label: "내 계정", roles: ["MEMBER"], permission: "profile.read" },
   { screen: "admin-members", label: "회원 관리", roles: ["ADMIN"], permission: "profile.read" },
   { screen: "admin-instructors", label: "강사 관리", roles: ["ADMIN"], permission: "profile.read" },
+  { screen: "admin-lessons", label: "수업 관리", roles: ["ADMIN"], permission: "lesson.read" },
   { screen: "admin-passes", label: "회원 이용권", roles: ["ADMIN"], permission: "pass.read" },
   { screen: "admin-reports", label: "통계·정산", roles: ["ADMIN"], permission: "profile.read" },
   { screen: "today-lessons", label: "오늘 전체 수업", roleLabels: { INSTRUCTOR: "오늘 담당 수업" }, roles: ["INSTRUCTOR"], permission: "lesson.read" },
@@ -58,6 +59,8 @@ export const detailScreens = {
   "admin-lesson-detail": { parent: "admin-lessons", label: "수업 상세" },
   "admin-lesson-create": { parent: "admin-lessons", label: "수업 개설" },
   "admin-lesson-edit": { parent: "admin-lessons", label: "수업 수정" },
+  "admin-repeat": { parent: "admin-lessons", label: "반복 일정" },
+  "admin-waitlist": { parent: "admin-lessons", label: "승인 신청 대기" },
   "admin-pass-detail": { parent: "admin-passes", label: "이용권 상세" },
   "admin-payments": { parent: "admin-passes", label: "결제 내역" },
   "admin-settlements": { parent: "admin-reports", label: "정산 내역" },
@@ -71,8 +74,7 @@ export const detailScreens = {
   "admin-settlement-create": { parent: "admin-reports", label: "정산 계산" },
   "admin-settlement-detail": { parent: "admin-reports", label: "정산 상세" },
   "admin-instructor-settlements": { parent: "admin-reports", label: "강사별 정산" },
-  "classes": { parent: "timetable", label: "수업 목록" },
-  "lesson-detail": { parent: "timetable", label: "수업 상세" },
+  "lesson-detail": { parent: "classes", label: "수업 상세" },
   "pass-detail": { parent: "passes", label: "이용권 상세" },
   "reservation-detail": { parent: "reservations", label: "예약 상세" },
 } as const satisfies Record<string, { parent: MenuScreen; label: string }>;
@@ -87,6 +89,11 @@ const instructorSubmenus = [
 
 const submenus: Partial<Record<MenuScreen, NonNullable<NavigationItem['children']>>> = {
   'admin-instructors': instructorSubmenus,
+  'admin-lessons': [
+    { screen: 'admin-lessons', label: '수업 목록', activeScreens: ['admin-lessons', 'admin-lesson-detail', 'admin-lesson-create', 'admin-lesson-edit'] },
+    { screen: 'admin-repeat', label: '반복 일정', activeScreens: ['admin-repeat'] },
+    { screen: 'admin-waitlist', label: '승인 신청 대기', activeScreens: ['admin-waitlist'] },
+  ],
   'admin-passes': [
     { screen: 'admin-passes', label: '이용권 목록', activeScreens: ['admin-passes', 'admin-pass-detail'] },
     { screen: 'admin-payments', label: '결제 내역', activeScreens: ['admin-payments'] },

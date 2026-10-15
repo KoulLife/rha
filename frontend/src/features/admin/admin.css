@@ -6,7 +6,6 @@
   .admin-page:has(> .admin-table-area, > .menu-stack > .admin-table-area) .page-title { gap: var(--space-detail); }
   .admin-table-area { display: grid; min-width: 0; }
   .admin-table-toolbar { display: flex; justify-content: flex-end; align-items: center; min-width: 0; }
-  .admin-member-tabs-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-detail); min-width: 0; }
   .admin-form { display: grid; gap: var(--space-detail); min-width: 0; }
   .admin-form [data-slot="select-trigger"], .admin-choice { width: 100%; justify-content: space-between; min-height: var(--control-height); }
   .admin-form-actions { justify-content: flex-end; margin-top: var(--space-control); }
@@ -46,8 +45,6 @@
   .admin-absence-actions { justify-content: flex-end; margin-top: auto; padding-top: var(--space-detail); border-top: 1px solid var(--border); }
   .admin-lesson-detail-card > .menu-panel-heading { flex-wrap: wrap; }
   .admin-lesson-detail-card > .menu-panel-heading .menu-actions { justify-content: flex-end; margin-left: auto; }
-  .admin-settlement-detail-card > .menu-panel-heading { flex-wrap: wrap; }
-  .admin-settlement-detail-card > .menu-panel-heading .menu-actions { justify-content: flex-end; margin-left: auto; }
   .admin-lesson-detail-card .menu-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, auto); grid-auto-flow: column; column-gap: var(--space-panel); }
   .admin-money { text-align: right; font-variant-numeric: tabular-nums; }
   .admin-loading { display: grid; gap: var(--space-detail); }
@@ -73,41 +70,16 @@
   .admin-lesson-form-panel :is([data-field="title"], [data-field="lessonTypeId"], .menu-note, .admin-form-actions, [data-slot="alert"]) { grid-column: 1 / -1; }
   .admin-detail-section { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); }
   .admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--timetable-preview-width), 1fr)); gap: var(--menu-gap); }
-  .admin-operations-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .admin-stat-card { min-width: 0; cursor: help; border-radius: var(--radius-panel); }
   .admin-stat-card .menu-panel { height: 100%; }
   .admin-stat-card:focus-visible { outline: 2px solid var(--ring); outline-offset: var(--space-control); }
-  .admin-reservation-chart { display: grid; grid-template-columns: var(--admin-reservation-donut-size) minmax(0, 1fr); align-items: center; gap: var(--space-panel); }
-  .admin-reservation-donut { position: relative; width: var(--admin-reservation-donut-size); aspect-ratio: 1; }
-  .admin-reservation-donut svg { display: block; width: 100%; height: 100%; }
-  .admin-reservation-donut circle { fill: none; stroke-width: 22; }
-  .admin-reservation-donut-track { stroke: var(--secondary); }
-  .admin-reservation-donut-segment { stroke: var(--reservation-color); transform: rotate(-90deg); transform-origin: center; }
-  .admin-reservation-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-  .admin-reservation-donut-center strong { font-size: var(--font-size-metric); font-weight: var(--font-weight-metric); font-variant-numeric: tabular-nums; }
-  .admin-reservation-donut-center span { color: var(--muted-foreground); font-size: var(--font-size-caption); }
-  .admin-reservation-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-detail) var(--space-panel); padding: 0; margin: 0; list-style: none; }
-  .admin-reservation-legend li { display: flex; align-items: center; gap: var(--space-control); min-width: 0; padding-bottom: var(--space-control); border-bottom: 1px solid var(--border); }
-  .admin-reservation-legend li strong { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .admin-reservation-legend-dot { flex: none; width: var(--space-detail); height: var(--space-detail); border-radius: 50%; background: var(--reservation-color); }
-  .admin-reservation-donut-segment[data-status="0"], .admin-reservation-legend-dot[data-status="0"] { --reservation-color: var(--primary); }
-  .admin-reservation-donut-segment[data-status="1"], .admin-reservation-legend-dot[data-status="1"] { --reservation-color: var(--info); }
-  .admin-reservation-donut-segment[data-status="2"], .admin-reservation-legend-dot[data-status="2"] { --reservation-color: var(--warning); }
-  .admin-reservation-donut-segment[data-status="3"], .admin-reservation-legend-dot[data-status="3"] { --reservation-color: var(--chart-2); }
-  .admin-sales-chart { display: grid; grid-template-columns: var(--admin-sales-axis-width) minmax(0, 1fr); column-gap: var(--space-detail); min-width: 0; }
-  .admin-sales-axis, .admin-sales-plot { height: var(--admin-sales-chart-height); margin-top: var(--admin-sales-value-space); }
-  .admin-sales-axis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; color: var(--muted-foreground); font-size: var(--font-size-caption); font-variant-numeric: tabular-nums; line-height: 1; }
-  .admin-sales-plot { position: relative; min-width: 0; }
-  .admin-sales-grid { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; }
-  .admin-sales-grid span { display: block; width: 100%; border-top: 1px solid var(--border); }
-  .admin-sales-columns { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .admin-sales-column { position: relative; display: flex; align-items: flex-end; justify-content: center; min-width: 0; }
-  .admin-sales-bar { display: block; width: min(45%, var(--admin-sales-bar-width)); background: var(--chart-2); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
-  .admin-sales-bar[data-current="true"] { background: var(--primary); }
-  .admin-sales-value { position: absolute; left: 50%; transform: translateX(-50%); color: var(--foreground); font-size: var(--font-size-caption); font-weight: var(--font-weight-heading); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .admin-sales-labels { grid-column: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-control); padding-top: var(--space-detail); text-align: center; font-size: var(--font-size-caption); }
-  .admin-sales-labels span { min-width: 0; word-break: keep-all; }
-  .admin-sales-labels small { display: block; color: var(--muted-foreground); font-size: inherit; }
+  .admin-chart { display: grid; gap: var(--space-detail); }
+  .admin-chart-row { display: grid; gap: var(--space-control); min-width: 0; }
+  .admin-chart-row-heading { display: flex; justify-content: space-between; gap: var(--space-detail); align-items: baseline; }
+  .admin-chart-row-heading span { color: var(--muted-foreground); }
+  .admin-chart-row-heading strong { font-weight: var(--font-weight-heading); font-variant-numeric: tabular-nums; }
+  .admin-chart-track { height: var(--space-control); overflow: hidden; border-radius: var(--radius-sm); background: var(--secondary); }
+  .admin-chart-bar { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
   .admin-detail-section > summary { cursor: pointer; padding: var(--space-detail) var(--space-panel); font-size: var(--font-size-body); font-weight: var(--font-weight-heading); }
   .admin-detail-section[open] > summary { border-bottom: 1px solid var(--border); }
   .admin-detail-section > :not(summary) { margin: var(--space-detail); }
@@ -119,9 +91,6 @@
   .admin-hours { display: grid; gap: var(--space-detail); }
   .admin-hours-row { display: grid; grid-template-columns: var(--menu-fact-label-width) minmax(0,1fr) minmax(0,1fr) auto; align-items: center; gap: var(--space-detail); }
   .admin-metric { font-size: var(--font-size-metric); font-weight: var(--font-weight-metric); }
-}
-@media(max-width: 1100px) {
-  .admin-operations-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media(min-width: 768px) {
   .member-preview .main-content:not(.home-main):has(.admin-page > .admin-table-area, .admin-page > .menu-stack > .admin-table-area) { height: 100dvh; min-height: 0; }
@@ -138,8 +107,6 @@
   .admin-page:has(.admin-form[data-variant="filter"][data-expanded="true"]) .admin-table-area { flex: none; }
 }
 @media(max-width: 767px) {
-  .admin-reservation-chart { grid-template-columns: minmax(0, 1fr); justify-items: center; }
-  .admin-reservation-legend { width: 100%; }
   .admin-lesson-detail-card .menu-facts { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-flow: row; }
   .admin-lesson-form-panel .admin-form { grid-template-columns: minmax(0, 1fr); }
   .admin-form[data-variant="filter"] .admin-filter-toggle[data-desktop-visible="false"] { display: inline-flex; }

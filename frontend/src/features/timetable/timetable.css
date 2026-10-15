@@ -9,7 +9,6 @@
   .timetable-loading { height: var(--timetable-height); border-radius: var(--radius-panel); }
   .timetable-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-detail); }
   .timetable-main-toolbar { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr) var(--timetable-preview-width); column-gap: var(--menu-gap); }
-  .timetable-main-toolbar[data-view="list"] { grid-template-columns: minmax(0, 1fr) auto; }
   .timetable-main-toolbar > .menu-actions { flex-wrap: nowrap; }
   .timetable-main-toolbar > .menu-actions:last-child { justify-content: flex-end; }
   .timetable-main-toolbar[data-editing="true"] { grid-template-columns: auto minmax(0, 1fr) max-content; }
@@ -23,21 +22,10 @@
   .timetable-toolbar[data-editing="true"] { color: var(--secondary-foreground); }
   .timetable-month { width: var(--timetable-month-width); }
   .timetable-filters > .menu-actions > [data-slot="field"] { width: auto; min-width: var(--timetable-filter-width); }
-  .timetable-page > .timetable-filters { grid-column: 1 / -1; }
   .timetable-preview { display: grid; gap: var(--menu-gap); }
   .timetable-preview .timetable-filters .menu-actions { display: grid; width: 100%; }
   .timetable-preview .timetable-filters [data-slot="field"] { width: 100%; }
   .timetable-layout { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) var(--timetable-preview-width); gap: var(--menu-gap); align-items: start; }
-  .timetable-list-panel { min-width: 0; }
-  .timetable-list-panel [data-slot="table-container"] { max-height: none; }
-  .timetable-list-table { min-width: 38rem; }
-  .timetable-list-table [data-slot="table-cell"] { white-space: normal; }
-  .timetable-list-table [data-slot="table-cell"]:nth-child(-n+3) { text-align: left; }
-  .timetable-list-table [data-slot="table-body"] [data-slot="table-row"][data-selected="true"] [data-slot="table-cell"] { background: var(--secondary); }
-  .timetable-list-table [data-slot="table-row"][data-selected="true"] [data-slot="table-cell"]:first-child { border-left: var(--timetable-event-accent) solid var(--primary); }
-  .timetable-list-primary { display: grid; gap: var(--space-tight); min-width: 0; text-align: left; }
-  .timetable-list-primary strong { font-weight: var(--font-weight-heading); }
-  .timetable-list-primary span, .timetable-list-count { color: var(--muted-foreground); font-size: var(--font-size-caption); }
   .timetable-layout[data-editing="true"] { grid-template-columns: minmax(0, 1fr); }
   .timetable-layout[data-editing="true"] .timetable-preview { display: none; }
   .timetable-scroll { overflow-x: auto; overflow-y: visible; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-panel); }
@@ -77,6 +65,5 @@
   .timetable-event:hover, .timetable-event:focus-visible, .timetable-event[aria-pressed="true"] { background: var(--secondary); outline: 2px solid var(--primary); outline-offset: calc(-1 * var(--space-tight)); z-index: 1; }
   .timetable-preview .menu-facts > div { grid-template-columns: var(--timetable-fact-width) minmax(0, 1fr); }
   .timetable-preview [data-slot="badge"] { justify-self: start; }
-  @media (max-width: 1199px) { .timetable-layout[data-view="list"] { grid-template-columns: minmax(0, 1fr); } }
-  @media (max-width: 767px) { .menu-page.timetable-page { grid-template-columns: minmax(0, 1fr); } .timetable-layout { grid-template-columns: minmax(0, 1fr); } .timetable-toolbar { align-items: stretch; } .timetable-main-toolbar, .timetable-main-toolbar[data-view="list"], .timetable-main-toolbar[data-editing="true"] { grid-template-columns: minmax(0, 1fr); } .timetable-main-toolbar > .menu-actions { flex-wrap: wrap; } }
+  @media (max-width: 767px) { .menu-page.timetable-page { grid-template-columns: minmax(0, 1fr); } .timetable-layout { grid-template-columns: minmax(0, 1fr); } .timetable-toolbar { align-items: stretch; } .timetable-main-toolbar, .timetable-main-toolbar[data-editing="true"] { grid-template-columns: minmax(0, 1fr); } .timetable-main-toolbar > .menu-actions { flex-wrap: wrap; } }
 }
