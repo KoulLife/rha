@@ -22,6 +22,7 @@ import com.rha.payment.PassPaymentRepository;
 import com.rha.reservationpolicy.ReservationPolicy;
 import com.rha.reservationpolicy.ReservationPolicyRepository;
 import com.rha.room.Room;
+import com.rha.settlement.SettlementItemRepository;
 import com.rha.room.RoomRepository;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
@@ -44,7 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 수업 예약, 취소, 출결 기록과 조회. 예약하면 서버가 이용권을 골라 횟수를 1회 차감하고 취소하면 복구한다.
- * 강사 정산 포함 여부에 따른 출결 정정 제한(LESSON_SETTLED)은 정산 기능이 구현될 때 추가한다.
+ * 강사 정산에 포함된 수업은 출결을 정정할 수 없다(LESSON_SETTLED).
  */
 @Service
 public class ReservationService {
@@ -68,6 +69,7 @@ public class ReservationService {
     private final PassPaymentRepository paymentRepository;
     private final ReservationPolicyRepository policyRepository;
     private final NotificationPublisher notificationPublisher;
+    private final SettlementItemRepository settlementItemRepository;
     private final RequestValidator requestValidator;
 
     public ReservationService(ReservationRepository reservationRepository, LessonRepository lessonRepository,
@@ -75,7 +77,8 @@ public class ReservationService {
             MemberRepository memberRepository, MemberPermissionRepository permissionRepository,
             PassRepository passRepository, PassProductRepository productRepository,
             PassPaymentRepository paymentRepository, ReservationPolicyRepository policyRepository,
-            NotificationPublisher notificationPublisher, RequestValidator requestValidator) {
+            NotificationPublisher notificationPublisher, SettlementItemRepository settlementItemRepository,
+            RequestValidator requestValidator) {
         this.reservationRepository = reservationRepository;
         this.lessonRepository = lessonRepository;
         this.lessonTypeRepository = lessonTypeRepository;
@@ -87,6 +90,7 @@ public class ReservationService {
         this.paymentRepository = paymentRepository;
         this.policyRepository = policyRepository;
         this.notificationPublisher = notificationPublisher;
+        this.settlementItemRepository = settlementItemRepository;
         this.requestValidator = requestValidator;
     }
 
@@ -219,6 +223,9 @@ public class ReservationService {
         Instant now = Instant.now();
         if (!lesson.hasStarted(now)) {
             throw new ApiException(ErrorCode.LESSON_NOT_STARTED);
+        }
+        if (settlementItemRepository.existsByLessonId(lesson.getId())) {
+            throw new ApiException(ErrorCode.LESSON_SETTLED);
         }
         reservation.confirmAttendance(target, now);
         return toResponses(List.of(reservation)).get(0);

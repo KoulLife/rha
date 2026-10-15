@@ -28,6 +28,13 @@ public interface ReservationRepository
             """)
     List<Object[]> countsByLessonIds(@Param("lessonIds") Collection<Long> lessonIds);
 
+    /** 수업·상태별 예약 수. 정산 계산에 쓴다. */
+    @Query("""
+            select r.lessonId, r.status, count(r) from Reservation r
+            where r.lessonId in :lessonIds group by r.lessonId, r.status
+            """)
+    List<Object[]> countsByLessonIdsAndStatus(@Param("lessonIds") Collection<Long> lessonIds);
+
     /** 주어진 수업 중 예약(RESERVED)이 있는 수업의 id. */
     @Query("""
             select distinct r.lessonId from Reservation r

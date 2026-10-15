@@ -58,6 +58,21 @@ public interface LessonRepository extends JpaRepository<Lesson, Long>, JpaSpecif
     java.util.List<Lesson> findUpcomingOverlapping(@Param("instructorId") Long instructorId,
             @Param("start") Instant start, @Param("end") Instant end, @Param("now") Instant now);
 
+    /**
+     * 정산 대상 수업: 시작 시각이 [rangeStart, rangeEnd)에 있고, 취소되지 않았으며, 이미 끝났고,
+     * 다른 정산에 포함되지 않은 담당 수업. 시작 시각 순이다.
+     */
+    @Query("""
+            select l from Lesson l
+            where l.instructorId = :instructorId and l.status <> com.rha.lesson.LessonStatus.CANCELED
+              and l.startAt >= :rangeStart and l.startAt < :rangeEnd and l.endAt <= :now
+              and not exists (select 1 from SettlementItem i where i.lessonId = l.id)
+            order by l.startAt, l.id
+            """)
+    java.util.List<Lesson> findLessonsToSettle(@Param("instructorId") Long instructorId,
+            @Param("rangeStart") Instant rangeStart, @Param("rangeEnd") Instant rangeEnd,
+            @Param("now") Instant now);
+
     /** 공개 예약 시각이 지난 수업을 공개한다. 바뀐 수업 수를 반환한다. */
     @Modifying(clearAutomatically = true)
     @Query("""
