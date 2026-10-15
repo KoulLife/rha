@@ -33,7 +33,7 @@ export function AbsenceDetail({id,onNavigate}:{id:number;onNavigate:Navigate}) {
   const [action,setAction]=useState<Action|null>(null),[page,setPage]=useState(1);
   const a=query.data;
   // No lower start bound: a class that starts before the absence may still overlap.
-  const lessons=api.useGetLessons({instructorId:a?.instructor.id,to:a?.endAt,page,size:100},{query:{enabled:!!a}});
+  const lessons=api.useGetLessons({instructorId:a?.instructor.id,to:a?.endAt,page,size:PAGE_SIZE},{query:{enabled:!!a}});
   const rows=(lessons.data?.content??[]).filter(l=>a&&l.endAt>a.startAt&&l.status!=='CANCELED');
   const openLessonAdjustment=(lesson:api.Lesson)=>setAction({
     title:`${lesson.title} · 수업 조정`,description:'겹치는 수업의 담당 강사·룸 또는 수업 시간을 조정합니다.',submitLabel:'수업 조정 저장',
