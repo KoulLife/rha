@@ -1,5 +1,7 @@
 package com.rha.instructor;
 
+import com.rha.absence.Absence;
+import com.rha.absence.AbsenceRepository;
 import com.rha.auth.RefreshTokenRepository;
 import com.rha.common.error.ApiException;
 import com.rha.common.error.ErrorCode;
@@ -38,6 +40,7 @@ public class InstructorService {
     private final MemberRepository memberRepository;
     private final InstructorAvailabilityRepository availabilityRepository;
     private final LessonRepository lessonRepository;
+    private final AbsenceRepository absenceRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final MemberPermissionRepository permissionRepository;
     private final AdminGuard adminGuard;
@@ -45,11 +48,12 @@ public class InstructorService {
 
     public InstructorService(MemberRepository memberRepository,
             InstructorAvailabilityRepository availabilityRepository, LessonRepository lessonRepository,
-            RefreshTokenRepository refreshTokenRepository, MemberPermissionRepository permissionRepository,
+            AbsenceRepository absenceRepository, RefreshTokenRepository refreshTokenRepository, MemberPermissionRepository permissionRepository,
             AdminGuard adminGuard, RequestValidator requestValidator) {
         this.memberRepository = memberRepository;
         this.availabilityRepository = availabilityRepository;
         this.lessonRepository = lessonRepository;
+        this.absenceRepository = absenceRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.permissionRepository = permissionRepository;
         this.adminGuard = adminGuard;
@@ -165,8 +169,8 @@ public class InstructorService {
     }
 
     /**
-     * 퇴사일이 등록되고 도래한 강사를 퇴사 처리한다. 로그인이 막히고 Refresh Token과 권한이 회수된다.
-     * 승인 대기·예정 부재의 취소는 부재 기능이 구현될 때 추가한다.
+     * 퇴사일이 등록되고 도래한 강사를 퇴사 처리한다. 로그인이 막히고 Refresh Token과 권한이 회수되며,
+     * 승인 대기 중인 부재와 아직 시작하지 않은 승인된 부재는 취소된다.
      */
     @Transactional
     public MemberResponse completeResignation(Long callerId, Long memberId) {
@@ -189,6 +193,9 @@ public class InstructorService {
         member.resign(now);
         refreshTokenRepository.revokeAllOf(memberId, now);
         permissionRepository.deleteAllOf(memberId);
+        for (Absence absence : absenceRepository.findCancelableOnResignation(memberId, now)) {
+            absence.cancel(callerId, now);
+        }
         return MemberResponse.from(member, List.of());
     }
 
