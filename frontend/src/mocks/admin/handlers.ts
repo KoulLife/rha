@@ -161,7 +161,28 @@ export const adminHandlers = [http.all('*/v1/*', async ({ request }) => {
         const candidate = { ...row, ...input, instructor: input.instructorId ? summary(find(db.members, input.instructorId)) : row.instructor, room: input.roomId ? find(db.rooms, input.roomId) : row.room };
         validateLesson(candidate); result = update(row, candidate, 'LESSON', '수업 수정', id);
       } else result = row;
-    } else if (path === '/reservations') result = page(db.reservations.filter(r => match('memberId', r.member.id) && match('lessonId', r.lesson.id) && match('status', r.status) && range(r.lesson.startAt, 'lessonFrom', 'lessonTo')), url);
+    } else if (path === '/members/me/reservations' && method === 'GET') {
+      const session = authPreview.session;
+      if (!session) fail('UNAUTHORIZED', '로그인이 필요합니다.', 401);
+      const memberId = session!.id;
+      result = page(db.reservations.filter(r => r.member.id === memberId && match('status', r.status) && range(r.lesson.startAt, 'lessonFrom', 'lessonTo')), url);
+    } else if (path === '/reservations' && method === 'POST') {
+      const session = authPreview.session;
+      if (!session) fail('UNAUTHORIZED', '로그인이 필요합니다.', 401);
+      const memberId = session!.id;
+      if (session!.role !== 'MEMBER') fail('FORBIDDEN', '회원만 수업을 신청할 수 있습니다.', 403);
+      const lesson = find(db.lessons, payload<API.ReservationCreateRequest>().lessonId);
+      if (lesson.status !== 'PUBLISHED' || lesson.startAt <= previewNow) fail('LESSON_NOT_BOOKABLE', '신청할 수 있는 수업이 아닙니다.');
+      if (lesson.reservedCount >= lesson.capacity) fail('LESSON_FULL', '정원이 마감된 수업입니다.');
+      if (db.reservations.some(r => r.member.id === memberId && r.lesson.id === lesson.id && r.status === 'RESERVED')) fail('RESERVATION_ALREADY_EXISTS', '이미 신청한 수업입니다.');
+      const member = find(db.members, memberId);
+      const pass = db.passes.filter(p => p.member.id === memberId).map(p => { refreshPass(p); return p; }).find(p => p.status === 'ACTIVE' && p.remainingCount > 0 && p.startDate <= localDate(lesson.startAt) && p.endDate >= localDate(lesson.startAt) && (db.policy.allowUnpaidReservation || p.unpaidAmount === 0));
+      const usablePass = pass ?? fail('USABLE_PASS_NOT_FOUND', '수업 일자에 사용할 수 있는 이용권이 없습니다.');
+      usablePass.remainingCount--;
+      lesson.reservedCount++;
+      const row: API.Reservation = { id: nextId(), lesson: structuredClone(lesson), member: summary(member), pass: { id: usablePass.id, passProduct: { id: usablePass.passProduct.id, name: usablePass.passProduct.name }, endDate: usablePass.endDate }, status: 'RESERVED', createdAt: previewNow };
+      db.reservations.push(row); audit('RESERVATION', '수업 예약', 'RESERVATION', row.id, {}, row, summary(member)); result = row;
+    } else if (path === '/reservations' && method === 'GET') result = page(db.reservations.filter(r => match('memberId', r.member.id) && match('lessonId', r.lesson.id) && match('status', r.status) && range(r.lesson.startAt, 'lessonFrom', 'lessonTo')), url);
     else if (parts[0] === 'reservations' && id) {
       const row = find(db.reservations, id);
       if (parts[2] === 'cancellations') { cancelReservation(row, payload<API.ReservationCancelRequest>().reason); result = row; }

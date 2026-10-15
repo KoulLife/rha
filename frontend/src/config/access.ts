@@ -35,11 +35,8 @@ export const menuItems = [
   { screen: "admin-lessons", label: "수업 운영", roles: ["ADMIN"], permission: "lesson.read" },
   { screen: "admin-passes", label: "회원 이용권", roles: ["ADMIN"], permission: "pass.read" },
   { screen: "today-lessons", label: "오늘 전체 수업", roleLabels: { INSTRUCTOR: "오늘 담당 수업" }, roles: ["INSTRUCTOR"], permission: "lesson.read" },
-  { screen: "attendees", label: "수업별 예약자", roles: ["INSTRUCTOR"], permission: "reservation.read" },
-  { screen: "attendance", label: "출결", pageLabel: "출결 처리", roles: ["INSTRUCTOR"], permission: "reservation.read" },
-  { screen: "attendance-corrections", label: "출결 정정", roles: ["INSTRUCTOR"], permission: "reservation.read" },
-  { screen: "absences", label: "부재 신청", roles: ["INSTRUCTOR"], permission: "profile.read" },
-  { screen: "notifications", label: "알림", roles: ["MEMBER", "INSTRUCTOR", "ADMIN"], permission: "notification.read" },
+  { screen: "attendance-overview", label: "예약·출결 현황", roles: ["INSTRUCTOR"], permission: "reservation.read" },
+  { screen: "absence-requests", label: "부재 승인 대기", roleLabels: { INSTRUCTOR: "내 부재 승인 대기" }, roles: ["INSTRUCTOR"], permission: "profile.read" },
   { screen: "activity-logs", label: "활동 이력", roles: ["ADMIN"], permission: "profile.read" },
   { screen: "admin-settings", label: "스튜디오 설정", roles: ["ADMIN"], permission: "profile.read" },
 ] as const satisfies readonly MenuDefinition[];
@@ -49,8 +46,6 @@ export type NavigationItem = { screen: MenuScreen; label: string; children?: rea
 
 // 상세 화면은 상위 메뉴의 접근 조건과 선택 표시를 공유한다.
 export const detailScreens = {
-  "attendance-overview": { parent: "admin-lessons", label: "예약·출결 현황" },
-  "absence-requests": { parent: "admin-instructors", label: "부재 승인 대기" },
   "admin-member-detail": { parent: "admin-members", label: "회원 상세" },
   "admin-instructor-detail": { parent: "admin-instructors", label: "강사 상세" },
   "admin-absences": { parent: "admin-instructors", label: "부재 관리" },
@@ -72,28 +67,20 @@ export const detailScreens = {
   "admin-settlement-create": { parent: "admin-instructors", label: "정산 계산" },
   "admin-settlement-detail": { parent: "admin-instructors", label: "정산 상세" },
   "admin-instructor-settlements": { parent: "admin-instructors", label: "강사별 정산" },
-  "admin-pay-rates": { parent: "admin-instructors", label: "수당 기준" },
   "lesson-detail": { parent: "classes", label: "수업 상세" },
   "pass-detail": { parent: "passes", label: "이용권 상세" },
   "reservation-detail": { parent: "reservations", label: "예약 상세" },
 } as const satisfies Record<string, { parent: MenuScreen; label: string }>;
 
-export type Screen = MenuScreen | keyof typeof detailScreens;
+export type Screen = MenuScreen | keyof typeof detailScreens | "notifications" | "attendees" | "attendance" | "attendance-corrections" | "absences";
 
 const instructorSubmenus = [
   { screen: 'admin-instructors', label: '강사 목록', activeScreens: ['admin-instructors', 'admin-instructor-detail'] },
   { screen: 'admin-absences', label: '부재 관리', activeScreens: ['admin-absences', 'admin-absence-detail'] },
   { screen: 'admin-resignations', label: '퇴사 관리', activeScreens: ['admin-resignations'] },
-  { screen: 'admin-settlements', label: '정산 내역', activeScreens: ['admin-settlements', 'admin-instructor-settlements', 'admin-settlement-detail', 'admin-settlement-create'] },
-  { screen: 'admin-pay-rates', label: '수당 기준', activeScreens: ['admin-pay-rates'] },
 ] as const satisfies NonNullable<NavigationItem['children']>;
 
 const submenus: Partial<Record<MenuScreen, NonNullable<NavigationItem['children']>>> = {
-  attendance: [
-    { screen: 'attendance', label: '출결 처리', activeScreens: ['attendance'] },
-    { screen: 'attendance-corrections', label: '출결 정정', activeScreens: ['attendance-corrections'] },
-    { screen: 'absences', label: '부재 신청', activeScreens: ['absences'] },
-  ],
   'admin-instructors': instructorSubmenus,
   'admin-lessons': [
     { screen: 'admin-lessons', label: '수업 목록', activeScreens: ['admin-lessons', 'admin-lesson-detail', 'admin-lesson-create', 'admin-lesson-edit'] },
@@ -116,33 +103,30 @@ function isDetailScreen(screen: Screen): screen is keyof typeof detailScreens {
   return Object.prototype.hasOwnProperty.call(detailScreens, screen);
 }
 
-// 화면별 권한은 유지하면서 사이드바에서만 출결 그룹으로 묶는다.
-const menuGroups: Partial<Record<MenuScreen, MenuScreen>> = {
-  'attendance-corrections': 'attendance',
-  absences: 'attendance',
-};
-
-export function getMenuScreen(screen: Screen): MenuScreen {
-  const parent = isDetailScreen(screen) ? detailScreens[screen].parent : screen;
-  return menuGroups[parent] ?? parent;
+export function getMenuScreen(screen: Screen): Screen {
+  if (screen === "notifications") return screen;
+  return isDetailScreen(screen) ? detailScreens[screen].parent : screen;
 }
 
 export function getNavigation(role: UserRole, permissions: ReadonlySet<Permission>): NavigationItem[] {
-  return menuItems.flatMap((item: MenuDefinition & { screen: MenuScreen }) => {
-    if (menuGroups[item.screen] || !item.roles.includes(role)) return [];
-    const children = submenus[item.screen]?.filter(child => canAccessScreen(child.screen, role, permissions));
-    if (children ? !children.length : !permissions.has(item.permission)) return [];
-    return [{ screen: item.screen, label: item.roleLabels?.[role] ?? item.label, ...(children ? { children } : {}) }];
-  });
+  return menuItems.filter((item: MenuDefinition) => item.roles.includes(role) && permissions.has(item.permission))
+    .map((item: MenuDefinition & { screen: MenuScreen }) => ({
+      screen: item.screen, label: item.roleLabels?.[role] ?? item.label,
+      ...(submenus[item.screen] ? { children: submenus[item.screen] } : {}),
+    }));
 }
 
 export function canAccessScreen(screen: Screen, role: UserRole, permissions: ReadonlySet<Permission>) {
-  const parent = isDetailScreen(screen) ? detailScreens[screen].parent : screen;
-  const item: MenuDefinition | undefined = menuItems.find(item => item.screen === parent);
-  return !!item && item.roles.includes(role) && permissions.has(item.permission);
+  if (screen === "notifications") return permissions.has("notification.read");
+  return getNavigation(role, permissions).some(item => item.screen === getMenuScreen(screen));
 }
 
 export function getScreenLabel(screen: Screen, role: UserRole): string {
+  if (screen === "notifications") return "알림";
+  if (screen === "attendees") return "수업별 예약자";
+  if (screen === "attendance") return "출결 처리";
+  if (screen === "attendance-corrections") return "출결 정정";
+  if (screen === "absences") return "부재 신청";
   if (isDetailScreen(screen)) return detailScreens[screen].label;
   const item: MenuDefinition = menuItems.find(item => item.screen === screen)!;
   return item.pageLabel ?? item.roleLabels?.[role] ?? item.label;

@@ -31,7 +31,25 @@ export function createAdminStore() {
   const absences: Absence[] = [{ id: 201, instructor: { id: 2, name: '김강사' }, startAt: '2026-10-16T00:00:00Z', endAt: '2026-10-16T12:00:00Z', reason: '개인 일정', status: 'REQUESTED', createdAt }, { id: 202, instructor: { id: 4, name: '박강사' }, startAt: '2026-10-20T00:00:00Z', endAt: '2026-10-21T12:00:00Z', reason: '교육 참석', status: 'REQUESTED', createdAt }];
   const notifications: Notification[] = absences.map((a, i) => ({ id: 21 + i, title: '새로운 강사 부재 신청이 있습니다.', message: `${a.instructor.name}님의 부재 신청을 확인해 주세요.`, type: 'ABSENCE_REQUESTED', relatedType: 'ABSENCE', relatedId: a.id, read: false, createdAt: previewNow }));
   const logs: ActivityLog[] = [{ id: 1, occurredAt: createdAt, category: 'PASS', action: 'PASS_ISSUED', actionName: '이용권 발급', actor: { id: 3, name: '센터 관리자', role: 'ADMIN' }, subjectMember: passes[0].member, targetType: 'PASS', targetId: 301, summary: '홍길동님에게 필라테스 10회권 발급', changes: [{ field: 'remainingCount', before: null, after: '10' }] }];
-  return { members, lessonTypes, rooms, products, lessons, passes, reservations, payments, absences, notifications, logs, pauses: {} as Record<number, PassPause[]>, settlements: [] as SettlementDetail[], payRates: { 2: lessonTypes.map(lessonType => ({ lessonType, unitPrice: 35000 })), 4: lessonTypes.map(lessonType => ({ lessonType, unitPrice: 40000 })), 20: lessonTypes.map(lessonType => ({ lessonType, unitPrice: 45000 })) } as Record<number, PayRate[]>, availability: Object.fromEntries([2,4].map(id => [id, days.map(dayOfWeek => ({ dayOfWeek, startTime: '09:00', endTime: '21:00' }))])) as Record<number, AvailabilitySlot[]>, businessHours: days.map(dayOfWeek => ({ dayOfWeek, closed: false, openTime: '09:00', closeTime: '21:00' })) as BusinessHour[], policy: { cancelDeadlineHours: 24, allowUnpaidReservation: true } as ReservationPolicy, sequence: 1000 };
+  const settlementStatuses: SettlementDetail['status'][] = ['PAID','REVIEW_REQUESTED','CALCULATED'];
+  const settlements: SettlementDetail[] = members.filter(member => member.role === 'INSTRUCTOR').map((instructor, index) => {
+    const lessonType = lessonTypes[index % lessonTypes.length];
+    const unitPrice = 35000 + index * 5000;
+    const startAt = `2026-09-${String(12 + index).padStart(2,'0')}T01:00:00Z`;
+    const status = settlementStatuses[index % settlementStatuses.length];
+    return {
+      id: 801 + index,
+      instructor: { id: instructor.id, name: instructor.name },
+      periodStart: '2026-09-01', periodEnd: '2026-09-30', status,
+      totalAmount: unitPrice, settledLessonCount: 1, excludedLessonCount: index % 2,
+      createdAt: '2026-10-01T01:00:00Z',
+      reviewRequestedAt: status === 'REVIEW_REQUESTED' ? '2026-10-02T01:00:00Z' : null,
+      confirmedAt: status === 'PAID' ? '2026-10-03T01:00:00Z' : null,
+      payment: status === 'PAID' ? { paidAt: '2026-10-05', memo: '9월 정산 지급', recordedAt: '2026-10-05T01:00:00Z' } : null,
+      items: [{ lesson: { id: 9000 + instructor.id, title: `${lessonType.name} 수업`, lessonType: { id: lessonType.id, code: lessonType.code, name: lessonType.name }, instructor: { id: instructor.id, name: instructor.name }, room: rooms[index % rooms.length], startAt, endAt: new Date(Date.parse(startAt) + 3600000).toISOString(), status: 'PUBLISHED' }, attendedCount: 4, noShowCount: index % 2, unitPrice, amount: unitPrice, settled: true, excludedReason: null }],
+    };
+  });
+  return { members, lessonTypes, rooms, products, lessons, passes, reservations, payments, absences, notifications, logs, pauses: {} as Record<number, PassPause[]>, settlements, payRates: { 2: lessonTypes.map(lessonType => ({ lessonType, unitPrice: 35000 })), 4: lessonTypes.map(lessonType => ({ lessonType, unitPrice: 40000 })), 20: lessonTypes.map(lessonType => ({ lessonType, unitPrice: 45000 })) } as Record<number, PayRate[]>, availability: Object.fromEntries([2,4].map(id => [id, days.map(dayOfWeek => ({ dayOfWeek, startTime: '09:00', endTime: '21:00' }))])) as Record<number, AvailabilitySlot[]>, businessHours: days.map(dayOfWeek => ({ dayOfWeek, closed: false, openTime: '09:00', closeTime: '21:00' })) as BusinessHour[], policy: { cancelDeadlineHours: 24, allowUnpaidReservation: true } as ReservationPolicy, sequence: 1000 };
 }
 export type AdminStore = ReturnType<typeof createAdminStore>;
 export const store = createAdminStore();

@@ -16,3 +16,5 @@ frontend/dist/
 # env
 .env
 .env.*
+frontend/test-results*/
+frontend/playwright-report/

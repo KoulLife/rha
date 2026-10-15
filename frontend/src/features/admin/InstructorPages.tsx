@@ -9,6 +9,15 @@ import { Dialog } from '@/components/ui/Dialog';
 import { AdminPage, AdminLinks, DataTable, QueryState, Filters, Facts, ActionDialog, ALL, options, filterValue, dateTime, dayStart, dayEnd, textValue, numValue, type Values, type Action } from './AdminUI';
 import type { Navigate } from './MemberPages';
 
+const resignationActionStyle = {
+  width: 'var(--table-action-width)',
+  minWidth: 'var(--table-action-width)',
+  height: 'var(--table-action-height)',
+  minHeight: 'var(--table-action-height)',
+  paddingInline: 'var(--space-control)',
+  fontSize: 'var(--font-size-caption)',
+} as const;
+
 export function AbsenceList({ instructorId, onNavigate }: { instructorId?:number; onNavigate:Navigate }) {
   const [filters,setFilters]=useState<Values>({}),[page,setPage]=useState(1);
   const instructors=api.useGetMembers({role:'INSTRUCTOR',size:100});
@@ -24,8 +33,7 @@ export function AbsenceDetail({id,onNavigate}:{id:number;onNavigate:Navigate}) {
   const lessons=api.useGetLessons({instructorId:a?.instructor.id,to:a?.endAt,page,size:100},{query:{enabled:!!a}});
   const rows=(lessons.data?.content??[]).filter(l=>a&&l.endAt>a.startAt&&l.status!=='CANCELED');
   return <AdminPage title="부재 상세" description="승인 전 겹치는 수업과 예약을 확인해 주세요." action={<Button variant="ghost" onClick={()=>onNavigate('admin-absences')}>목록으로</Button>}><QueryState query={query}>{a&&<>
-    <MenuPanel title={a.instructor.name}><Facts items={[["기간",`${dateTime(a.startAt)} ~ ${dateTime(a.endAt)}`],["신청 사유",a.reason],["상태",<StatusBadge domain="absence" status={a.status}/>],["처리자",a.processedBy?.name],["처리 시각",dateTime(a.processedAt)],["반려 사유",a.rejectReason]]}/></MenuPanel>
-    <div className="menu-actions">{a.status==='REQUESTED'&&<><Button onClick={()=>setAction({title:'부재 승인',description:'예약이 있는 수업은 먼저 인계 또는 취소해야 합니다. 예약 없는 수업은 승인과 함께 취소됩니다.',submitLabel:'부재 승인',danger:true,onSubmit:()=>approve.mutateAsync({absenceId:id})})}>부재 승인</Button><Button variant="destructive" onClick={()=>setAction({title:'부재 반려',description:'반려 사유는 신청한 강사에게 표시됩니다.',submitLabel:'부재 반려',submitVariant:'destructive',danger:true,fields:[{name:'reason',label:'반려 사유',type:'textarea'}],onSubmit:v=>reject.mutateAsync({absenceId:id,data:{reason:textValue(v,'reason')}})})}>부재 반려</Button></>}{['REQUESTED','APPROVED'].includes(a.status)&&<Button variant="warning" onClick={()=>setAction({title:'부재 취소',description:'승인 시 취소된 수업은 복구되지 않습니다.',submitLabel:'부재 취소',submitVariant:'warning',danger:true,onSubmit:()=>cancel.mutateAsync({absenceId:id})})}>부재 취소</Button>}</div>
+    <MenuPanel title={a.instructor.name} className="admin-absence-detail-card"><Facts items={[["기간",`${dateTime(a.startAt)} ~ ${dateTime(a.endAt)}`],["신청 사유",a.reason],["상태",<StatusBadge domain="absence" status={a.status}/>],["처리자",a.processedBy?.name],["처리 시각",dateTime(a.processedAt)],["반려 사유",a.rejectReason]]}/><div className="menu-actions admin-absence-actions">{a.status==='REQUESTED'&&<><Button onClick={()=>setAction({title:'부재 승인',description:'예약이 있는 수업은 먼저 인계 또는 취소해야 합니다. 예약 없는 수업은 승인과 함께 취소됩니다.',submitLabel:'부재 승인',danger:true,onSubmit:()=>approve.mutateAsync({absenceId:id})})}>부재 승인</Button><Button variant="destructive" onClick={()=>setAction({title:'부재 반려',description:'반려하면 신청이 거절 상태로 종료됩니다. 반려 사유는 신청한 강사에게 표시됩니다.',submitLabel:'부재 반려',submitVariant:'destructive',danger:true,fields:[{name:'reason',label:'반려 사유',type:'textarea'}],onSubmit:v=>reject.mutateAsync({absenceId:id,data:{reason:textValue(v,'reason')}})})}>부재 반려</Button></>}{a.status==='APPROVED'&&<Button variant="warning" onClick={()=>setAction({title:'승인된 부재 취소',description:'부재 승인을 취소해 담당 강사의 배정 제한을 해제합니다. 승인과 함께 취소된 수업은 복구되지 않습니다.',submitLabel:'부재 취소',submitVariant:'warning',danger:true,onSubmit:()=>cancel.mutateAsync({absenceId:id})})}>부재 취소</Button>}</div></MenuPanel>
     <h2>겹치는 수업</h2><QueryState query={lessons}><DataTable rows={rows} pageInfo={lessons.data?.pageInfo} onPage={setPage} empty="이 페이지에 겹치는 수업이 없습니다" columns={[{label:'수업',render:l=>l.title},{label:'시작',render:l=>dateTime(l.startAt)},{label:'예약 인원',render:l=>`${l.reservedCount}명`},{label:'조정',render:l=><Button variant="outline" onClick={()=>onNavigate('admin-lesson-detail',l.id)}>수업 조정</Button>}]}/></QueryState>
   </>}</QueryState>{action&&<ActionDialog action={action} onClose={()=>setAction(null)}/>}</AdminPage>;
 }
@@ -42,7 +50,7 @@ export function ResignationsPage({onNavigate}:{onNavigate:Navigate}) {
       {label:'퇴사일',render:r=>r.resignationDate??'미등록'},
       {label:'처리',render:r=><div className="menu-actions">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button variant="outline" aria-label={`${r.name} 퇴사 관리`}>관리</Button></DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild><Button variant="outline" style={resignationActionStyle} aria-label={`${r.name} 퇴사 관리`}>관리</Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="admin-resignation-menu">
             {r.status==='ACTIVE'&&<>
             <DropdownMenuItem onSelect={()=>setAction({title:'퇴사일 등록',description:'퇴사일 당일부터 새 수업 배정이 제한됩니다. 계정은 퇴사 처리 전까지 유지됩니다.',submitLabel:'퇴사일 저장',fields:[{name:'resignationDate',label:'퇴사일',type:'date',required:true,min:'2026-10-13'}],initial:{resignationDate:r.resignationDate??'2026-10-13'},onSubmit:v=>register.mutateAsync({memberId:r.id,data:{resignationDate:textValue(v,'resignationDate')}})})}>퇴사일 {r.resignationDate?'변경':'등록'}</DropdownMenuItem>
@@ -57,7 +65,7 @@ export function ResignationsPage({onNavigate}:{onNavigate:Navigate}) {
             <DropdownMenuItem onSelect={()=>setHistoryInstructor({id:r.id,name:r.name})}>수업 인계 정보</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button variant="ghost" onClick={()=>onNavigate('admin-instructor-settlements',r.id)}>정산 보기</Button>
+        <Button variant="ghost" style={resignationActionStyle} onClick={()=>onNavigate('admin-instructor-settlements',r.id)}>정산 보기</Button>
       </div>}
     ]}/></QueryState>
     {action&&<ActionDialog action={action} onClose={()=>setAction(null)}/>}

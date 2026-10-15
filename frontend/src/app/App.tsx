@@ -10,7 +10,6 @@ import { Dialog } from "../components/ui/Dialog";
 import { canAccessScreen, getMenuScreen, getNavigation, type NavigationItem, type Permission } from "../config/access";
 import { currentUser } from "../mocks/member";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { HomePage } from "../features/member/pages/HomePage";
 import { AccountPage } from "../features/member/pages/AccountPage";
@@ -19,14 +18,13 @@ import { dashboardPreview, dashboardPreviewTime } from "@/features/dashboard/pre
 import { getDashboardSnapshot, roleLabels, type DashboardUser } from "@/features/dashboard/model";
 import { PassDetailPage, PassesPage } from "../features/member/pages/PassesPage";
 import { reservationDialog, ReservationsPage } from "../features/member/pages/ReservationsPage";
+import { NotificationsPage } from "../features/member/pages/NotificationsPage";
 import type { DialogState, Screen } from "./routes";
 import { DashboardError, DashboardLoading } from "@/features/dashboard/DashboardState";
 import type { HomeView } from "@/features/dashboard/viewState";
 import { AdminWorkspace, useAdminDashboard } from "@/features/admin/AdminWorkspace";
 import { QueryState } from "@/features/admin/AdminUI";
 import { TimetablePage } from "@/features/timetable/TimetablePage";
-import { InstructorPage, isInstructorScreen } from "@/features/instructor/InstructorPage";
-import { initialInstructorState, withInstructorPreview } from "@/features/instructor/preview";
 import "./legacy.css";
 import "./shell.css";
 
@@ -34,8 +32,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   const [homeView, setHomeView] = useState(initialHomeView);
   const [screen, setScreen] = useState<Screen>("home");
   const [selectedId, setSelectedId] = useState(101);
-  const [data, setData] = useState(() => initialHomeView === "empty" ? { lessons: [], reservations: [], absences: [], notifications: [] } : user.role === "INSTRUCTOR" ? withInstructorPreview(dashboardPreview) : dashboardPreview);
-  const [instructorState, setInstructorState] = useState(initialInstructorState);
+  const [data, setData] = useState(() => initialHomeView === "empty" ? { lessons: [], reservations: [], absences: [], notifications: [] } : dashboardPreview);
   const admin = useAdminDashboard(user.role === "ADMIN");
   const viewData = user.role === "ADMIN" && homeView !== "empty" ? admin.data : data;
   const snapshot = getDashboardSnapshot(viewData, user, dashboardPreviewTime);
@@ -53,7 +50,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
     if (!canAccessScreen(next, user.role, currentUser.permissions)) return;
     if (user.role === "MEMBER" && next === "reservation-detail" && id !== undefined) { setDialog(reservationDialog(id)); return; }
     if (id !== undefined) setSelectedId(id);
-    else if (next === "admin-pay-rates" || next === "admin-settlement-create") setSelectedId(0);
+    else if (next === "admin-settlement-create") setSelectedId(0);
     setScreen(next);
     window.scrollTo(0, 0);
   };
@@ -62,7 +59,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
 
   return (
     <SidebarProvider className="member-sidebar-shell" style={{ "--sidebar-width": "var(--navigation-width)" } as CSSProperties}>
-      <AppSidebar user={user} navigation={navigation} unreadCount={unreadCount} screen={screen} onNavigate={go} />
+      <AppSidebar user={user} navigation={navigation} screen={screen} onNavigate={go} />
       <main className={`main-content${screen === "home" ? ` home-main${user.role === "MEMBER" ? " member-home-main" : ""}` : ""}`}>
         <AppHeader
           location={<><MobileMenuButton /><PageBreadcrumb screen={screen} role={user.role} /></>}
@@ -72,7 +69,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
           onLogout={onLogout}
         />
         <div className="content">
-          {user.role === "INSTRUCTOR" && isInstructorScreen(screen) ? <InstructorPage screen={screen} user={user} data={data} setData={setData} state={instructorState} setState={setInstructorState} selectedId={selectedId} onNavigate={go} /> : screen === "timetable" ? <TimetablePage user={user} onNavigate={go} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} onReadNotification={admin.read} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || screen === "notifications" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onReadNotification={onReadNotification} /> : <MemberScreen
+          {screen === "notifications" ? <NotificationsPage role={user.role} onNavigate={go} /> : screen === "timetable" ? <TimetablePage user={user} onNavigate={go} canReserve={can("reservation.create")} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} onReadNotification={admin.read} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onReadNotification={onReadNotification} /> : <MemberScreen
             screen={screen}
             selectedId={selectedId}
             onNavigate={go}
@@ -91,7 +88,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   );
 }
 
-function AppSidebar({ user, navigation, unreadCount, screen, onNavigate }: { user: DashboardUser; navigation: NavigationItem[]; unreadCount: number; screen: Screen; onNavigate: (screen: Screen) => void }) {
+function AppSidebar({ user, navigation, screen, onNavigate }: { user: DashboardUser; navigation: NavigationItem[]; screen: Screen; onNavigate: (screen: Screen) => void }) {
   const { isMobile, setOpenMobile } = useSidebar();
   const [openMenu, setOpenMenu] = useState<string | null>(getMenuScreen(screen));
   useEffect(() => {
@@ -127,7 +124,7 @@ function AppSidebar({ user, navigation, unreadCount, screen, onNavigate }: { use
           </Collapsible.Root>;
           return <SidebarMenuItem key={item.screen}>
             <SidebarMenuButton variant="brand" size="lg" isActive={active} aria-current={active ? "page" : undefined} onClick={() => { onNavigate(item.screen); if (isMobile) setOpenMobile(false); }}>
-              <span>{item.label}</span>{item.screen === "notifications" && <Badge variant="outline">{unreadCount}</Badge>}
+              <span>{item.label}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>;
         })}
