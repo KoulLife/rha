@@ -241,24 +241,22 @@
 .member-preview .main-content:not(.home-main) .content:has(> .timetable-page) {
   padding-block: var(--page-list-padding-block);
 }
-
-@media (min-width: 1100px) and (min-height: 700px) {
-  .member-preview .main-content.member-home-main {
-    height: 100dvh;
+@media (min-width: 1100px) {
+  .member-preview .main-content.home-main { height: 100dvh; min-height: 0; overflow: hidden; }
+  .member-preview .main-content.home-main > .topbar,
+  .member-preview .main-content.home-main > .app-footer { flex-shrink: 0; }
+  .member-preview .main-content.home-main > .content {
     min-height: 0;
-    --font-size-body: var(--home-fit-body-size);
-    --font-size-caption: var(--home-fit-caption-size);
-    --home-gap: var(--space-detail);
-    --dashboard-gap: var(--space-detail);
-    --home-metric-padding: var(--space-control);
-    --dashboard-metric-padding: var(--space-control);
-    --table-row-height: var(--home-fit-table-row-height);
-    --table-header-height: var(--home-fit-table-header-height);
-  }
-  .member-preview .main-content.member-home-main > .topbar,
-  .member-preview .main-content.member-home-main > .app-footer { flex-shrink: 0; }
-  .member-preview .main-content.member-home-main > .content {
-    min-height: 0;
+    overflow: hidden;
     padding-block: var(--space-detail);
   }
+  .member-preview .main-content.home-main .dashboard-page:not(.dashboard-subpage) {
+    height: 100%;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1100px) and (max-width: 1799px), (min-width: 1100px) and (max-height: 850px) {
+  .member-preview .main-content.member-home-main { height: auto; min-height: 100dvh; overflow: visible; }
+  .member-preview .main-content.member-home-main > .content { min-height: auto; overflow: visible; }
 }

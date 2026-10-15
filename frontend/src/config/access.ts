@@ -34,8 +34,6 @@ export const menuItems = [
   { screen: "admin-instructors", label: "강사 관리", roles: ["ADMIN"], permission: "profile.read" },
   { screen: "admin-passes", label: "회원 이용권", roles: ["ADMIN"], permission: "pass.read" },
   { screen: "admin-reports", label: "통계·정산", roles: ["ADMIN"], permission: "profile.read" },
-  { screen: "today-lessons", label: "오늘 전체 수업", roleLabels: { INSTRUCTOR: "오늘 담당 수업" }, roles: ["INSTRUCTOR"], permission: "lesson.read" },
-  { screen: "attendees", label: "수업별 예약자", roles: ["INSTRUCTOR"], permission: "reservation.read" },
   { screen: "absences", label: "부재 신청", roles: ["INSTRUCTOR"], permission: "profile.read" },
   { screen: "activity-logs", label: "활동 이력", roles: ["ADMIN"], permission: "profile.read" },
   { screen: "admin-settings", label: "스튜디오 설정", roles: ["ADMIN"], permission: "profile.read" },
@@ -46,9 +44,11 @@ export type NavigationItem = { screen: MenuScreen; label: string; children?: rea
 
 // 상세 화면은 상위 메뉴의 접근 조건과 선택 표시를 공유한다.
 export const detailScreens = {
-  "attendance": { parent: "today-lessons", label: "출결" },
-  "attendance-overview": { parent: "today-lessons", label: "출결" },
-  "attendance-corrections": { parent: "today-lessons", label: "출결" },
+  "today-lessons": { parent: "timetable", label: "수업" },
+  "attendees": { parent: "timetable", label: "수업" },
+  "attendance": { parent: "timetable", label: "수업" },
+  "attendance-overview": { parent: "timetable", label: "수업" },
+  "attendance-corrections": { parent: "timetable", label: "수업" },
   "absence-requests": { parent: "absences", label: "부재 신청" },
   "admin-member-detail": { parent: "admin-members", label: "회원 상세" },
   "admin-instructor-detail": { parent: "admin-instructors", label: "강사 상세" },
@@ -75,11 +75,12 @@ export const detailScreens = {
   "admin-instructor-settlements": { parent: "admin-reports", label: "강사별 정산" },
   "classes": { parent: "timetable", label: "수업 목록" },
   "lesson-detail": { parent: "timetable", label: "수업 상세" },
+  "instructor-lesson-detail": { parent: "timetable", label: "수업 상세" },
   "pass-detail": { parent: "passes", label: "이용권 상세" },
   "reservation-detail": { parent: "reservations", label: "예약 상세" },
 } as const satisfies Record<string, { parent: MenuScreen; label: string }>;
 
-export type Screen = MenuScreen | keyof typeof detailScreens | "notifications" | "attendees" | "attendance" | "attendance-corrections" | "absences";
+export type Screen = MenuScreen | keyof typeof detailScreens | "notifications" | "absences";
 
 const instructorSubmenus = [
   { screen: 'admin-instructors', label: '강사 목록', activeScreens: ['admin-instructors', 'admin-instructor-detail'] },
@@ -125,7 +126,8 @@ export function getNavigation(role: UserRole, permissions: ReadonlySet<Permissio
 
 export function canAccessScreen(screen: Screen, role: UserRole, permissions: ReadonlySet<Permission>) {
   if (screen === "notifications") return permissions.has("notification.read");
-  if (screen === "attendees" || screen === "attendance" || screen === "attendance-corrections") return role === "INSTRUCTOR" && permissions.has("reservation.read");
+  if (screen === "attendees" || screen === "attendance" || screen === "attendance-corrections") return role === "INSTRUCTOR" && permissions.has("lesson.read") && permissions.has("reservation.read");
+  if (screen === "instructor-lesson-detail") return role === "INSTRUCTOR" && permissions.has("lesson.read");
   if (screen === "absences") return role === "INSTRUCTOR" && permissions.has("profile.read");
   return getNavigation(role, permissions).some(item => item.screen === getMenuScreen(screen));
 }

@@ -1,20 +1,4 @@
 @layer utilities {
-  .home-page {
-    display: grid;
-    gap: var(--home-gap);
-    min-width: 0;
-  }
-  .home-heading {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--home-gap);
-  }
-  .home-heading h1 {
-    font-size: var(--font-size-title);
-    font-weight: 500;
-    line-height: 1.4;
-  }
   .home-heading p {
     color: var(--muted-foreground);
     margin-top: var(--space-control);
@@ -30,25 +14,11 @@
     font-size: var(--font-size-caption);
     white-space: nowrap;
   }
-  .home-metrics {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--home-gap);
-  }
-  .home-metric[data-slot="card"], .home-panel[data-slot="card"] {
-    --card-spacing: var(--home-panel-padding);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-panel);
-    border-radius: var(--radius-panel);
-    min-width: 0;
-  }
-  .home-metric {
-    padding-block: var(--home-metric-padding);
-  }
   .home-metric-link {
     display: grid;
     width: 100%;
-    height: auto;
+    height: 100%;
+    grid-template-rows: auto 1fr;
     gap: var(--space-control);
     padding: 0;
     justify-items: start;
@@ -59,26 +29,27 @@
   .home-metric-link:hover {
     background: transparent;
   }
+  .home-metric-link > :last-child {
+    align-self: end;
+  }
+  .home-metric > [data-slot="card-content"] {
+    flex: 1;
+  }
   .home-metric-link strong {
     font-size: var(--font-size-metric);
     font-weight: var(--font-weight-metric);
     line-height: 1.1;
   }
-  .home-metric-label, .home-metric-detail {
+  .home-metric-label {
     font-size: var(--font-size-caption);
     color: var(--muted-foreground);
   }
-  .home-columns {
-    display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-    gap: var(--home-gap);
-    align-items: stretch;
-    min-height: 0;
-  }
+  .home-columns { min-height: 0; }
   .home-side {
     display: grid;
-    grid-template-rows: auto minmax(var(--home-pass-height), 1fr);
-    gap: var(--home-gap);
+    grid-template-rows: max-content max-content;
+    align-content: start;
+    gap: var(--menu-gap);
     min-height: 0;
   }
   .home-panel {
@@ -114,7 +85,6 @@
   }
   .home-reservation-list {
     height: auto;
-    grid-template-rows: repeat(3, minmax(var(--home-reservation-slot-height), 1fr));
     grid-auto-rows: minmax(var(--home-reservation-slot-height), auto);
   }
   .home-lesson, .home-reservation {
@@ -191,55 +161,24 @@
     justify-content: space-between;
     gap: var(--space-control);
   }
+  .home-pass-heading h3 { min-width: 0; overflow-wrap: anywhere; }
   .home-panel-pass {
     min-height: var(--home-pass-height);
+    container: home-pass / inline-size;
   }
   .home-panel-pass > [data-slot="card-content"] {
     display: grid;
-    grid-template-rows: auto 1fr auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     gap: var(--space-detail);
-  }
-  .home-pass-balance {
-    align-self: center;
-    font-size: var(--font-size-body);
-    margin-block: var(--space-control);
-  }
-  .home-pass-balance strong {
-    font-size: 1.375rem;
-    color: var(--primary);
-  }
-  .home-pass-counts {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1.5fr;
-    gap: var(--space-control);
-    margin-top: var(--space-control);
-  }
-  .home-pass-counts dt {
-    font-size: var(--font-size-caption);
-    color: var(--muted-foreground);
-  }
-  .home-pass-counts dd {
-    margin: 0;
-    font-size: var(--font-size-caption);
-    font-weight: 500;
   }
 }
 @media (max-width: 1099px) {
-  .home-columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .home-side {
-    grid-template-rows: auto auto;
-  }
-  .home-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .home-lesson-list, .home-reservation-list {
     height: auto;
   }
 }
 @media (max-width: 767px) {
-  .home-heading, .home-heading-actions {
+  .home-heading-actions {
     align-items: start;
     flex-direction: column;
   }
@@ -258,92 +197,50 @@
   }
 }
 @layer utilities {
-  .home-panel-pass > [data-slot="card-content"] {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
-    gap: var(--home-pass-section-gap);
-  }
-  .home-pass-balance {
-    display: grid;
-    align-self: center;
-    gap: var(--home-pass-section-gap);
-    margin: 0;
-    padding: 0;
-  }
-  .home-pass-total { font-size: var(--font-size-caption); color: var(--muted-foreground); }
-  .home-pass-remaining { display: flex; align-items: baseline; gap: var(--space-control); color: var(--foreground); font-size: 1.125rem; font-weight: 600; }
-  .home-pass-remaining strong { color: var(--foreground); font-size: var(--home-pass-balance-size); font-weight: var(--font-weight-metric); line-height: 1.1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
-  .home-pass-balance [data-slot="progress"] { height: var(--home-pass-progress-height); margin-top: var(--home-pass-section-gap); }
-  .home-pass-legend { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-detail); color: var(--muted-foreground); font-size: var(--font-size-caption); }
-  .home-pass-legend span { display: inline-flex; align-items: center; gap: var(--space-control); }
-  .home-pass-legend i { width: var(--home-pass-legend-size); height: var(--home-pass-legend-size); border-radius: var(--home-pass-legend-radius); }
-  .home-pass-legend-used { background: var(--primary); }
-  .home-pass-legend-remaining { background: var(--muted); border: 1px solid var(--border); }
-  .home-pass-count-table { table-layout: fixed; font-variant-numeric: tabular-nums; }
-  .home-panel-pass .home-pass-count-table th, .home-panel-pass .home-pass-count-table td { height: auto; border: 1px solid var(--border); padding: var(--space-tight) var(--space-control); text-align: center; background: var(--card); }
-  .home-pass-count-table th { color: var(--muted-foreground); font-size: var(--font-size-caption); font-weight: 500; }
-  .home-pass-count-table td { font-size: var(--font-size-body); }
-  .home-pass-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-control); font-size: var(--font-size-caption); }
-  .home-panel-pass > [data-slot="card-content"] { grid-template-rows: auto auto auto auto; align-content: space-between; }
+  .home-pass-footer { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-control); padding-top: var(--space-control); font-size: var(--font-size-caption); }
+  .home-panel-pass .pass-usage { align-self: center; }
   .home-panel > [data-slot="card-content"]:has(> [data-slot="empty"]) { display: flex; align-items: center; justify-content: center; }
-  .home-panel-pass .home-pass-count-table th { padding-block: var(--space-detail); color: var(--table-header-foreground); background: var(--table-header-background); font-size: var(--font-size-caption); font-weight: var(--table-header-weight); }
-  .home-panel-pass .home-pass-count-table td { padding-block: var(--space-detail); font-size: var(--font-size-body); }
-  .home-panel-pass .home-pass-balance { gap: var(--space-tight); }
-  .home-panel-pass .home-pass-balance [data-slot="progress"] { margin-top: var(--space-tight); }
 }
 
 @layer utilities {
   .home-panel { gap: 0; padding-block: 0; }
-  .home-panel > .home-panel-heading { padding-block: var(--space-detail); }
+  .home-panel > .home-panel-heading { min-height: var(--home-panel-heading-height); padding-block: var(--space-control); }
   .home-panel-pass > [data-slot="card-content"] { padding-block: var(--space-detail); }
   /* 목록 바깥에 여백을 더하지 않고 첫 행부터 마지막 행까지 행 padding만 적용한다. */
   .home-panel-public > [data-slot="card-content"],
   .home-panel-reservations > [data-slot="card-content"] { padding-block: 0; }
 }
 
-@media (min-width: 1100px) and (min-height: 700px) {
-  .home-page { height: 100%; grid-template-rows: auto auto minmax(0, 1fr); }
-  .home-metric-link { gap: var(--space-tight); }
-  .home-heading p { margin-top: var(--space-tight); }
-  .home-panel > .home-panel-heading { padding-block: var(--space-control); }
-  .home-heading [data-slot="button"], .home-panel-heading [data-slot="button"],
-  .home-lesson-action [data-slot="button"], .home-reservation-action [data-slot="button"] { height: var(--home-fit-action-height); }
-  .home-lesson-list { grid-template-rows: repeat(6, minmax(0, 1fr)); grid-auto-rows: auto; }
-  .home-lesson, .home-reservation { min-height: 0; padding-block: var(--space-control); }
-  .home-lesson-action, .home-reservation-action { gap: var(--space-tight); }
-  .home-reservation-list { grid-template-rows: repeat(3, minmax(var(--table-row-height), 1fr)); }
-  .home-side { grid-template-rows: auto minmax(0, 1fr); }
-  .home-panel-pass { min-height: 0; }
-  .home-panel-pass > [data-slot="card-content"] { padding-block: var(--space-control); gap: var(--space-tight); }
-  .home-panel-pass .home-pass-count-table [data-slot="table-row"] { height: auto; }
-  .home-panel-pass .home-pass-count-table th,
-  .home-panel-pass .home-pass-count-table td { padding-block: var(--space-control); }
-}
-
 @layer utilities {
   .home-panel-public > [data-slot="card-content"] { padding: 0; display: flex; }
-  .home-panel-public [data-slot="table-container"] { flex: 1; max-height: none; }
-  .home-public-table { height: 100%; min-width: var(--home-public-table-min-width); }
+  .home-panel-public [data-slot="table-container"] {
+    flex: 1;
+    min-height: 0;
+    max-height: var(--home-public-table-scroll-height);
+    overflow: auto;
+  }
+  .home-public-table {
+    --table-row-height: var(--home-table-row-height);
+    --table-header-height: var(--home-table-header-height);
+    height: auto;
+    min-width: var(--home-public-table-min-width);
+  }
   .home-public-table [data-slot="table-cell"] { font-size: var(--font-size-caption); }
 }
-@media (min-width: 1100px) and (min-height: 700px) {
-  .home-columns { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
-  .home-public-table { --table-action-width: var(--home-fit-table-action-width); }
-  .home-public-table [data-slot="table-head"], .home-public-table [data-slot="table-cell"] { padding-inline: var(--space-control); padding-block: var(--space-control); }
-}
 
-@layer components {
-  .home-panel-public > [data-slot="card-content"] > .paginated-list { flex: 1; }
-  .home-panel-public .paginated-list > [data-slot="table-container"] { flex: 1; }
-}
-@media (min-width: 1100px) and (min-height: 700px) {
-  .member-home-main .paginated-list > .menu-pagination { padding: var(--space-control); }
-  .member-home-main .paginated-list > .menu-pagination button { height: var(--home-fit-action-height); min-height: var(--home-fit-action-height); padding-inline: var(--space-control); }
-}
-
-@media (min-width: 1100px) and (min-height: 700px) {
-  .home-reservation { padding-block: var(--space-tight); }
+@media (min-width: 1100px) {
+  .home-page { height: 100%; grid-template-rows: auto auto minmax(0, 1fr); }
+  .home-metric { padding-block: var(--space-detail); }
+  .home-columns, .home-side, .home-panel, .home-panel > [data-slot="card-content"] { min-height: 0; }
+  .home-side { grid-template-rows: minmax(0, .9fr) minmax(0, 1.1fr); }
+  .home-panel-reservations { overflow-y: auto; }
+  .home-panel-public [data-slot="table-container"] { max-height: none; }
+  .home-reservation { padding-block: var(--space-detail); }
   .home-reservation-action { flex-direction: row; align-items: center; flex-shrink: 0; }
-  .home-panel-pass .home-pass-count-table th,
-  .home-panel-pass .home-pass-count-table td { padding-block: calc(var(--space-control) / 2); }
+  .home-reservation-action [data-slot="button"] { height: var(--control-height-compact); }
+}
+
+@media (min-width: 1100px) and (max-width: 1799px), (min-width: 1100px) and (max-height: 850px) {
+  .member-home-main .home-page { height: auto; min-height: 100%; grid-template-rows: auto auto auto; }
+  .member-home-main .home-side { grid-template-rows: max-content max-content; }
 }

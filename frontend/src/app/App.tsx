@@ -1,10 +1,12 @@
 import { toast } from "sonner";
 import { InstructorPage, isInstructorScreen } from "@/features/instructor/InstructorPage";
+import { InstructorLessonRoster } from "@/features/instructor/InstructorLessonRoster";
+import { InstructorLessonDetail } from "@/features/instructor/InstructorLessonDetail";
 import { initialInstructorState, withInstructorPreview } from "@/features/instructor/preview";
-import { attendanceChangeError } from "@/features/instructor/model";
+import { attendanceChangeError, type AttendanceChange } from "@/features/instructor/model";
 import type { RecordAttendance } from "@/features/instructor/AttendanceActions";
 import { Collapsible } from "radix-ui";
-import { BookOpen, CalendarCheck, CalendarDays, CalendarOff, ChartColumn, ChevronRight, ClipboardCheck, CreditCard, DoorOpen, GraduationCap, Grid2X2, History, House, ListChecks, Package, Receipt, Settings, SlidersHorizontal, Ticket, TrendingUp, UserMinus, UserRound, UsersRound, type LucideIcon } from "lucide-react";
+import { BookOpen, CalendarDays, CalendarOff, ChartColumn, ChevronRight, ClipboardCheck, CreditCard, DoorOpen, GraduationCap, Grid2X2, History, House, ListChecks, Package, Receipt, Settings, SlidersHorizontal, Ticket, TrendingUp, UserMinus, UserRound, UsersRound, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as api from "@/api/generated/api";
 import type { CSSProperties } from "react";
@@ -22,7 +24,7 @@ import { HomePage } from "../features/member/pages/HomePage";
 import { AccountPage } from "../features/member/pages/AccountPage";
 import { LessonDetailPage } from "../features/member/pages/LessonsPage";
 import { dashboardPreview, dashboardPreviewTime } from "@/features/dashboard/preview";
-import { roleLabels, type DashboardUser } from "@/features/dashboard/model";
+import { roleLabels, seoulDate, type DashboardUser } from "@/features/dashboard/model";
 import { PassDetailPage, PassesPage } from "../features/member/pages/PassesPage";
 import { reservationDialog, ReservationsPage } from "../features/member/pages/ReservationsPage";
 import { NotificationsPage } from "../features/member/pages/NotificationsPage";
@@ -30,7 +32,7 @@ import type { DialogState, Screen } from "./routes";
 import { DashboardError, DashboardLoading } from "@/features/dashboard/DashboardState";
 import type { HomeView } from "@/features/dashboard/viewState";
 import { AdminWorkspace, useAdminDashboard } from "@/features/admin/AdminWorkspace";
-import { LessonsPage as AdminLessonsPage } from "@/features/admin/LessonPages";
+import { LessonsPage as AdminLessonsPage, ReservationsList } from "@/features/admin/LessonPages";
 import { QueryState } from "@/features/admin/AdminUI";
 import { TimetablePage } from "@/features/timetable/TimetablePage";
 import "./legacy.css";
@@ -47,8 +49,6 @@ const menuIcons: Record<MenuScreen, LucideIcon> = {
   'admin-lessons': BookOpen,
   'admin-passes': Ticket,
   'admin-reports': ChartColumn,
-  'today-lessons': CalendarCheck,
-  attendees: ClipboardCheck,
   absences: CalendarOff,
   'activity-logs': History,
   'admin-settings': Settings,
@@ -91,6 +91,11 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
     toast.success(reservation.status === "RESERVED" ? "출결을 기록했습니다." : "출결을 수정했습니다.");
   };
 
+  const onApiAttendanceRecorded = (reservation: api.Reservation, status: api.AttendanceRequestStatus, reason: string) => {
+    setData(previous => ({ ...previous, reservations: previous.reservations.map(item => item.id === reservation.id ? { ...item, status } : item) }));
+    setInstructorState(previous => ({ ...previous, changes: [{ id: (previous.changes[0]?.id ?? 0) + 1, reservationId: reservation.id, lessonId: reservation.lesson.id, member: reservation.member.name, before: reservation.status, after: status, reason, at: new Date().toISOString() }, ...previous.changes] }));
+  };
+
   const go = (next: Screen, id?: number) => {
     if (user.role === "ADMIN") {
       if (next === "today-lessons") next = "admin-lessons";
@@ -98,12 +103,16 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
       if (next === "absence-requests") next = "admin-absences";
     }
     if (user.role === "INSTRUCTOR") {
-      if (next === "attendance-overview" || next === "attendance-corrections") next = "attendance";
+      if (["today-lessons", "attendees", "attendance", "attendance-overview", "attendance-corrections"].includes(next)) {
+        if (id === undefined) id = data.lessons.find(item => item.instructorId === user.id && seoulDate(item.startAt) === seoulDate(dashboardPreviewTime))?.id;
+        next = "timetable";
+      }
       if (next === "absence-requests") next = "absences";
     }
     if (!canAccessScreen(next, user.role, currentUser.permissions)) return;
     if (user.role === "MEMBER" && next === "reservation-detail" && id !== undefined) { setDialog(reservationDialog(id)); return; }
     if (id !== undefined) setSelectedId(id);
+    else if (user.role === "INSTRUCTOR" && next === "timetable") setSelectedId(0);
     else if (next === "admin-settlement-create") setSelectedId(0);
     setScreen(next);
     window.scrollTo(0, 0);
@@ -123,7 +132,7 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
           onLogout={onLogout}
         />
         <div className="content">
-          {user.role === "INSTRUCTOR" && isInstructorScreen(screen) ? <InstructorPage screen={screen} user={user} data={data} setData={setData} state={instructorState} setState={setInstructorState} selectedId={selectedId} onNavigate={go} onRecord={onRecordAttendance} /> : screen === "notifications" ? <NotificationsPage role={user.role} onNavigate={go} /> : screen === "timetable" || screen === "classes" || screen === "admin-lessons" ? <LessonViews key={screen} screen={screen} user={user} onNavigate={go} canReserve={can("reservation.create")} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onRecordAttendance={onRecordAttendance} /> : <MemberScreen
+          {user.role === "INSTRUCTOR" && isInstructorScreen(screen) ? <InstructorPage screen={screen} user={user} data={data} setData={setData} state={instructorState} setState={setInstructorState} /> : user.role === "INSTRUCTOR" && screen === "instructor-lesson-detail" ? <InstructorLessonDetail lessonId={selectedId} user={user} canViewReservations={canAccessScreen("attendees", user.role, currentUser.permissions)} changes={instructorState.changes} onRecorded={onApiAttendanceRecorded} onBack={() => go("timetable", selectedId)} /> : screen === "notifications" ? <NotificationsPage role={user.role} onNavigate={go} /> : screen === "timetable" || screen === "classes" || screen === "admin-lessons" ? <LessonViews key={`${screen}-${user.role === "INSTRUCTOR" ? selectedId : ""}`} screen={screen} user={user} initialLessonId={user.role === "INSTRUCTOR" ? selectedId : 0} initialDate={user.role === "INSTRUCTOR" ? data.lessons.find(item => item.id === selectedId)?.startAt : undefined} canViewReservations={canAccessScreen("attendees", user.role, currentUser.permissions)} changes={instructorState.changes} onRecorded={onApiAttendanceRecorded} onNavigate={go} canReserve={can("reservation.create")} /> : screen === "home" && homeView === "loading" ? <DashboardLoading /> : screen === "home" && ["error", "expired", "forbidden"].includes(homeView) ? <DashboardError status={homeView === "expired" ? 401 : homeView === "forbidden" ? 403 : 500} onRetry={() => setHomeView("normal")} onLogin={onLogin} /> : user.role === "ADMIN" ? screen === "home" ? <QueryState query={admin}><HomePage user={user} data={viewData} screen="home" empty={homeView === "empty"} onNavigate={go} /></QueryState> : <AdminWorkspace key={`${screen}-${selectedId}`} screen={screen} id={selectedId} onNavigate={go} /> : screen === "home" || user.role !== "MEMBER" ? <HomePage user={user} data={data} screen={screen} empty={homeView === "empty"} onNavigate={go} onRecordAttendance={onRecordAttendance} /> : <MemberScreen
             screen={screen}
             selectedId={selectedId}
             onNavigate={go}
@@ -142,14 +151,15 @@ function App({ user, name = user.name, onLogout, onLogin, initialHomeView = "nor
   );
 }
 
-function LessonViews({ screen, user, onNavigate, canReserve }: { screen: Screen; user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void; canReserve: boolean }) {
-  const [view, setView] = useState<'calendar' | 'list'>(screen === 'classes' || screen === 'admin-lessons' ? 'list' : 'calendar');
-  return <Tabs value={view} onValueChange={value => setView(value as 'calendar' | 'list')} className="lesson-views">
+function LessonViews({ screen, user, onNavigate, canReserve, initialLessonId, initialDate, canViewReservations, changes, onRecorded }: { screen: Screen; user: DashboardUser; onNavigate: (screen: Screen, id?: number) => void; canReserve: boolean; initialLessonId: number; initialDate?: string; canViewReservations: boolean; changes: AttendanceChange[]; onRecorded: (reservation: api.Reservation, status: api.AttendanceRequestStatus, reason: string) => void }) {
+  const [view, setView] = useState<'calendar' | 'list'>(screen === 'classes' || (user.role === 'INSTRUCTOR' && initialLessonId > 0) ? 'list' : 'calendar');
+  const [selectedLessonId, setSelectedLessonId] = useState<number | null>(initialLessonId > 0 ? initialLessonId : null);
+  return <><Tabs value={view} onValueChange={value => setView(value as 'calendar' | 'list')} className="lesson-views">
     <TabsList aria-label="수업 보기 방식"><TabsTrigger value="calendar">시간표</TabsTrigger><TabsTrigger value="list">목록</TabsTrigger></TabsList>
     <TabsContent value={view}>
-      {user.role === 'ADMIN' && view === 'list' ? <AdminLessonsPage embedded onNavigate={onNavigate} /> : <TimetablePage user={user} onNavigate={onNavigate} canReserve={canReserve} view={view} />}
+      {user.role === 'ADMIN' && view === 'list' ? <AdminLessonsPage embedded onNavigate={onNavigate} /> : <TimetablePage user={user} onNavigate={onNavigate} canReserve={canReserve} view={view} initialDate={initialDate ? seoulDate(initialDate) : undefined} selectedLessonId={user.role === 'INSTRUCTOR' || user.role === 'ADMIN' ? selectedLessonId : undefined} onSelectLesson={user.role === 'INSTRUCTOR' || user.role === 'ADMIN' ? setSelectedLessonId : undefined} />}
     </TabsContent>
-  </Tabs>;
+  </Tabs>{user.role === 'INSTRUCTOR' && <InstructorLessonRoster lessonId={selectedLessonId} user={user} canViewReservations={canViewReservations} changes={changes} onRecorded={onRecorded} />}{user.role === 'ADMIN' && view === 'calendar' && selectedLessonId !== null && <section className="instructor-roster" aria-label="선택한 수업의 예약자와 출결"><ReservationsList key={selectedLessonId} lessonId={selectedLessonId} onNavigate={onNavigate} compact /></section>}</>;
 }
 
 function AppSidebar({ user, navigation, screen, onNavigate }: { user: DashboardUser; navigation: NavigationItem[]; screen: Screen; onNavigate: (screen: Screen) => void }) {

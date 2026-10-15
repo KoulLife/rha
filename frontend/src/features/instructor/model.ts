@@ -2,7 +2,7 @@ import type { DashboardAbsence, DashboardData, DashboardReservation, DashboardUs
 
 export type AttendanceStatus = "ATTENDED" | "NO_SHOW";
 export type AbsenceDetail = { startAt: string; endAt: string; createdAt: string; processedAt?: string; rejectionReason?: string };
-export type AttendanceChange = { id: number; reservationId: number; before: DashboardReservation["status"]; after: AttendanceStatus; reason: string; at: string };
+export type AttendanceChange = { id: number; reservationId: number; lessonId?: number; member?: string; before: DashboardReservation["status"]; after: AttendanceStatus; reason: string; at: string };
 export type InstructorState = { absenceDetails: Record<number, AbsenceDetail>; changes: AttendanceChange[] };
 
 export function attendanceChangeError(data: DashboardData, user: DashboardUser, id: number, status: AttendanceStatus, reason: string, now: string) {

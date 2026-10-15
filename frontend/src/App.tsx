@@ -49,7 +49,7 @@ export function App() {
     {page}
     <Toaster theme="light" icons={{ success: null, error: null, info: null, warning: null, loading: null }} />
     <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
-      <AlertDialogContent className="auth-confirm-dialog" onCloseAutoFocus={(event) => {
+      <AlertDialogContent className="menu-dialog" onCloseAutoFocus={(event) => {
         if (logoutOpener.current?.isConnected) { event.preventDefault(); logoutOpener.current.focus(); }
       }}>
         <AlertDialogHeader><AlertDialogTitle>로그아웃하시겠어요?</AlertDialogTitle><AlertDialogDescription>로그인 화면으로 돌아갑니다. 다시 이용하려면 로그인해 주세요.</AlertDialogDescription></AlertDialogHeader>

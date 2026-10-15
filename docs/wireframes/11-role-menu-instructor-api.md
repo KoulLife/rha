@@ -8,10 +8,8 @@
 | 카드 | 진입 화면 | 주요 기존 API |
 | --- | --- | --- |
 | 홈 | 담당 수업 대시보드 | getMyProfile, getLessons, getLessonReservations, getMyUnreadNotificationCount |
-| 수업 목록 | 담당 수업·상세, 권한별 개설/수정 | getLessons/getLesson, createLesson/updateLesson/changeLessonStatus/cancelLesson |
+| 수업 | 시간표·목록에서 수업 선택, 담당 예약자·출결, 권한별 개설/수정 | getLessons/getLesson/getLessonReservations/confirmAttendance, createLesson/updateLesson/changeLessonStatus/cancelLesson |
 | 승인 신청 대기 | 기존 신청·확정·대기 흐름 예시 | 현행 예약 승인·대기 API 없음. 별도 회의 데이터 |
-| 수업별 예약자 | 담당 수업 예약자·예약 상세 | getLessonReservations, getReservation |
-| 출결 처리 | 담당 수업 출석·노쇼·직접 정정 | confirmAttendance. 정산 포함 수업은 LESSON_SETTLED 제한 |
 | 부재 신청 | 본인 신청·조회·철회 | getAbsences/getAbsence/createAbsence/cancelAbsence |
 | 내 프로필 | 본인 프로필·보유 권한 | getMyProfile/updateMyProfile |
 | 알림 | 본인 알림·읽음·관련 부재 | getMyNotifications/readNotification/readAllNotifications/getMyUnreadNotificationCount |

@@ -2,6 +2,8 @@
   .instructor-page { --card-spacing: var(--panel-padding); gap: var(--space-detail); }
   .instructor-page h2, .instructor-detail-heading h2 { margin: 0; font-size: var(--font-size-body); font-weight: var(--font-weight-heading); }
   .instructor-roster, .instructor-dialog-stack { display: grid; min-width: 0; gap: var(--menu-gap); }
+  .instructor-roster { margin-top: var(--menu-gap); }
+  .instructor-roster-panel > .menu-panel-heading { padding-block: var(--panel-padding); border-bottom: 1px solid var(--border); }
   .instructor-roster-toolbar, .instructor-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--menu-gap); flex-wrap: wrap; }
   .instructor-roster-filters { display: flex; align-items: end; flex-wrap: wrap; gap: var(--space-detail); }
   .instructor-roster-filters > [data-slot="field"] { width: var(--menu-field-width); }

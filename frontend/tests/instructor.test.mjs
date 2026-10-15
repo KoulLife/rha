@@ -71,9 +71,10 @@ test("첫 출결은 사유 없이 기록하고, 수정은 다른 상태와 정�
   assert.equal(data.reservations[0].status, "RESERVED");
 });
 
-test("강사 출결 사이드 메뉴는 제거하고 담당 수업·예약자·부재 메뉴를 유지한다", () => {
+test("강사는 하나의 수업 메뉴에서 예약자·출결에 접근한다", () => {
   const permissions = new Set(["lesson.read", "reservation.read", "profile.read", "notification.read"]);
   const screens = getNavigation("INSTRUCTOR", permissions).map(item => item.screen);
-  assert.equal(screens.includes("attendance"), false);
-  for (const screen of ["today-lessons", "attendees", "absences"]) assert.equal(screens.includes(screen), true);
+  for (const screen of ["timetable", "absences"]) assert.equal(screens.includes(screen), true);
+  for (const screen of ["today-lessons", "attendees", "attendance"]) assert.equal(screens.includes(screen), false);
+  assert.equal(canAccessScreen("attendees", "INSTRUCTOR", permissions), true);
 });
