@@ -11,6 +11,8 @@ import com.rha.member.MemberRepository;
 import com.rha.member.MemberRole;
 import com.rha.member.MemberStatus;
 import com.rha.passproduct.PassProduct;
+import com.rha.payment.PassPayment;
+import com.rha.payment.PassPaymentRepository;
 import com.rha.passproduct.PassProductRepository;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -37,8 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 이용권 발급·조회·수정과 일시정지, 날짜에 따른 상태 전환.
  *
- * <p>결제 합계(paidAmount)는 결제 기록 기능이, 정지 기간의 예약 확인(PAUSE_HAS_RESERVATIONS)은 예약 기능이
- * 구현될 때 추가한다. 상태는 조회·수정할 때와 주기적으로 {@link #refreshStatuses}가 최신으로 맞춘다.
+ * <p>정지 기간의 예약 확인(PAUSE_HAS_RESERVATIONS)은 예약 기능이 구현될 때 추가한다.
+ * 상태는 조회·수정할 때와 주기적으로 {@link #refreshStatuses}가 최신으로 맞춘다.
  */
 @Service
 public class PassService {
@@ -55,16 +57,18 @@ public class PassService {
     private final PassRepository passRepository;
     private final PassPauseRepository pauseRepository;
     private final PassProductRepository productRepository;
+    private final PassPaymentRepository paymentRepository;
     private final MemberRepository memberRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
     public PassService(PassRepository passRepository, PassPauseRepository pauseRepository,
-            PassProductRepository productRepository, MemberRepository memberRepository, AdminGuard adminGuard,
-            RequestValidator requestValidator) {
+            PassProductRepository productRepository, PassPaymentRepository paymentRepository,
+            MemberRepository memberRepository, AdminGuard adminGuard, RequestValidator requestValidator) {
         this.passRepository = passRepository;
         this.pauseRepository = pauseRepository;
         this.productRepository = productRepository;
+        this.paymentRepository = paymentRepository;
         this.memberRepository = memberRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
@@ -165,11 +169,17 @@ public class PassService {
                 predicates.add(cb.equal(root.get("status"), filter.status()));
             }
             if (filter.paymentStatus() != null) {
-                // 결제 기록이 없으므로 금액이 0이면 완납, 아니면 미결제이다. 일부 결제는 결제 기능이 생기면 가능하다.
+                // 결제 합계(환불로 체크된 기록 포함)와 이용권 금액을 비교한다.
+                Subquery<Long> sum = query.subquery(Long.class);
+                Root<PassPayment> payment = sum.from(PassPayment.class);
+                sum.select(cb.sum(payment.<Long>get("amount")))
+                        .where(cb.equal(payment.get("passId"), root.get("id")));
+                var paid = cb.coalesce(sum, 0L);
+                var price = root.<Long>get("price");
                 switch (filter.paymentStatus()) {
-                    case PAID -> predicates.add(cb.equal(root.get("price"), 0L));
-                    case UNPAID -> predicates.add(cb.greaterThan(root.<Long>get("price"), 0L));
-                    case PARTIAL -> predicates.add(cb.disjunction());
+                    case UNPAID -> predicates.add(cb.and(cb.equal(paid, 0L), cb.greaterThan(price, 0L)));
+                    case PARTIAL -> predicates.add(cb.and(cb.greaterThan(paid, 0L), cb.lessThan(paid, price)));
+                    case PAID -> predicates.add(cb.greaterThanOrEqualTo(paid, price));
                 }
             }
             if (filter.createdFrom() != null) {
@@ -212,7 +222,7 @@ public class PassService {
         PassStatus status = start.isAfter(today) ? PassStatus.UPCOMING : PassStatus.ACTIVE;
         Pass pass = passRepository.save(Pass.issue(product.getId(), member.getId(), instructor.getId(), price,
                 product.getTotalCount(), start, end, status, Instant.now()));
-        return PassResponse.of(pass, product, member, instructor);
+        return PassResponse.of(pass, product, member, instructor, 0);
     }
 
     /**
@@ -411,7 +421,15 @@ public class PassService {
                 .collect(Collectors.toMap(Member::getId, Function.identity()));
         Map<Long, PassProduct> products = productRepository.findAllById(productIds).stream()
                 .collect(Collectors.toMap(PassProduct::getId, Function.identity()));
+        Map<Long, Long> paid = new java.util.HashMap<>();
+        if (!passes.isEmpty()) {
+            for (Object[] row : paymentRepository.sumsByPassIds(
+                    passes.stream().map(Pass::getId).toList())) {
+                paid.put((Long) row[0], ((Number) row[1]).longValue());
+            }
+        }
         return passes.stream().map(pass -> PassResponse.of(pass, products.get(pass.getPassProductId()),
-                members.get(pass.getMemberId()), members.get(pass.getInstructorId()))).toList();
+                members.get(pass.getMemberId()), members.get(pass.getInstructorId()),
+                paid.getOrDefault(pass.getId(), 0L))).toList();
     }
 }
