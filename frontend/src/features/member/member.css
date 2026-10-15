@@ -82,9 +82,9 @@
   .menu-count-table tr:hover th { background: var(--accent); }
   .menu-info-table th, .menu-info-table td { padding: var(--space-detail); white-space: normal; border: 1px solid var(--border); }
   .menu-info-table th { width: var(--menu-fact-label-width); background: var(--accent); font-size: var(--font-size-caption); }
-  .menu-panel-table { padding-bottom: 0; }
-  .menu-panel-table > .menu-panel-heading { border-bottom: 0; }
-  .menu-panel-table > [data-slot="card-content"] { padding-inline: 0; }
+  .menu-panel-table { padding-block: 0; gap: 0; }
+  .menu-panel-table > .menu-panel-heading { padding-block: var(--space-detail); border-bottom: 0; }
+  .menu-panel-table > [data-slot="card-content"] { padding: 0; }
   .menu-panel-table [data-slot="table-head"] { height: auto; padding: var(--space-detail) var(--menu-panel-padding); color: var(--secondary-foreground); background: var(--accent); font-size: var(--font-size-caption); font-weight: 600; }
   .menu-panel-table [data-slot="table-cell"] { height: var(--menu-table-row-height); padding: var(--space-detail) var(--menu-panel-padding); font-size: var(--font-size-body); }
   .menu-panel-table [data-slot="table-row"]:hover { background: var(--accent); }
@@ -121,4 +121,21 @@
   .menu-tabs [data-slot="tabs-trigger"] { min-height: var(--control-height); } }
 @layer utilities {
   .menu-panel-table:not(:has(> [data-slot="card-header"])) { padding-top: 0; }
+  .member-reservations-page .menu-panel-table [data-slot="table-container"] { max-height: none; }
+  .member-preview .main-content .content:has(> .member-reservations-page) {
+    padding-block: var(--page-list-padding-block);
+  }
+  .member-reservations-table {
+    width: 100%;
+    min-width: var(--member-reservations-table-min-width);
+    table-layout: fixed;
+  }
+  .member-reservations-page .member-reservations-table[data-variant="management"] [data-slot="table-head"],
+  .member-reservations-page .member-reservations-table[data-variant="management"] [data-slot="table-cell"] {
+    padding: var(--space-control);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .member-reservations-table [data-slot="button"] { max-width: 100%; }
+  .member-reservations-page .menu-pagination { flex-wrap: wrap; }
 }
