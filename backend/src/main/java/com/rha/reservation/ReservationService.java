@@ -13,6 +13,7 @@ import com.rha.member.Member;
 import com.rha.member.MemberPermissionRepository;
 import com.rha.member.MemberRepository;
 import com.rha.member.MemberRole;
+import com.rha.notification.NotificationPublisher;
 import com.rha.pass.Pass;
 import com.rha.pass.PassRepository;
 import com.rha.passproduct.PassProduct;
@@ -43,7 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 수업 예약, 취소, 출결 기록과 조회. 예약하면 서버가 이용권을 골라 횟수를 1회 차감하고 취소하면 복구한다.
- * 강사 정산 포함 여부에 따른 출결 정정 제한(LESSON_SETTLED)과 관리자 취소 알림은 정산·알림 기능이 구현될 때 추가한다.
+ * 강사 정산 포함 여부에 따른 출결 정정 제한(LESSON_SETTLED)은 정산 기능이 구현될 때 추가한다.
  */
 @Service
 public class ReservationService {
@@ -66,6 +67,7 @@ public class ReservationService {
     private final PassProductRepository productRepository;
     private final PassPaymentRepository paymentRepository;
     private final ReservationPolicyRepository policyRepository;
+    private final NotificationPublisher notificationPublisher;
     private final RequestValidator requestValidator;
 
     public ReservationService(ReservationRepository reservationRepository, LessonRepository lessonRepository,
@@ -73,7 +75,7 @@ public class ReservationService {
             MemberRepository memberRepository, MemberPermissionRepository permissionRepository,
             PassRepository passRepository, PassProductRepository productRepository,
             PassPaymentRepository paymentRepository, ReservationPolicyRepository policyRepository,
-            RequestValidator requestValidator) {
+            NotificationPublisher notificationPublisher, RequestValidator requestValidator) {
         this.reservationRepository = reservationRepository;
         this.lessonRepository = lessonRepository;
         this.lessonTypeRepository = lessonTypeRepository;
@@ -84,6 +86,7 @@ public class ReservationService {
         this.productRepository = productRepository;
         this.paymentRepository = paymentRepository;
         this.policyRepository = policyRepository;
+        this.notificationPublisher = notificationPublisher;
         this.requestValidator = requestValidator;
     }
 
@@ -185,6 +188,9 @@ public class ReservationService {
 
         reservation.cancel(admin ? CanceledBy.ADMIN : CanceledBy.MEMBER, body.reason(), now);
         passRepository.findByIdForUpdate(reservation.getPassId()).ifPresent(pass -> pass.restoreOne(now));
+        if (admin && !reservation.getMemberId().equals(callerId)) {
+            notificationPublisher.reservationCanceledByAdmin(reservation, lesson);
+        }
         return toResponses(List.of(reservation)).get(0);
     }
 

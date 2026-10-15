@@ -10,6 +10,7 @@ import com.rha.common.validation.RequestValidator;
 import com.rha.instructor.InstructorAvailabilityRepository;
 import com.rha.lessontype.LessonType;
 import com.rha.member.AdminGuard;
+import com.rha.notification.NotificationPublisher;
 import com.rha.lessontype.LessonTypeRepository;
 import com.rha.member.Member;
 import com.rha.member.MemberPermission;
@@ -47,7 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 수업 개설·수정·공개 상태 변경·취소와 조회.
  *
  * <p>영업시간은 센터 현지 시각(Asia/Seoul) 기준이다. 수업을 취소하면 예약이 자동 취소되고 이용권 횟수가 복구된다
- * (예약 회원 알림은 알림 기능이 구현될 때 추가한다).
+ * 예약한 회원에게는 알림이 간다.
  */
 @Service
 public class LessonService {
@@ -69,6 +70,7 @@ public class LessonService {
     private final AbsenceRepository absenceRepository;
     private final ReservationRepository reservationRepository;
     private final PassRepository passRepository;
+    private final NotificationPublisher notificationPublisher;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
 
@@ -77,7 +79,8 @@ public class LessonService {
             MemberPermissionRepository permissionRepository, BusinessHourRepository businessHourRepository,
             InstructorAvailabilityRepository availabilityRepository, AbsenceRepository absenceRepository,
             ReservationRepository reservationRepository, PassRepository passRepository,
-            AdminGuard adminGuard, RequestValidator requestValidator) {
+            NotificationPublisher notificationPublisher, AdminGuard adminGuard,
+            RequestValidator requestValidator) {
         this.lessonRepository = lessonRepository;
         this.lessonTypeRepository = lessonTypeRepository;
         this.roomRepository = roomRepository;
@@ -88,6 +91,7 @@ public class LessonService {
         this.absenceRepository = absenceRepository;
         this.reservationRepository = reservationRepository;
         this.passRepository = passRepository;
+        this.notificationPublisher = notificationPublisher;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
     }
@@ -281,11 +285,14 @@ public class LessonService {
         requireModifiable(lesson, now);
 
         lesson.cancel(body.reason(), now);
+        List<Long> canceledMembers = new ArrayList<>();
         for (Reservation reservation : reservationRepository.findByLessonIdAndStatus(lessonId,
                 ReservationStatus.RESERVED)) {
             reservation.cancel(CanceledBy.LESSON_CANCELED, body.reason(), now);
             passRepository.findByIdForUpdate(reservation.getPassId()).ifPresent(pass -> pass.restoreOne(now));
+            canceledMembers.add(reservation.getMemberId());
         }
+        notificationPublisher.lessonCanceled(lesson, canceledMembers);
         return toResponse(lesson);
     }
 
