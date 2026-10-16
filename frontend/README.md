@@ -21,10 +21,13 @@ npm run dev
 - 타입체크: `npm run typecheck`
 - 테스트: `npm test`
 - 빌드: `npm run build`
+- 코드 정리: `npm run format` (검사: `npm run format:check`)
 - API 재생성: `npm run generate:api` (`../api-spec/openapi.yaml` 기준)
 - [연동 범위·없는 API·실행 및 검증 기록](../docs/admin-api-integration.md)
 
 실제 메일 발송과 초기 관리자 계정 준비는 백엔드 후속 작업이다. 인증/초대/재설정 API는 존재하지만 현재 메일러는 개발 로그만 출력한다.
+
+코드 형식은 `.prettierrc.json`을 따른다. API 생성 코드(`src/api/generated/`)는 포맷 대상에서 제외하고, 수업 화면의 주 이동·월 선택은 `WeekToolbarControls`를 공유한다.
 
 ## 공통 UI
 

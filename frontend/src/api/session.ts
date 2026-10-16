@@ -15,22 +15,34 @@ export function setAccessToken(token: string | null) {
 export function configureSession(refreshToken: () => Promise<string>, expired: () => void) {
   refresh = refreshToken;
   onExpired = expired;
-  return () => { refresh = undefined; onExpired = undefined; };
+  return () => {
+    refresh = undefined;
+    onExpired = undefined;
+  };
 }
 export function renewSession(): Promise<string> {
   if (pending) return pending;
   const version = generation;
-  const operation = Promise.resolve().then(() => {
-    if (!refresh) throw new Error('로그인이 필요합니다.');
-    return refresh();
-  }).then(token => {
-    if (version !== generation) throw new Error('로그인 상태가 변경되었습니다.');
-    accessToken = token;
-    return token;
-  }).catch(error => {
-    if (version === generation) { accessToken = null; onExpired?.(); }
-    throw error;
-  }).finally(() => { if (pending === operation) pending = undefined; });
+  const operation = Promise.resolve()
+    .then(() => {
+      if (!refresh) throw new Error("로그인이 필요합니다.");
+      return refresh();
+    })
+    .then((token) => {
+      if (version !== generation) throw new Error("로그인 상태가 변경되었습니다.");
+      accessToken = token;
+      return token;
+    })
+    .catch((error) => {
+      if (version === generation) {
+        accessToken = null;
+        onExpired?.();
+      }
+      throw error;
+    })
+    .finally(() => {
+      if (pending === operation) pending = undefined;
+    });
   pending = operation;
   return operation;
 }

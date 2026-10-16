@@ -45,33 +45,56 @@
     background: var(--table-row-background);
     color: var(--foreground);
   }
-  [data-slot="table"][data-variant="management"] [data-slot="table-body"] [data-slot="table-row"]:hover [data-slot="table-cell"] {
+  [data-slot="table"][data-variant="management"]
+    [data-slot="table-body"]
+    [data-slot="table-row"]:hover
+    [data-slot="table-cell"] {
     background: var(--table-row-hover);
   }
   [data-slot="table"][data-variant="management"] .menu-actions {
     justify-content: center;
     flex-wrap: nowrap;
   }
-  [data-slot="table"][data-variant="management"] [data-slot="table-cell"]:last-child [data-slot="button"],
-  .admin-lesson-roster [data-slot="table"][data-variant="management"] [data-slot="table-cell"]:nth-child(2) [data-slot="button"] {
+  [data-slot="table"][data-variant="management"]
+    [data-slot="table-cell"]:last-child
+    [data-slot="button"],
+  .admin-lesson-roster
+    [data-slot="table"][data-variant="management"]
+    [data-slot="table-cell"]:nth-child(2)
+    [data-slot="button"] {
     inline-size: var(--table-action-width);
     block-size: var(--table-action-height);
     padding-inline: var(--space-control);
     font-size: var(--font-size-caption);
   }
-  [data-slot="table"][data-variant="management"] [data-slot="table-cell"]:last-child [data-slot="button"][data-variant="ghost"] {
+  [data-slot="table"][data-variant="management"]
+    [data-slot="table-cell"]:last-child
+    [data-slot="button"][data-variant="ghost"] {
     border-color: var(--border);
     background: var(--card);
   }
-  [data-slot="table"][data-variant="management"] [data-slot="table-cell"]:last-child [data-slot="button"][data-variant="ghost"]:hover {
+  [data-slot="table"][data-variant="management"]
+    [data-slot="table-cell"]:last-child
+    [data-slot="button"][data-variant="ghost"]:hover {
     background: var(--muted);
   }
 }
 @layer utilities {
-  .table-centered [data-slot="table-head"], .table-centered [data-slot="table-cell"] { text-align: center; }
-  .table-centered [data-slot="table-header"] { background: var(--table-header-background); }
-  .table-sort-button { color: inherit; font-weight: inherit; }
-  .table-sort-direction { color: var(--primary); font-size: .6875rem; }
+  .table-centered [data-slot="table-head"],
+  .table-centered [data-slot="table-cell"] {
+    text-align: center;
+  }
+  .table-centered [data-slot="table-header"] {
+    background: var(--table-header-background);
+  }
+  .table-sort-button {
+    color: inherit;
+    font-weight: inherit;
+  }
+  .table-sort-direction {
+    color: var(--primary);
+    font-size: 0.6875rem;
+  }
   /* 모든 역할의 첫 행·중간 행·마지막 행에 같은 세로 padding을 적용한다. */
   [data-slot="table"][data-variant] [data-slot="table-cell"],
   [data-slot="table"][data-variant] [data-slot="table-head"] {

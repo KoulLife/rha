@@ -21,5 +21,12 @@
   }
 }
 @layer utilities {
-  .status-badge-count { height: auto; padding: var(--space-tight) var(--space-control); border: 0; border-radius: var(--radius-md); font-size: .75rem; font-variant-numeric: tabular-nums; }
+  .status-badge-count {
+    height: auto;
+    padding: var(--space-tight) var(--space-control);
+    border: 0;
+    border-radius: var(--radius-md);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
 }

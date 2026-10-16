@@ -1,4 +1,12 @@
 @layer components {
-  .paginated-list { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-  .paginated-list > .menu-pagination { flex-shrink: 0; padding: var(--space-detail); }
+  .paginated-list {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+  .paginated-list > .menu-pagination {
+    flex-shrink: 0;
+    padding: var(--space-detail);
+  }
 }

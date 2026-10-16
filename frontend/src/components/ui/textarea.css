@@ -1,6 +1,23 @@
 @layer utilities {
-  .ui-textarea { display: block; width: 100%; min-height: calc(var(--control-height) * 2); resize: vertical; padding: var(--space-detail); border: 1px solid var(--input); border-radius: var(--radius-lg); background: var(--background); font: inherit; }
-  .ui-textarea:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-  .ui-textarea[aria-invalid="true"] { border-color: var(--destructive); }
-  .ui-textarea::placeholder { color: var(--muted-foreground); }
+  .ui-textarea {
+    display: block;
+    width: 100%;
+    min-height: calc(var(--control-height) * 2);
+    resize: vertical;
+    padding: var(--space-detail);
+    border: 1px solid var(--input);
+    border-radius: var(--radius-lg);
+    background: var(--background);
+    font: inherit;
+  }
+  .ui-textarea:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  .ui-textarea[aria-invalid="true"] {
+    border-color: var(--destructive);
+  }
+  .ui-textarea::placeholder {
+    color: var(--muted-foreground);
+  }
 }

@@ -1,19 +1,256 @@
-import { useAllMembers } from './queries';
-import { PAGE_SIZE } from '@/components/ui/Pagination';
-import { useState } from 'react';
-import * as api from '@/api/generated/api';
-import { Button } from '@/components/ui/button';
-import { Dialog } from '@/components/ui/Dialog';
-import { AdminPage, DataTable, QueryState, Filters, Facts, ALL, options, filterValue, dateTime, dayStart, dayEnd, textValue, type Values } from './AdminUI';
-import type { Navigate } from './MemberPages';
-import type { Screen } from '@/app/routes';
-export function ActivityList({targetType,targetId,onNavigate}:{targetType?:string;targetId?:number;onNavigate:Navigate}) {
-  const [filters,setFilters]=useState<Values>({}),[page,setPage]=useState(1),[selected,setSelected]=useState<api.ActivityLog|null>(null);
-  const catalog=api.useGetActivityLogActions(),members=useAllMembers({size:100});
-  const query=api.useGetActivityLogs({targetType:targetType??filterValue(filters,'targetType'),targetId:targetId??(filterValue(filters,'targetId')?Number(filters.targetId):undefined),category:filterValue(filters,'category'),action:filterValue(filters,'action'),actorId:filterValue(filters,'actorId')?Number(filters.actorId):undefined,actorRole:filterValue(filters,'actorRole') as api.MemberRole|undefined,subjectMemberId:filterValue(filters,'subjectMemberId')?Number(filters.subjectMemberId):undefined,from:dayStart(textValue(filters,'from')),to:dayEnd(textValue(filters,'to')),order:filters.order==='ASC'?'ASC':'DESC',page,size:PAGE_SIZE});
-  const links:Record<string,Screen>={MEMBER:'admin-member-detail',LESSON:'admin-lesson-detail',PASS:'admin-pass-detail',SETTLEMENT:'admin-settlement-detail',ABSENCE:'admin-absence-detail'};
-  const linkLabels:Record<string,string>={MEMBER:'회원 상세 보기',LESSON:'수업 상세 보기',PASS:'이용권 상세 보기',SETTLEMENT:'정산 상세 보기',ABSENCE:'부재 상세 보기'};
-  const relatedScreen=selected?.targetType?links[selected.targetType]:undefined;
-  return <div className="menu-stack">{!targetType&&<Filters fields={[{name:'from',label:'발생 시작일',type:'date'},{name:'to',label:'발생 종료일',type:'date'},{name:'category',label:'카테고리',type:'select',options:[ALL,...(catalog.data?.categories??[]).map(c=>({value:c.code,label:c.name}))]},{name:'action',label:'행위',type:'select',options:[ALL,...Array.from(new Map((catalog.data?.categories??[]).flatMap(c=>c.actions.map(a=>[a.code,{value:a.code,label:a.name}] as const))).values())]},{name:'actorId',label:'행위자',type:'search',options:[ALL,...options(members.data?.content)]},{name:'actorRole',label:'행위자 역할',type:'select',options:[ALL,{value:'ADMIN',label:'관리자'},{value:'INSTRUCTOR',label:'강사'},{value:'MEMBER',label:'회원'}]},{name:'subjectMemberId',label:'영향받은 회원',type:'search',options:[ALL,...options(members.data?.content.filter(m=>m.role==='MEMBER'))]},{name:'targetType',label:'대상 종류',type:'select',options:[ALL,...Object.entries({MEMBER:'회원',LESSON:'수업',RESERVATION:'예약',PASS:'이용권',SETTLEMENT:'정산',ABSENCE:'부재',ROOM:'룸',PASS_PRODUCT:'상품'}).map(([value,label])=>({value,label}))]},{name:'targetId',label:'대상 ID',type:'number',min:1}]} onApply={v=>{if(v.targetId&&!filterValue(v,'targetType'))throw new Error('대상 ID는 대상 종류와 함께 조회해 주세요.');setFilters(v);setPage(1);}}/>}<QueryState query={query}><DataTable rows={query.data?.content??[]} pageInfo={query.data?.pageInfo} onPage={setPage} columns={[{label:'발생 시각',sort:{direction:filters.order==='ASC'?'asc':'desc',onToggle:()=>{setFilters(current=>({...current,order:current.order==='ASC'?'DESC':'ASC'}));setPage(1);}},render:r=>dateTime(r.occurredAt)},{label:'행위자',render:r=>r.actor?.name??'시스템'},{label:'행위',render:r=>r.actionName},{label:'내용',render:r=>r.summary},{label:'영향받은 회원',render:r=>r.subjectMember?.name??'—'},{label:'상세',render:r=><Button variant="ghost" onClick={()=>setSelected(r)}>변경 내역</Button>}]}/></QueryState>{selected&&<Dialog dialog={{title:'활동 이력 상세',body:selected.summary}} onClose={()=>setSelected(null)} footerAction={!targetType&&relatedScreen&&selected.targetId?<Button variant="outline" onClick={()=>{onNavigate(relatedScreen,selected.targetId!);setSelected(null);}}>{linkLabels[selected.targetType!]}</Button>:undefined}><div className="menu-stack"><Facts items={[["발생 시각",dateTime(selected.occurredAt)],["행위자",selected.actor?.name??'시스템'],["행위",selected.actionName],["내용",selected.summary]]}/><DataTable rows={selected.changes.map((c,id)=>({...c,id}))} empty="변경 전후 값이 없는 활동입니다" columns={[{label:'항목',render:c=>({remainingCount:'잔여 횟수',totalCount:'총 횟수',endDate:'만료일',status:'상태',name:'이름',price:'금액',permissions:'권한',instructor:'강사',title:'수업명'} as Record<string,string>)[c.field]??c.field},{label:'변경 전',render:c=>c.before??'—'},{label:'변경 후',render:c=>c.after??'—'}]}/></div></Dialog>}</div>;
+import { useAllMembers } from "./queries";
+import { PAGE_SIZE } from "@/components/ui/Pagination";
+import { useState } from "react";
+import * as api from "@/api/generated/api";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/Dialog";
+import {
+  AdminPage,
+  DataTable,
+  QueryState,
+  Filters,
+  Facts,
+  ALL,
+  options,
+  filterValue,
+  dateTime,
+  dayStart,
+  dayEnd,
+  textValue,
+  type Values,
+} from "./AdminUI";
+import type { Navigate } from "./MemberPages";
+import type { Screen } from "@/app/routes";
+export function ActivityList({
+  targetType,
+  targetId,
+  onNavigate,
+}: {
+  targetType?: string;
+  targetId?: number;
+  onNavigate: Navigate;
+}) {
+  const [filters, setFilters] = useState<Values>({}),
+    [page, setPage] = useState(1),
+    [selected, setSelected] = useState<api.ActivityLog | null>(null);
+  const catalog = api.useGetActivityLogActions(),
+    members = useAllMembers({ size: 100 });
+  const query = api.useGetActivityLogs({
+    targetType: targetType ?? filterValue(filters, "targetType"),
+    targetId: targetId ?? (filterValue(filters, "targetId") ? Number(filters.targetId) : undefined),
+    category: filterValue(filters, "category"),
+    action: filterValue(filters, "action"),
+    actorId: filterValue(filters, "actorId") ? Number(filters.actorId) : undefined,
+    actorRole: filterValue(filters, "actorRole") as api.MemberRole | undefined,
+    subjectMemberId: filterValue(filters, "subjectMemberId")
+      ? Number(filters.subjectMemberId)
+      : undefined,
+    from: dayStart(textValue(filters, "from")),
+    to: dayEnd(textValue(filters, "to")),
+    order: filters.order === "ASC" ? "ASC" : "DESC",
+    page,
+    size: PAGE_SIZE,
+  });
+  const links: Record<string, Screen> = {
+    MEMBER: "admin-member-detail",
+    LESSON: "admin-lesson-detail",
+    PASS: "admin-pass-detail",
+    SETTLEMENT: "admin-settlement-detail",
+    ABSENCE: "admin-absence-detail",
+  };
+  const linkLabels: Record<string, string> = {
+    MEMBER: "회원 상세 보기",
+    LESSON: "수업 상세 보기",
+    PASS: "이용권 상세 보기",
+    SETTLEMENT: "정산 상세 보기",
+    ABSENCE: "부재 상세 보기",
+  };
+  const relatedScreen = selected?.targetType ? links[selected.targetType] : undefined;
+  return (
+    <div className="menu-stack">
+      {!targetType && (
+        <Filters
+          fields={[
+            { name: "from", label: "발생 시작일", type: "date" },
+            { name: "to", label: "발생 종료일", type: "date" },
+            {
+              name: "category",
+              label: "카테고리",
+              type: "select",
+              options: [
+                ALL,
+                ...(catalog.data?.categories ?? []).map((c) => ({ value: c.code, label: c.name })),
+              ],
+            },
+            {
+              name: "action",
+              label: "행위",
+              type: "select",
+              options: [
+                ALL,
+                ...Array.from(
+                  new Map(
+                    (catalog.data?.categories ?? []).flatMap((c) =>
+                      c.actions.map((a) => [a.code, { value: a.code, label: a.name }] as const),
+                    ),
+                  ).values(),
+                ),
+              ],
+            },
+            {
+              name: "actorId",
+              label: "행위자",
+              type: "search",
+              options: [ALL, ...options(members.data?.content)],
+            },
+            {
+              name: "actorRole",
+              label: "행위자 역할",
+              type: "select",
+              options: [
+                ALL,
+                { value: "ADMIN", label: "관리자" },
+                { value: "INSTRUCTOR", label: "강사" },
+                { value: "MEMBER", label: "회원" },
+              ],
+            },
+            {
+              name: "subjectMemberId",
+              label: "영향받은 회원",
+              type: "search",
+              options: [ALL, ...options(members.data?.content.filter((m) => m.role === "MEMBER"))],
+            },
+            {
+              name: "targetType",
+              label: "대상 종류",
+              type: "select",
+              options: [
+                ALL,
+                ...Object.entries({
+                  MEMBER: "회원",
+                  LESSON: "수업",
+                  RESERVATION: "예약",
+                  PASS: "이용권",
+                  SETTLEMENT: "정산",
+                  ABSENCE: "부재",
+                  ROOM: "룸",
+                  PASS_PRODUCT: "상품",
+                }).map(([value, label]) => ({ value, label })),
+              ],
+            },
+            { name: "targetId", label: "대상 ID", type: "number", min: 1 },
+          ]}
+          onApply={(v) => {
+            if (v.targetId && !filterValue(v, "targetType"))
+              throw new Error("대상 ID는 대상 종류와 함께 조회해 주세요.");
+            setFilters(v);
+            setPage(1);
+          }}
+        />
+      )}
+      <QueryState query={query}>
+        <DataTable
+          rows={query.data?.content ?? []}
+          pageInfo={query.data?.pageInfo}
+          onPage={setPage}
+          columns={[
+            {
+              label: "발생 시각",
+              sort: {
+                direction: filters.order === "ASC" ? "asc" : "desc",
+                onToggle: () => {
+                  setFilters((current) => ({
+                    ...current,
+                    order: current.order === "ASC" ? "DESC" : "ASC",
+                  }));
+                  setPage(1);
+                },
+              },
+              render: (r) => dateTime(r.occurredAt),
+            },
+            { label: "행위자", render: (r) => r.actor?.name ?? "시스템" },
+            { label: "행위", render: (r) => r.actionName },
+            { label: "내용", render: (r) => r.summary },
+            { label: "영향받은 회원", render: (r) => r.subjectMember?.name ?? "—" },
+            {
+              label: "상세",
+              render: (r) => (
+                <Button
+                  variant="ghost"
+                  onClick={() => setSelected(r)}
+                >
+                  변경 내역
+                </Button>
+              ),
+            },
+          ]}
+        />
+      </QueryState>
+      {selected && (
+        <Dialog
+          dialog={{ title: "활동 이력 상세", body: selected.summary }}
+          onClose={() => setSelected(null)}
+          footerAction={
+            !targetType && relatedScreen && selected.targetId ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  onNavigate(relatedScreen, selected.targetId!);
+                  setSelected(null);
+                }}
+              >
+                {linkLabels[selected.targetType!]}
+              </Button>
+            ) : undefined
+          }
+        >
+          <div className="menu-stack">
+            <Facts
+              items={[
+                ["발생 시각", dateTime(selected.occurredAt)],
+                ["행위자", selected.actor?.name ?? "시스템"],
+                ["행위", selected.actionName],
+                ["내용", selected.summary],
+              ]}
+            />
+            <DataTable
+              rows={selected.changes.map((c, id) => ({ ...c, id }))}
+              empty="변경 전후 값이 없는 활동입니다"
+              columns={[
+                {
+                  label: "항목",
+                  render: (c) =>
+                    (
+                      ({
+                        remainingCount: "잔여 횟수",
+                        totalCount: "총 횟수",
+                        endDate: "만료일",
+                        status: "상태",
+                        name: "이름",
+                        price: "금액",
+                        permissions: "권한",
+                        instructor: "강사",
+                        title: "수업명",
+                      }) as Record<string, string>
+                    )[c.field] ?? c.field,
+                },
+                { label: "변경 전", render: (c) => c.before ?? "—" },
+                { label: "변경 후", render: (c) => c.after ?? "—" },
+              ]}
+            />
+          </div>
+        </Dialog>
+      )}
+    </div>
+  );
 }
-export function ActivityPage({onNavigate}:{onNavigate:Navigate}) {return <AdminPage title="활동 이력" description="운영 변경 내역과 변경 전후 값을 확인합니다. 기록은 수정·삭제할 수 없습니다."><ActivityList onNavigate={onNavigate}/></AdminPage>;}
+export function ActivityPage({ onNavigate }: { onNavigate: Navigate }) {
+  return (
+    <AdminPage
+      title="활동 이력"
+      description="운영 변경 내역과 변경 전후 값을 확인합니다. 기록은 수정·삭제할 수 없습니다."
+    >
+      <ActivityList onNavigate={onNavigate} />
+    </AdminPage>
+  );
+}

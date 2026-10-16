@@ -5,7 +5,8 @@
     justify-content: center;
     min-height: 100dvh;
     padding: var(--auth-page-padding);
-    background: radial-gradient(ellipse at 50% 30%, var(--accent), transparent 65%), var(--background);
+    background:
+      radial-gradient(ellipse at 50% 30%, var(--accent), transparent 65%), var(--background);
   }
   .auth-container {
     width: 100%;
@@ -18,7 +19,7 @@
   .auth-wordmark {
     font-size: 2rem;
     font-weight: 700;
-    letter-spacing: -.03em;
+    letter-spacing: -0.03em;
   }
   .auth-brand-caption {
     margin-top: var(--auth-text-gap);
@@ -34,18 +35,21 @@
   .auth-title {
     font-size: 1.5rem;
     font-weight: 600;
-    letter-spacing: -.03em;
+    letter-spacing: -0.03em;
   }
   .auth-card-header {
     gap: var(--auth-text-gap);
   }
-  .auth-card [data-slot="card-header"], .auth-card [data-slot="card-content"] {
+  .auth-card [data-slot="card-header"],
+  .auth-card [data-slot="card-content"] {
     padding-inline: var(--auth-card-padding);
   }
   .auth-fields {
     gap: var(--auth-field-gap);
   }
-  .auth-input, .auth-submit, .auth-preview-button {
+  .auth-input,
+  .auth-submit,
+  .auth-preview-button {
     min-height: var(--auth-control-height);
   }
   .auth-input {
@@ -68,11 +72,13 @@
     font-weight: 600;
     text-decoration: none;
   }
-  .auth-recovery a:hover, .auth-signup a:hover {
+  .auth-recovery a:hover,
+  .auth-signup a:hover {
     text-decoration: underline;
-    text-underline-offset: .2em;
+    text-underline-offset: 0.2em;
   }
-  .auth-recovery a:focus-visible, .auth-signup a:focus-visible {
+  .auth-recovery a:focus-visible,
+  .auth-signup a:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 4px;
   }
@@ -120,7 +126,7 @@
     color: var(--foreground);
     border-bottom: 1px solid var(--border);
   }
-  .preview-toolbar [data-slot=button] {
+  .preview-toolbar [data-slot="button"] {
     color: var(--foreground);
     background: var(--card);
     border-color: var(--border);
@@ -154,9 +160,17 @@
   .auth-demo-account summary {
     cursor: pointer;
   }
-  .auth-preview-state { padding-block: var(--auth-text-gap); text-align: left; }
-  .auth-preview-state [data-slot="select-trigger"] { width: 100%; background: var(--card); }
-  .auth-preview-state [data-slot="select-trigger"] svg { display: none; }
+  .auth-preview-state {
+    padding-block: var(--auth-text-gap);
+    text-align: left;
+  }
+  .auth-preview-state [data-slot="select-trigger"] {
+    width: 100%;
+    background: var(--card);
+  }
+  .auth-preview-state [data-slot="select-trigger"] svg {
+    display: none;
+  }
   .auth-demo-code {
     margin-top: var(--auth-field-gap);
     padding: var(--auth-field-gap);
@@ -193,14 +207,14 @@
   }
   .auth-preview-actions .auth-preview-button {
     margin-top: 0;
-    font-size: .75rem;
+    font-size: 0.75rem;
     padding-inline: var(--space-control);
   }
 }
 @media (min-width: 768px) and (max-height: 900px) {
   .auth-page-login {
     --auth-card-padding: 1.75rem;
-    --auth-section-gap: .75rem;
+    --auth-section-gap: 0.75rem;
     --auth-field-gap: 1.125rem;
     --auth-page-padding: 1rem;
     --auth-control-height: 2.75rem;
