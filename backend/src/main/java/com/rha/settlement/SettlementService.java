@@ -96,7 +96,8 @@ public class SettlementService {
             LocalDate periodFrom, LocalDate periodTo, int page, int size) {
         adminGuard.requireAdmin(callerId);
         if (periodFrom != null && periodTo != null && periodTo.isBefore(periodFrom)) {
-            throw new ApiException(ErrorCode.INVALID_INPUT);
+            throw new ApiException(ErrorCode.INVALID_INPUT,
+                    List.of(new ApiException.Detail("periodTo", "periodFrom보다 빠를 수 없습니다.")));
         }
         Specification<Settlement> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();

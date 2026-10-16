@@ -46,12 +46,10 @@ public class MemberService {
         activityLogRecorder.record(ActivityAction.MEMBER_PROFILE_UPDATED, memberId, memberId, "MEMBER", memberId,
                 "내 정보를 수정했다.",
                 ActivityChange.ifChanged("name", beforeName, member.getName()),
-                ActivityChange.ifChanged("phoneNumber", Masking.phone(beforePhone),
-                        Masking.phone(member.getPhoneNumber())),
-                ActivityChange.ifChanged("birthDate", Masking.birthDate(beforeBirthDate),
-                        Masking.birthDate(member.getBirthDate())),
-                ActivityChange.ifChanged("address", Masking.address(beforeAddress),
-                        Masking.address(member.getAddress())));
+                ActivityChange.ifChanged("phoneNumber", beforePhone, member.getPhoneNumber(), Masking::phone),
+                ActivityChange.ifChanged("birthDate", beforeBirthDate, (Object) member.getBirthDate(),
+                        Masking::birthDate),
+                ActivityChange.ifChanged("address", beforeAddress, member.getAddress(), Masking::address));
         return toResponse(member);
     }
 

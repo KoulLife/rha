@@ -243,14 +243,19 @@ public class LessonService {
                 throw new ApiException(ErrorCode.INVALID_PUBLISH_AT);
             }
         }
+        // 확인 순서: 담당 강사 400(INVALID_INSTRUCTOR) → 예약 409 → 영업시간·강사·룸 409
+        Room room = null;
+        Member instructor = null;
+        if (recheck) {
+            room = newRoom != null ? newRoom : roomRepository.findActiveForUpdate(roomId)
+                    .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+            instructor = lockInstructor(instructorId);
+        }
         if (timeChanged && reservationRepository.existsByLessonIdAndStatus(lessonId,
                 ReservationStatus.RESERVED)) {
             throw new ApiException(ErrorCode.LESSON_HAS_RESERVATIONS);
         }
         if (recheck) {
-            Room room = newRoom != null ? newRoom : roomRepository.findActiveForUpdate(roomId)
-                    .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
-            Member instructor = lockInstructor(instructorId);
             checkAssignable(instructor, room.getId(), start, end, lessonId);
         }
 

@@ -143,12 +143,10 @@ public class MemberAdminService {
         activityLogRecorder.record(ActivityAction.MEMBER_UPDATED, callerId, memberId, "MEMBER", memberId,
                 Josa.eulReul("회원 '" + member.getName() + "'") + " 수정했다.",
                 ActivityChange.ifChanged("name", beforeName, member.getName()),
-                ActivityChange.ifChanged("phoneNumber", Masking.phone(beforePhone),
-                        Masking.phone(member.getPhoneNumber())),
-                ActivityChange.ifChanged("birthDate", Masking.birthDate(beforeBirthDate),
-                        Masking.birthDate(member.getBirthDate())),
-                ActivityChange.ifChanged("address", Masking.address(beforeAddress),
-                        Masking.address(member.getAddress())),
+                ActivityChange.ifChanged("phoneNumber", beforePhone, member.getPhoneNumber(), Masking::phone),
+                ActivityChange.ifChanged("birthDate", beforeBirthDate, (Object) member.getBirthDate(),
+                        Masking::birthDate),
+                ActivityChange.ifChanged("address", beforeAddress, member.getAddress(), Masking::address),
                 ActivityChange.ifChanged("role", beforeRole, member.getRole()));
         return MemberResponse.from(member, permissionsOf(memberId));
     }

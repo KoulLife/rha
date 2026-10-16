@@ -1,6 +1,8 @@
 package com.rha.pass;
 
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +14,8 @@ import org.springframework.data.repository.query.Param;
 public interface PassPauseRepository extends JpaRepository<PassPause, Long> {
 
     Page<PassPause> findByPassId(Long passId, Pageable pageable);
+
+    List<PassPause> findByPassIdInAndStatusNot(Collection<Long> passIds, PassPauseStatus status);
 
     Optional<PassPause> findByIdAndPassId(Long id, Long passId);
 

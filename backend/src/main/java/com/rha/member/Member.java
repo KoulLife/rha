@@ -124,16 +124,22 @@ public class Member {
         this.updatedAt = now;
     }
 
+    /** 강사가 아닌 역할이 되면 등록된 퇴사일은 의미가 없으므로 지운다. */
     public void changeRole(MemberRole role, Instant now) {
         this.role = role;
+        if (role != MemberRole.INSTRUCTOR) {
+            this.resignationDate = null;
+        }
         this.updatedAt = now;
     }
 
     /**
      * ACTIVE 또는 INACTIVE로 바꾼다. 탈퇴나 퇴사한 계정이 ACTIVE로 복구되면 탈퇴일과 퇴사일을 지운다.
+     * 비활성 계정을 활성화할 때는 등록해 둔 퇴사일을 그대로 둔다.
      */
     public void changeStatus(MemberStatus status, Instant now) {
-        if (status == MemberStatus.ACTIVE) {
+        if (status == MemberStatus.ACTIVE
+                && (this.status == MemberStatus.WITHDRAWN || this.status == MemberStatus.RESIGNED)) {
             this.withdrawnAt = null;
             this.resignationDate = null;
             this.resignedAt = null;
