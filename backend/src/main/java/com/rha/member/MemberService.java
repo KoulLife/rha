@@ -37,6 +37,7 @@ public class MemberService {
             throw new ApiException(ErrorCode.INVALID_INPUT);
         }
         Member member = findAuthenticatedMember(memberId);
+        requireActive(member);
         String beforeName = member.getName();
         String beforePhone = member.getPhoneNumber();
         Object beforeBirthDate = member.getBirthDate();
@@ -58,6 +59,13 @@ public class MemberService {
                 .findByMemberIdInOrderByPermissionCode(List.of(member.getId()))
                 .stream().map(MemberPermission::getPermissionCode).toList();
         return MemberResponse.from(member, permissions);
+    }
+
+    /** 비활성화, 탈퇴, 퇴사한 회원이 남은 Access Token으로 본인 정보를 바꾸지 못하게 한다. */
+    private static void requireActive(Member member) {
+        if (!member.isActive()) {
+            throw new ApiException(ErrorCode.UNAUTHENTICATED);
+        }
     }
 
     /** 토큰은 유효하지만 회원이 존재하지 않으면 인증 정보가 유효하지 않은 것으로 본다. */

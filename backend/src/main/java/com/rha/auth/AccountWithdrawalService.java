@@ -44,6 +44,9 @@ public class AccountWithdrawalService {
         // 예약도 회원 행을 잠그므로, 시작 전 예약 확인과 탈퇴 사이에 새 예약이 끼어들지 못한다.
         Member member = memberRepository.findById(memberId).map(rowLock::lock)
                 .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHENTICATED));
+        if (!member.isActive()) {
+            throw new ApiException(ErrorCode.UNAUTHENTICATED);
+        }
         if (!member.isRole(MemberRole.MEMBER)) {
             throw new ApiException(ErrorCode.FORBIDDEN_ROLE);
         }
