@@ -2,7 +2,7 @@
 
 ## 기준과 결과
 
-- 계약 기준은 `api-spec/openapi.yaml`이며 Orval 입력도 이 파일이다. `docs/openapi.yaml`과 비교하면 경로·요청·응답 구조는 같고 기준 파일에 인증/업무 제약 설명이 더 보강되어 있다.
+- 계약 기준은 `api-spec/openapi.yaml`이며 Orval 입력도 이 파일이다. 과거에 `docs/openapi.yaml`이라는 낡은 사본이 있었으나 삭제했다. 기준은 이 파일 하나다.
 - 계약의 **92개 HTTP 메서드 + 경로**가 모두 `backend` 컨트롤러에 존재한다. 이는 경로 대조 결과이며 모든 업무 시나리오의 실행 성공을 의미하지 않는다.
 - 이번 작업에서 OpenAPI와 백엔드 계약을 변경하지 않았다. 생성 파일은 `npm run generate:api`로 갱신했다.
 

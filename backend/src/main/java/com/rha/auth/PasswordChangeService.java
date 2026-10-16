@@ -37,6 +37,9 @@ public class PasswordChangeService {
     public void change(Long memberId, String currentPassword, String newPassword) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHENTICATED));
+        if (!member.isActive()) {
+            throw new ApiException(ErrorCode.UNAUTHENTICATED);
+        }
 
         // 현재 비밀번호를 먼저 검증한다. 틀리면 새 비밀번호가 현재와 같은지는 알려주지 않는다.
         String currentHash = member.getPasswordHash();
