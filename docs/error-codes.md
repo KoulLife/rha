@@ -42,7 +42,7 @@
 | `ACCOUNT_DISABLED` | 탈퇴, 비활성화 또는 퇴사한 계정 | `login` |
 | `INVALID_CREDENTIALS` | 이메일 또는 비밀번호가 일치하지 않음 | `login` |
 | `INVALID_REFRESH_TOKEN` | Refresh Token이 없거나 만료/폐기됨, 또는 토큰을 가진 회원이 활성 상태가 아님 | `refreshToken` |
-| `UNAUTHENTICATED` | Access Token이 없거나 유효하지 않거나 만료됨 | 인증이 필요한 모든 API (`security: []`가 아닌 API) |
+| `UNAUTHENTICATED` | Access Token이 없거나 유효하지 않거나 만료됨. 활성 상태가 아닌 회원이 본인 정보 수정, 비밀번호 변경, 탈퇴를 호출한 경우도 같다 | 인증이 필요한 모든 API (`security: []`가 아닌 API), 본인 정보 수정·비밀번호 변경·탈퇴(`updateMyProfile`, `changeMyPassword`, `withdrawMyAccount`)의 비활성 회원 |
 
 ## 403 권한 없음
 
@@ -51,7 +51,7 @@
 | `CANNOT_CHANGE_OWN_ROLE` | 본인의 역할은 변경할 수 없음 | `updateMember` |
 | `CANNOT_CHANGE_OWN_STATUS` | 본인 계정의 상태는 변경할 수 없음 | `changeMemberStatus` |
 | `FORBIDDEN_ROLE` | 강사/관리자는 직접 탈퇴할 수 없음 | `withdrawMyAccount` |
-| `PERMISSION_DENIED` | 해당 작업에 필요한 권한이 없음 | `cancelAbsence`, `cancelLesson`, `changeLessonStatus`, `createAbsence`, `createLesson`, `createMember`, `getMember`, `getMembers`, `getReservations`, `updateLesson` |
+| `PERMISSION_DENIED` | 해당 작업에 필요한 권한이 없음 (관리자 전용 API, 담당 강사·권한 보유 강사 전용 API, 본인 것이 아닌 예약) | `approveAbsence`, `cancelAbsence`, `cancelLesson`, `cancelReservation`, `cancelResignation`, `changeLessonStatus`, `changeMemberStatus`, `completeResignation`, `confirmAttendance`, `confirmSettlement`, `createAbsence`, `createLesson`, `createLessonType`, `createMember`, `createPass`, `createPassPause`, `createPassProduct`, `createReservation`, `createRoom`, `createSettlement`, `deletePassPayment`, `deletePassProduct`, `deleteRoom`, `discardSettlement`, `getActivityLogActions`, `getActivityLogs`, `getLessonReservations`, `getMember`, `getMemberPermissions`, `getMembers`, `getPass`, `getPassPauses`, `getPassPayments`, `getPassProduct`, `getPassProducts`, `getPasses`, `getPayRates`, `getPayments`, `getPermissions`, `getReservations`, `getSettlement`, `getSettlements`, `reassignLessons`, `recordPassPayment`, `recordSettlementPayment`, `registerResignation`, `rejectAbsence`, `requestSettlementReview`, `setPassPaymentRefund`, `terminatePassPause`, `updateBusinessHours`, `updateInstructorAvailability`, `updateLesson`, `updateLessonType`, `updateMember`, `updateMemberPermissions`, `updatePass`, `updatePassPayment`, `updatePassProduct`, `updatePayRates`, `updateReservationPolicy`, `updateRoom` |
 
 ## 409 상태 충돌
 

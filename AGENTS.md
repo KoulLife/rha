@@ -36,7 +36,7 @@
 - 에러: RFC 7807 형식, `components`의 `ErrorResponse` 재사용
 - 에러 코드 목록: `/docs/error-codes.md` (새 코드 추가 시 함께 갱신)
 - 인증 불필요 API는 `security: []` 명시
-- 날짜/시간: ISO 8601 (UTC)
+- 날짜/시간: ISO 8601. 시각(`date-time`)은 UTC, 날짜만 있는 필드(`date`)는 센터 현지(Asia/Seoul) 날짜
 
 ## 프론트엔드 규칙
 - 모든 UI는 `/docs/shadcn-ui-component-guide.md`의 컴포넌트·variant·스타일 기준을 따른다.
