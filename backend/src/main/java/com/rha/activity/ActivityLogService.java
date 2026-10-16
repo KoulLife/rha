@@ -43,20 +43,23 @@ public class ActivityLogService {
         this.adminGuard = adminGuard;
     }
 
-    /** 필터 값. 형식 오류를 관리자 확인(403) 뒤에 알리기 위해 컨트롤러는 문자열 그대로 넘긴다. */
+    /** 필터 값. 형식 오류를 관리자 확인(403) 뒤에 알리기 위해 컨트롤러는 page, size를 포함해 문자열 그대로 넘긴다. */
     public record Filter(String category, String action, String actorId, String actorRole, String subjectMemberId,
             String targetType, String targetId, String from, String to, String order) {
     }
 
     @Transactional(readOnly = true)
-    public ActivityLogPageResponse getActivityLogs(Long callerId, Filter filter, int page, int size) {
+    public ActivityLogPageResponse getActivityLogs(Long callerId, Filter filter, String pageValue,
+            String sizeValue) {
         adminGuard.requireAdmin(callerId);
 
         List<Detail> invalid = new ArrayList<>();
-        if (page < 1) {
+        Integer parsedPage = parseInt("page", pageValue, invalid);
+        Integer parsedSize = parseInt("size", sizeValue, invalid);
+        if (parsedPage != null && parsedPage < 1) {
             invalid.add(new Detail("page", "1 이상이어야 합니다."));
         }
-        if (size < 1 || size > MAX_SIZE) {
+        if (parsedSize != null && (parsedSize < 1 || parsedSize > MAX_SIZE)) {
             invalid.add(new Detail("size", "1 이상 " + MAX_SIZE + " 이하여야 합니다."));
         }
         Long actorId = parseLong("actorId", filter.actorId(), invalid);
@@ -110,7 +113,8 @@ public class ActivityLogService {
         Sort sort = ascending
                 ? Sort.by(Sort.Order.asc("occurredAt"), Sort.Order.asc("id"))
                 : Sort.by(Sort.Order.desc("occurredAt"), Sort.Order.desc("id"));
-        Page<ActivityLog> result = activityLogRepository.findAll(spec, PageRequest.of(page - 1, size, sort));
+        Page<ActivityLog> result = activityLogRepository.findAll(spec,
+                PageRequest.of(parsedPage - 1, parsedSize, sort));
         return new ActivityLogPageResponse(toResponses(result.getContent()), PageInfo.of(result));
     }
 
@@ -164,6 +168,15 @@ public class ActivityLogService {
 
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private static Integer parseInt(String field, String value, List<Detail> invalid) {
+        try {
+            return Integer.valueOf(value.strip());
+        } catch (NumberFormatException e) {
+            invalid.add(new Detail(field, "값의 형식이 올바르지 않습니다."));
+            return null;
+        }
     }
 
     private static Long parseLong(String field, String value, List<Detail> invalid) {

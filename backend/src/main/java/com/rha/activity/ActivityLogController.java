@@ -28,8 +28,8 @@ public class ActivityLogController {
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
             @RequestParam(required = false) String order,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "1") String page,
+            @RequestParam(defaultValue = "20") String size) {
         return activityLogService.getActivityLogs(me.id(), new ActivityLogService.Filter(category, action, actorId,
                 actorRole, subjectMemberId, targetType, targetId, from, to, order), page, size);
     }

@@ -74,6 +74,7 @@ public class MemberAdminService {
     @Transactional
     public Member createMember(Long callerId, MemberCreateRequest request) {
         requireAdmin(callerId);
+        requestValidator.validate(request);
 
         if (memberRepository.existsByEmail(request.email())) {
             throw new ApiException(ErrorCode.EMAIL_ALREADY_EXISTS);
