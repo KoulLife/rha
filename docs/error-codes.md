@@ -2,7 +2,8 @@
 
 에러 응답은 RFC 7807(`application/problem+json`) 형식이며, 서비스 내부 코드는 `code` 필드에 담긴다. 스펙(`api-spec/openapi.yaml`)의 각 API 설명에 나온 코드를 한곳에 모은 목록이다.
 
-- 아래에 없는 오류(404 리소스 없음, 500 서버 오류 등)는 별도 코드 없이 HTTP 상태로 구분한다. 응답 본문의 `code`는 필수 필드이므로 404는 `NOT_FOUND`를 쓴다.
+- 업무 코드가 없는 오류(404 리소스 없음, 405, 406, 415, 500)는 맨 아래 "공통 오류"의 코드를 쓴다. 응답 본문의 `code`와 `timestamp`는 모든 에러 응답에 담긴다.
+- 확인 순서: 인증(401)이 가장 먼저다. 요청을 읽을 수 없는 오류(JSON 문법 오류, 필드 타입 불일치, 경로·쿼리 값의 형식 오류)는 권한 확인보다 먼저 400 `INVALID_INPUT`이다. 읽을 수 있는 요청의 값 검증은 각 API 설명의 "확인 순서"를 따르며, 권한 확인이 먼저인 API는 값이 올바르지 않아도 권한이 없으면 403이다.
 - 스펙에 새 에러 코드를 추가하면 이 문서도 함께 갱신한다.
 
 ## 400 잘못된 요청
@@ -100,3 +101,15 @@
 | `ROOM_TIME_CONFLICT` | 같은 룸의 다른 수업과 시간이 겹침 | `createLesson`, `updateLesson` |
 | `SETTLEMENT_PERIOD_OVERLAP` | 같은 강사의 다른 정산 기간과 겹침 | `createSettlement` |
 | `UNRECORDED_ATTENDANCE_EXISTS` | 출결이 기록되지 않은 예약이 있어 정산할 수 없음 | `createSettlement` |
+
+## 공통 오류
+
+특정 API의 업무 규칙이 아니라 모든 API에서 날 수 있는 오류다. 스펙의 각 API 응답 목록에는 적지 않는다.
+
+| 코드 | 상태 | 의미 |
+|---|---|---|
+| `NOT_FOUND` | 404 | 리소스나 경로가 없음 |
+| `METHOD_NOT_ALLOWED` | 405 | 지원하지 않는 HTTP 메서드 |
+| `NOT_ACCEPTABLE` | 406 | 지원하지 않는 응답 형식 요청 (`Accept`) |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | 지원하지 않는 요청 본문 형식 (`Content-Type`) |
+| `INTERNAL_SERVER_ERROR` | 500 | 서버 내부 오류. `detail`에 내부 정보를 담지 않고 서버 로그에만 남긴다 |
