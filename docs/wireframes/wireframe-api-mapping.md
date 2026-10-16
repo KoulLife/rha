@@ -40,9 +40,7 @@
 | 회원 | 알림 | 내 알림 | `GET /notifications` · `getMyNotifications` |
 | 회원 | 내 계정 | 프로필·비밀번호 | `GET /members/me` · `getMyProfile` |
 | 강사 | 홈 | 내 수업 대시보드 | 오늘 `GET /lessons` + 수업별 예약자 조회 |
-| 강사 | 내 수업 | 담당 수업 목록 | `GET /lessons` · `getLessons` (`instructorId`, 날짜 범위) |
-| 강사 | 수업별 예약자 | 담당 수업의 예약자 | `GET /lessons/{lessonId}/reservations` · `getLessonReservations` |
-| 강사 | 출결 처리 | 예약자 출결 상태 | 예약자 조회와 `PUT /reservations/{reservationId}/attendance` · `confirmAttendance` |
+| 강사 | 수업 | 시간표·목록 → 담당 수업 선택 → 예약자·회원/이용권 정보·출결 | `GET /lessons` · `getLessons`, `GET /lessons/{lessonId}` · `getLesson`, `GET /lessons/{lessonId}/reservations` · `getLessonReservations`, `PUT /reservations/{reservationId}/attendance` · `confirmAttendance` |
 | 강사 | 부재 신청 | 내 부재 목록·신청 | `GET /absences` · `getAbsences`; `POST /absences` · `createAbsence` |
 | 강사 | 내 프로필 | 프로필·비밀번호 | `GET /members/me` · `getMyProfile` |
 | 강사 | 알림 | 내 알림 | `GET /notifications` · `getMyNotifications` |
@@ -177,7 +175,7 @@
 
 | 화면 / 이벤트 | API · operationId | 요청값 / 성공 후 변화 |
 | --- | --- | --- |
-| 회원 홈의 `공개 수업 목록` | `GET /lessons` · `getLessons` | 공개된 예정 수업을 시작 시각순으로 최대 6개 미리보기. 행 클릭은 해당 ID의 수업 상세로 이동. `수업 목록 보기`·`수업 목록 전체 보기`는 전체 목록으로 이동 |
+| 회원 홈의 `수업 목록` | `GET /lessons` · `getLessons` | 이번 주 공개 수업을 시작 시각순으로 표시. 카드 안의 테이블만 스크롤하며 홈에서는 페이지를 나누지 않음. `상세 보기`는 해당 ID의 수업 상세로, `수업 목록 보기`·`전체 보기`는 전체 목록으로 이동 |
 | `수업 목록` 진입·필터 조회·페이지 변경 | `GET /lessons` · `getLessons` | `from`, `to`, `lessonTypeId`, `instructorId`, `roomId`, `page`, `size`, `order=ASC`. 회원은 공개된 수업만 조회 |
 | `상세 보기` | `GET /lessons/{lessonId}` · `getLesson` | 클릭한 목록의 `id`를 경로에 전달. 개인 예약·이용권·취소 정책은 별도 조회 |
 | 상세에서 내 예약 여부 확인 | `GET /members/me/reservations` · `getMyReservations` | 해당 수업일의 `lessonFrom`, `lessonTo` 범위 조회 후 `lesson.id`로 연결 |
@@ -442,7 +440,7 @@
 | 역할 | 확인 위치 | 범위 | 역할별 문서 |
 | --- | --- | --- | --- |
 | 회원 | 기존 수업 목록 / 내 예약·대기·출결 / 내 이용권 / 알림 | 관리자용 수업 운영 메뉴 없음. 수업 공개·변경·취소·출결 결과, 본인 예약/취소 및 대기 제안 확인 | [회원 API 매핑](06-lesson-operations-member-api.md) |
-| 강사 | 수업 목록 / 수업별 예약자 / 출결 처리 | 담당 예약자·출결·정정, 유형별 권한이 있는 개설/수정/공개/취소, 반복 제안 | [강사 API 매핑](06-lesson-operations-instructor-api.md) |
+| 강사 | 수업 단일 화면 | 시간표·목록에서 수업 선택 후 담당 예약자·출결·정정, 유형별 권한이 있는 운영 기능 | [강사 API 매핑](06-lesson-operations-instructor-api.md) |
 | 관리자 | 수업 운영 → 수업 회차 / 예약 현황·출결 / 반복 일정 · 제안 | 전체 수업·예약·출결 운영, 예약 취소, 반복 생성/수정 제안, 대기 자동 승급 제안 | [관리자 API 매핑](06-lesson-operations-admin-api.md) |
 
 ### 기존 화면과 달라진 부분

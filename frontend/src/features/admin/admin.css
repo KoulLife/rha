@@ -43,9 +43,10 @@
   .admin-instructor-swatch[data-color="5"] { --instructor-color: var(--instructor-5); }
   .admin-absence-detail-card > [data-slot="card-content"] { display: flex; flex-direction: column; gap: var(--space-panel); }
   .admin-absence-actions { justify-content: flex-end; margin-top: auto; padding-top: var(--space-detail); border-top: 1px solid var(--border); }
-  .admin-lesson-detail-card > .menu-panel-heading { flex-wrap: wrap; }
-  .admin-lesson-detail-card > .menu-panel-heading .menu-actions { justify-content: flex-end; margin-left: auto; }
-  .admin-lesson-detail-card .menu-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, auto); grid-auto-flow: column; column-gap: var(--space-panel); }
+  .admin-lesson-instructor-filter { flex: 0 0 var(--timetable-filter-width); min-width: 0; }
+  .admin-lesson-instructor-filter [data-slot="select-trigger"] { width: 100%; }
+  .admin-lesson-list-toolbar .timetable-main-controls { flex-wrap: nowrap; }
+  .admin-lesson-list-toolbar .timetable-main-navigation { flex-shrink: 0; }
   .admin-money { text-align: right; font-variant-numeric: tabular-nums; }
   .admin-loading { display: grid; gap: var(--space-detail); }
   .admin-notification-controls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-detail); min-width: 0; }
@@ -107,7 +108,6 @@
   .admin-page:has(.admin-form[data-variant="filter"][data-expanded="true"]) .admin-table-area { flex: none; }
 }
 @media(max-width: 767px) {
-  .admin-lesson-detail-card .menu-facts { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-flow: row; }
   .admin-lesson-form-panel .admin-form { grid-template-columns: minmax(0, 1fr); }
   .admin-form[data-variant="filter"] .admin-filter-toggle[data-desktop-visible="false"] { display: inline-flex; }
   .admin-form[data-variant="filter"][data-expanded="false"] > [data-filter-mobile-extra] { display: none; }
@@ -168,4 +168,22 @@
   .admin-lesson-roster .admin-table-area, .admin-lesson-roster .admin-table-area .menu-panel-table,
   .admin-lesson-roster .admin-table-area .menu-panel-table > [data-slot="card-content"] { flex: none; min-height: auto; }
   .admin-lesson-roster .admin-table-area [data-slot="table-container"] { max-height: none; }
+  .admin-lesson-roster .menu-panel-heading { flex-wrap: wrap; }
+  .admin-lesson-roster .menu-panel-heading > :last-child { margin-inline-start: auto; }
+}
+
+@media (max-width: 1199px) {
+  .admin-lesson-list-toolbar .timetable-main-controls { flex-wrap: wrap; }
+}
+
+.admin-lesson-list-layout .admin-table-area { display: flex; flex-direction: column; height: var(--timetable-height); min-height: 0; gap: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--card); }
+.admin-lesson-list-layout .admin-table-area .menu-panel-table { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; border: 0; border-radius: 0; }
+.admin-lesson-list-layout .admin-table-area .menu-panel-table > [data-slot="card-content"] { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.admin-lesson-list-layout .admin-table-area [data-slot="table-container"] { flex: 1 1 auto; min-height: 0; max-height: none; overflow: auto; }
+.admin-lesson-list-layout .timetable-preview .menu-facts { gap: var(--space-detail); }
+@media (min-width: 1200px) {
+  .admin-lesson-list-layout { height: var(--timetable-height); }
+  .admin-lesson-list-layout > .timetable-list-panel,
+  .admin-lesson-list-layout .admin-table-area { display: flex; flex-direction: column; min-height: 0; }
+  .admin-lesson-list-layout .admin-table-area { flex: 1 1 auto; height: 100%; }
 }

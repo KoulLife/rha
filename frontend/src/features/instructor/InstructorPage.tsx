@@ -3,23 +3,20 @@ import { toast } from "sonner";
 import type { Screen } from "@/app/routes";
 import { seoulDate, type DashboardData, type DashboardUser } from "../dashboard/model";
 import { dashboardPreviewTime } from "../dashboard/preview";
-import { InstructorLessonsPage } from "./InstructorLessonsPage";
 import { InstructorAbsencesPage } from "./InstructorAbsencesPage";
 import { absenceRestriction, canWithdrawAbsence, type InstructorState } from "./model";
-import type { RecordAttendance } from "./AttendanceActions";
 import "./instructor.css";
 
-export type InstructorScreen = "attendees" | "attendance" | "attendance-corrections" | "absences";
+export type InstructorScreen = "absences";
 export function isInstructorScreen(screen: Screen): screen is InstructorScreen {
-  return ["attendees", "attendance", "attendance-corrections", "absences"].includes(screen);
+  return screen === "absences";
 }
 
-export function InstructorPage({ screen, user, data, setData, state, setState, selectedId, onNavigate, onRecord }: {
-  onRecord: RecordAttendance;
+export function InstructorPage({ user, data, setData, state, setState }: {
   screen: InstructorScreen; user: DashboardUser; data: DashboardData; setData: Dispatch<SetStateAction<DashboardData>>;
-  state: InstructorState; setState: Dispatch<SetStateAction<InstructorState>>; selectedId: number; onNavigate: (screen: Screen, id?: number) => void;
+  state: InstructorState; setState: Dispatch<SetStateAction<InstructorState>>;
 }) {
-  if (screen === "absences") return <InstructorAbsencesPage user={user} data={data} state={state} onCreate={(detail, reason) => {
+  return <InstructorAbsencesPage user={user} data={data} state={state} onCreate={(detail, reason) => {
     const error = absenceRestriction(data.absences, state.absenceDetails, user.id, detail.startAt, detail.endAt, dashboardPreviewTime);
     if (error) { toast.error(error); return; }
     const id = Math.max(0, ...data.absences.map(item => item.id)) + 1;
@@ -33,5 +30,4 @@ export function InstructorPage({ screen, user, data, setData, state, setState, s
     setState(previous => ({ ...previous, absenceDetails: { ...previous.absenceDetails, [id]: { ...previous.absenceDetails[id], processedAt: dashboardPreviewTime } } }));
     toast.success("부재 신청을 철회했습니다.");
   }} />;
-  return <InstructorLessonsPage key={`${screen}-${selectedId}`} mode={screen === "attendance-corrections" ? "attendance" : screen} user={user} data={data} selectedId={selectedId} changes={state.changes} onNavigate={onNavigate} onRecord={onRecord} />;
 }

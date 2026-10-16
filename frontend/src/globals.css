@@ -56,6 +56,10 @@
   --font-size-caption: .8125rem;
   --font-size-title: 1.5rem;
   --font-size-metric: 1.875rem;
+  --home-font-size-body: 1rem;
+  --home-font-size-caption: .875rem;
+  --home-font-size-title: 1.625rem;
+  --home-font-size-metric: 2rem;
   --font-weight-heading: 600;
   --font-weight-metric: 300;
   --control-height: 2.75rem;
@@ -238,10 +242,7 @@
 :root {
   --app-header-height: 4rem;
   --home-footer-height: 1.75rem;
-  --home-gap: 1rem;
-  --home-panel-padding: var(--panel-padding);
   --home-content-padding: var(--page-padding-block);
-  --home-metric-padding: var(--panel-padding);
   --home-public-slot-height: 4rem;
   --home-reservation-slot-height: 4.5rem;
   --home-pass-height: 17rem;
@@ -252,14 +253,11 @@
     --header-border: color-mix(in srgb, var(--primary) 22%, var(--secondary))
 }
 :root {
-  --dashboard-gap: 1rem;
-  --dashboard-panel-padding: var(--panel-padding);
-  --dashboard-metric-padding: var(--panel-padding);
   --dashboard-row-padding: .75rem;
   --dashboard-notification-max-height: calc(var(--table-row-height) * 5);
-  --dashboard-dialog-width: 30rem;
-  --dashboard-dialog-margin: 1rem;
-  --dashboard-dialog-padding: 1.5rem;
+  --dashboard-notification-date-width: 6rem;
+  --dashboard-notification-badge-width: 4.25rem;
+  --dashboard-notification-icon-width: 1.75rem;
   --dashboard-page-width: 75rem;
   --dashboard-control-height: var(--control-height);
   --dashboard-metric-value-size: var(--font-size-metric);
@@ -269,11 +267,14 @@
   --dashboard-roster-number-width: 7rem;
 }
 :root {
-  --home-pass-balance-size: var(--font-size-metric);
-  --home-pass-section-gap: .25rem;
-  --home-pass-legend-size: .5rem;
-  --home-pass-legend-radius: .125rem;
-  --home-pass-progress-height: .375rem;
+  --pass-chart-size: 9rem;
+  --pass-chart-compact-size: 7rem;
+  --pass-chart-visual-width: 10rem;
+  --pass-chart-compact-visual-width: 8.5rem;
+  --pass-fact-label-width: 5rem;
+  --pass-detail-width: 48rem;
+  --pass-chart-stroke: .625rem;
+  --pass-chart-track: var(--secondary);
 }
 
 :root {
@@ -304,15 +305,79 @@
   --menu-field-width: 10rem;
   --menu-table-row-height: 3.5rem;
   --member-reservations-table-min-width: 49rem;
-  --menu-count-cell-padding: .5rem;
   --menu-fact-label-width: 7rem;
-  --menu-pass-number-size: 2.25rem;
   --menu-dialog-width: 30rem;
   --menu-dialog-margin: 1rem;
 }
 
 @layer utilities {
-  /* 화면 사이에 공유하는 제목·카드 크기만 전역에서 맞춘다. */
+  /* 모든 역할의 홈 화면은 같은 글자 크기와 카드 간격을 사용한다. */
+  .home-page, .dashboard-page:not(.dashboard-subpage) {
+    --font-size-body: var(--home-font-size-body);
+    --font-size-caption: var(--home-font-size-caption);
+    --font-size-title: var(--home-font-size-title);
+    --font-size-metric: var(--home-font-size-metric);
+    font-size: var(--font-size-body);
+  }
+  .home-page, .dashboard-page { display: grid; gap: var(--menu-gap); width: 100%; min-width: 0; align-content: start; }
+  .home-heading, .dashboard-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--menu-gap); }
+  .home-heading h1, .dashboard-heading h1 { font-size: var(--font-size-title); font-weight: 500; line-height: 1.4; }
+  .home-metrics, .dashboard-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--menu-gap); }
+  .home-metric[data-slot="card"], .dashboard-metric[data-slot="card"],
+  .home-panel[data-slot="card"], .dashboard-panel[data-slot="card"] {
+    --card-spacing: var(--panel-padding);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-panel);
+    min-width: 0;
+  }
+  .home-metric, .dashboard-metric { min-height: var(--home-metric-card-height); padding-block: var(--panel-padding); }
+  .home-columns, .dashboard-columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--menu-gap); align-items: stretch; }
+  @media (max-width: 1099px) {
+    .home-columns, .dashboard-columns { grid-template-columns: minmax(0, 1fr); }
+    .home-metrics, .dashboard-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 767px) {
+    .home-heading, .dashboard-heading { flex-direction: column; align-items: start; }
+  }
+
+  /* 역할에 관계없이 같은 의미의 버튼은 같은 variant를 사용한다. */
+  .button-table-action {
+    inline-size: var(--table-action-width);
+    block-size: var(--table-action-height);
+    padding-inline: var(--space-control);
+    font-size: var(--font-size-caption);
+  }
+  .button-warning { color: var(--button-warning-foreground); background: var(--warning-soft); border-color: var(--warning-border); }
+  .button-warning:hover { background: var(--warning-hover); }
+  .button-destructive { color: var(--button-destructive-foreground); background: var(--destructive-soft); border-color: var(--destructive-border); }
+  .button-destructive:hover { background: var(--destructive-hover); }
+  .button-cancel { color: var(--button-cancel-foreground); background: var(--button-cancel-background); border-color: var(--border); }
+  .button-cancel:hover { background: var(--button-cancel-hover); }
+
+  .menu-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-control); }
+
+  .menu-dialog-overlay { position: fixed; inset: 0; z-index: 60; background: var(--overlay); }
+  .menu-dialog { position: fixed; top: 50%; left: 50%; translate: none; transform: translate(-50%, -50%); z-index: 61; display: grid; gap: var(--menu-gap); width: min(var(--menu-dialog-width), calc(100vw - var(--menu-dialog-margin) * 2)); max-height: calc(100dvh - var(--menu-dialog-margin) * 2); padding: var(--space-panel); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); }
+  .menu-dialog-title { margin: 0; font-size: 1.125rem; font-weight: 600; }
+  .menu-dialog-body { white-space: pre-line; color: var(--muted-foreground); font-size: var(--font-size-body); line-height: 1.8; overflow-y: auto; min-height: 0; }
+  .menu-dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-control); }
+
+  .menu-page { display: grid; gap: var(--menu-gap); min-width: 0; align-content: start; }
+  .menu-page .page-title { margin: 0; gap: var(--menu-gap); align-items: center; }
+  .menu-page .page-title p { margin-top: var(--space-control); font-size: var(--font-size-body); color: var(--muted-foreground); }
+  .menu-panel { --card-spacing: var(--menu-panel-padding); border: 1px solid var(--border); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); min-width: 0; gap: var(--space-detail); }
+  .menu-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-detail); padding-bottom: var(--space-detail); border-bottom: 1px solid var(--border); }
+  .menu-panel-heading h2, .menu-stack h3 { margin: 0; font-size: var(--font-size-body); font-weight: var(--font-weight-heading); }
+  .menu-panel > [data-slot="card-content"] { min-width: 0; }
+  .menu-list, .menu-stack { display: grid; gap: var(--menu-gap); min-width: 0; }
+  .menu-facts { display: grid; margin: 0; gap: var(--space-detail); font-size: var(--font-size-body); }
+  .menu-facts > div { display: grid; grid-template-columns: var(--menu-fact-label-width) minmax(0, 1fr); gap: var(--space-detail); }
+  .menu-facts dt { color: var(--muted-foreground); font-size: var(--font-size-caption); }
+  .menu-facts dd { margin: 0; overflow-wrap: anywhere; }
+  .menu-note { padding: var(--space-detail); border-radius: var(--radius-md); background: var(--muted); color: var(--muted-foreground); font-size: var(--font-size-caption); line-height: 1.7; }
+
+  /* 회원·강사·관리자 화면에서 공유하는 제목과 카드 크기. */
   .menu-page .page-title h1, .dashboard-subpage .dashboard-heading h1 {
     font-size: var(--font-size-title);
     font-weight: 500;
@@ -349,6 +414,8 @@
   --timetable-height: 34rem;
   --timetable-mobile-height: 32rem;
   --timetable-hour-height: 2.75rem;
+  --timetable-member-hour-height: 2.833333rem;
+  --timetable-standard-hours: 12;
   --timetable-header-height: 2.5rem;
   --timetable-time-width: 3.5rem;
   --timetable-day-width: 5.5rem;
@@ -360,10 +427,9 @@
 
 :root {
   --home-public-table-min-width: 40rem;
-  --home-fit-table-action-width: 4.75rem;
-  --home-fit-body-size: .875rem;
-  --home-fit-caption-size: .75rem;
-  --home-fit-action-height: 1.75rem;
-  --home-fit-table-row-height: 3rem;
-  --home-fit-table-header-height: 2.5rem;
+  --home-panel-heading-height: calc(var(--control-height) + var(--space-control) * 2);
+  --home-metric-card-height: 7.5rem;
+  --home-table-row-height: 3rem;
+  --home-table-header-height: 2.5rem;
+  --home-public-table-scroll-height: calc(var(--home-table-header-height) + var(--home-table-row-height) * 5);
 }

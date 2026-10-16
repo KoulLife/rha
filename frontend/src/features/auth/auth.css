@@ -166,16 +166,6 @@
     color: var(--secondary-foreground);
     line-height: 1.8;
   }
-  .auth-confirm-dialog {
-    padding: var(--auth-card-padding);
-    gap: var(--auth-field-gap);
-  }
-  .auth-confirm-dialog [data-slot="alert-dialog-footer"] {
-    margin-top: var(--auth-text-gap);
-  }
-  .auth-confirm-dialog [data-slot="button"] {
-    min-height: var(--auth-control-height);
-  }
   .preview-toolbar {
     flex-wrap: wrap;
     gap: var(--auth-text-gap);

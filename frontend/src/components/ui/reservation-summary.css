@@ -1,6 +1,5 @@
 @layer utilities {
-  .reservation-summary { display: grid; gap: var(--space-control); }
-  .reservation-summary h2 { margin: 0; font-size: var(--font-size-body); font-weight: var(--font-weight-heading); }
-  .reservation-summary-counts { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-detail); font-size: var(--font-size-caption); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .reservation-summary { display: flex; justify-content: flex-end; min-width: 0; margin-inline-start: auto; }
+  .reservation-summary-counts { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-detail); font-size: var(--font-size-caption); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
   .reservation-summary-counts > span:not([data-slot="badge"]) strong { color: var(--foreground); }
 }
