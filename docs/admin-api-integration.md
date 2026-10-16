@@ -50,7 +50,7 @@ Access Token은 메모리에만 보관하고 요청에 Bearer 헤더를 넣는�
 
 ## 백엔드 운영 준비 사항
 
-- 이메일 인증, 관리자 초대, 비밀번호 재설정은 API가 있으나 `LoggingEmailVerificationMailer`, `LoggingPasswordResetMailer`가 개발용 코드/토큰을 로그로 출력한다. 실제 이메일 발송 구현이 필요하다.
+- 이메일 인증, 관리자 초대, 비밀번호 재설정은 API가 있으나 `LoggingEmailVerificationMailer`, `LoggingPasswordResetMailer`가 개발용 코드/토큰을 로그로 출력하며 `local` 프로필에서만 켜진다(프로필을 지정하지 않으면 `local`). 운영은 `SPRING_PROFILES_ACTIVE`로 다른 프로필을 지정하고 `JWT_SECRET`(32바이트 이상)을 환경변수로 넣어야 하며, 실제 이메일 발송 구현(`EmailVerificationMailer`, `PasswordResetMailer`)이 없으면 기동에 실패한다.
 - 새 DB에는 기본 관리자 계정이 없다. 실제 사용에는 팀원이 준비한 관리자 계정/초기화 절차가 필요하다. 미리보기의 `admin@rha.example`은 실제 계정이 아니다.
 - 로컬은 Vite의 `/v1` 프록시를 통해 접근한다. 배포에서도 같은 출처의 `/v1` 역방향 프록시와 HTTPS를 사용하면 현재 Secure·SameSite=Strict 쿠키 정책을 유지할 수 있다. 별도 도메인 직접 호출은 백엔드 CORS·쿠키 정책 검토가 필요하다.
 - 이번 업무 연결 범위는 관리자 화면이다. 기존 강사 담당 수업/부재 UI의 메모리 상태와 회원·강사 홈 예시 전체를 실제 API로 전환한 작업은 아니다.
