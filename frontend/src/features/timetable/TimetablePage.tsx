@@ -112,12 +112,11 @@ export function TimetablePage({
         }}
       />
     );
-  const renderToolbar = (legend?: ReactNode, fullWidth = false) => (
+  const renderToolbar = (legend?: ReactNode) => (
     <div
       className="timetable-toolbar timetable-main-toolbar"
       data-editing={editing}
       data-view={view}
-      data-full-width={fullWidth}
     >
       <WeekToolbarControls
         monthId="timetable-month"
@@ -126,24 +125,26 @@ export function TimetablePage({
         today={today}
         onChangeDate={changeDate}
         navigationPrefix={legend}
+        navigationSuffix={
+          canEdit && (
+            <div className="menu-actions timetable-edit-actions">
+              {editing ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => openCreate()}
+                  >
+                    수업 추가
+                  </Button>
+                  <Button onClick={() => setEditing(false)}>편집 완료</Button>
+                </>
+              ) : (
+                <Button onClick={() => setEditing(true)}>시간표 편집</Button>
+              )}
+            </div>
+          )
+        }
       />
-      {canEdit && (
-        <div className="menu-actions timetable-edit-actions">
-          {editing ? (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => openCreate()}
-              >
-                수업 추가
-              </Button>
-              <Button onClick={() => setEditing(false)}>편집 완료</Button>
-            </>
-          ) : (
-            <Button onClick={() => setEditing(true)}>시간표 편집</Button>
-          )}
-        </div>
-      )}
     </div>
   );
   return (
@@ -198,7 +199,7 @@ type ScheduleProps = {
   setScope: (value: string) => void;
   status: string;
   setStatus: (value: string) => void;
-  renderToolbar: (legend?: ReactNode, fullWidth?: boolean) => ReactNode;
+  renderToolbar: (legend?: ReactNode) => ReactNode;
 };
 
 function WeekSchedule({
@@ -223,7 +224,7 @@ function WeekSchedule({
     const status = query.error instanceof ApiError ? query.error.problem.status : undefined;
     return (
       <>
-        {renderToolbar(undefined, true)}
+        {renderToolbar()}
         <Alert variant="destructive">
           <AlertTitle>
             {status === 401
@@ -248,7 +249,7 @@ function WeekSchedule({
   if (loading)
     return (
       <>
-        {renderToolbar(undefined, true)}
+        {renderToolbar()}
         <div
           role="status"
           aria-label="시간표 불러오는 중"
@@ -489,7 +490,6 @@ function Schedule({
             </ul>
           </div>
         ) : undefined,
-        !rows.length && !editing,
       )}
       {(editing || !rows.length) && filtersPanel}
       {!rows.length && !editing ? (

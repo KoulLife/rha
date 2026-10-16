@@ -12,6 +12,7 @@ export function WeekToolbarControls({
   today,
   onChangeDate,
   navigationPrefix,
+  navigationSuffix,
 }: {
   monthId: string;
   date: string;
@@ -19,6 +20,7 @@ export function WeekToolbarControls({
   today: string;
   onChangeDate: (date: string) => void;
   navigationPrefix?: ReactNode;
+  navigationSuffix?: ReactNode;
 }) {
   const dayLabel = (value: string) => value.slice(5).replace("-", ".");
 
@@ -82,6 +84,7 @@ export function WeekToolbarControls({
             <ChevronRight aria-hidden="true" />
           </Button>
         </div>
+        {navigationSuffix}
       </div>
     </div>
   );
