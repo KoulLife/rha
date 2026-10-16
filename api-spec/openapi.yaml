@@ -781,6 +781,7 @@ paths:
         - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
         - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 코드 중복이면 409 (LESSON_TYPE_CODE_DUPLICATED).
         - 새로 등록한 유형은 활성(`active: true`)이다.
+        - 이름의 앞뒤 공백은 제거해 저장하며, 제거한 뒤 길이가 1~50자여야 한다. 공백만으로 이루어진 이름은 400 (INVALID_INPUT)이다.
       requestBody:
         required: true
         content:
@@ -820,6 +821,7 @@ paths:
         - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
         - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없는 유형이면 404.
         - 비활성 유형도 수정할 수 있으며, 다시 활성화하면 권한 목록에 되돌아온다.
+        - 이름의 앞뒤 공백은 제거해 저장하며, 제거한 뒤 길이가 1~50자여야 한다. 공백만으로 이루어진 이름은 400 (INVALID_INPUT)이다.
       requestBody:
         required: true
         content:
@@ -3272,7 +3274,7 @@ paths:
         - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED). 삭제된 룸의 이름은 다시 사용할 수 있다.
         - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
         - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 이름 중복이면 409 (ROOM_NAME_DUPLICATED).
-        - 이름의 앞뒤 공백은 제거해 저장한다.
+        - 이름의 앞뒤 공백은 제거해 저장하며, 제거한 뒤 길이가 1~50자여야 한다. 공백만으로 이루어진 이름은 400 (INVALID_INPUT)이다.
       requestBody:
         required: true
         content:
@@ -3329,7 +3331,7 @@ paths:
         - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED). 자기 자신과 같은 이름으로 수정하는 것은 허용한다.
         - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
         - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없거나 삭제된 룸이면 404 → 이름 중복이면 409 (ROOM_NAME_DUPLICATED).
-        - 이름의 앞뒤 공백은 제거해 저장한다.
+        - 이름의 앞뒤 공백은 제거해 저장하며, 제거한 뒤 길이가 1~50자여야 한다. 공백만으로 이루어진 이름은 400 (INVALID_INPUT)이다.
       requestBody:
         required: true
         content:
