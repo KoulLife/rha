@@ -52,7 +52,8 @@ public class LessonTypeService {
         if (lessonTypeRepository.existsByCode(request.code())) {
             throw new ApiException(ErrorCode.LESSON_TYPE_CODE_DUPLICATED);
         }
-        LessonType type = LessonType.create(request.code(), request.name(), request.capacity(), Instant.now());
+        LessonType type = LessonType.create(request.code(), request.name().strip(), request.capacity(),
+                Instant.now());
         LessonType saved;
         try {
             saved = lessonTypeRepository.saveAndFlush(type);
@@ -78,7 +79,8 @@ public class LessonTypeService {
         String beforeName = type.getName();
         int beforeCapacity = type.getCapacity();
         boolean beforeActive = type.isActive();
-        type.update(request.name(), request.capacity(), request.active(), Instant.now());
+        type.update(request.name() == null ? null : request.name().strip(), request.capacity(),
+                request.active(), Instant.now());
         activityLogRecorder.record(ActivityAction.LESSON_TYPE_UPDATED, callerId, null, "LESSON_TYPE", type.getId(),
                 Josa.eulReul("수업 유형 '" + type.getName() + "'") + " 수정했다.",
                 ActivityChange.ifChanged("name", beforeName, type.getName()),

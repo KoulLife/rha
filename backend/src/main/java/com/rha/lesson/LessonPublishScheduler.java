@@ -16,7 +16,7 @@ public class LessonPublishScheduler {
         this.lessonService = lessonService;
     }
 
-    @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
+    @Scheduled(fixedRate = 60_000, initialDelay = 60_000)
     public void publishDueLessons() {
         lessonService.publishDueLessons(Instant.now());
     }

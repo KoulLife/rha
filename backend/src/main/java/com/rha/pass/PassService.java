@@ -392,12 +392,12 @@ public class PassService {
         Instant now = Instant.now();
         LocalDate beforeEndDate = pass.getEndDate();
         if (pause.getStatus() == PassPauseStatus.SCHEDULED || !pause.getStartDate().isBefore(today)) {
-            pass.changeEndDate(pass.getEndDate().minusDays(pause.plannedDays()), now);
+            pass.changeEndDate(shortened(pass, pause.plannedDays()), now);
             pause.cancel(now);
         } else {
             LocalDate newEnd = today.minusDays(1);
             long unused = ChronoUnit.DAYS.between(newEnd, pause.getEndDate());
-            pass.changeEndDate(pass.getEndDate().minusDays(unused), now);
+            pass.changeEndDate(shortened(pass, unused), now);
             pause.endEarly(newEnd, now);
         }
         pauseRepository.saveAndFlush(pause);
@@ -424,16 +424,34 @@ public class PassService {
         refreshStatuses(today);
         Instant now = Instant.now();
         List<Pass> passes = passRepository.findByPassProductIdAndStatusInForUpdate(passProductId, NOT_EXPIRED);
+        Map<Long, Integer> extendedDays = validityDays == null ? Map.of() : extendedDaysOf(passes);
         for (Pass pass : passes) {
             if (countDelta != null) {
                 pass.applyCountDelta(countDelta, now);
             }
             if (validityDays != null) {
-                pass.changeEndDate(pass.getStartDate().plusDays(validityDays - 1L), now);
+                pass.changeEndDate(pass.getStartDate()
+                        .plusDays(validityDays - 1L + extendedDays.getOrDefault(pass.getId(), 0)), now);
                 pass.changeStatus(statusOf(pass, today), now);
             }
         }
         return passes.size();
+    }
+
+    /** 정지로 연장된 일수. 취소된 정지는 제외하고, 조기 해제한 정지는 실제로 정지한 일수만 센다. */
+    private Map<Long, Integer> extendedDaysOf(List<Pass> passes) {
+        if (passes.isEmpty()) {
+            return Map.of();
+        }
+        return pauseRepository.findByPassIdInAndStatusNot(passes.stream().map(Pass::getId).toList(),
+                PassPauseStatus.CANCELED).stream()
+                .collect(Collectors.groupingBy(PassPause::getPassId, Collectors.summingInt(PassPause::days)));
+    }
+
+    /** 정지 해제로 만료일을 줄인다. 시작일보다 앞서지 않는다. */
+    private static LocalDate shortened(Pass pass, long days) {
+        LocalDate end = pass.getEndDate().minusDays(days);
+        return end.isBefore(pass.getStartDate()) ? pass.getStartDate() : end;
     }
 
     // ===== 공통 =====
