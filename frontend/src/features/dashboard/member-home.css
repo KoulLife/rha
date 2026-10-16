@@ -44,7 +44,9 @@
     font-size: var(--font-size-caption);
     color: var(--muted-foreground);
   }
-  .home-columns { min-height: 0; }
+  .home-columns {
+    min-height: 0;
+  }
   .home-side {
     display: grid;
     grid-template-rows: max-content max-content;
@@ -75,7 +77,8 @@
     flex: 1;
     min-height: 0;
   }
-  .home-lesson-list, .home-reservation-list {
+  .home-lesson-list,
+  .home-reservation-list {
     display: grid;
     height: 100%;
     min-height: 0;
@@ -87,15 +90,20 @@
     height: auto;
     grid-auto-rows: minmax(var(--home-reservation-slot-height), auto);
   }
-  .home-lesson, .home-reservation {
+  .home-lesson,
+  .home-reservation {
     border-bottom: 1px solid var(--border);
   }
-  .home-lesson:last-child, .home-reservation:last-child {
+  .home-lesson:last-child,
+  .home-reservation:last-child {
     border-bottom-color: transparent;
   }
   .home-lesson {
     display: grid;
-    grid-template-columns: minmax(var(--home-lesson-side-min), 1fr) minmax(0, 1.6fr) minmax(var(--home-lesson-side-min), 1fr);
+    grid-template-columns: minmax(var(--home-lesson-side-min), 1fr) minmax(0, 1.6fr) minmax(
+        var(--home-lesson-side-min),
+        1fr
+      );
     gap: var(--space-detail);
     align-items: center;
     min-height: var(--home-public-slot-height);
@@ -122,21 +130,28 @@
   .home-lesson-info > span {
     font-variant-numeric: tabular-nums;
   }
-  .home-lesson-time span, .home-lesson-info p, .home-lesson-info > span, .home-reservation p {
+  .home-lesson-time span,
+  .home-lesson-info p,
+  .home-lesson-info > span,
+  .home-reservation p {
     font-size: var(--font-size-caption);
     color: var(--muted-foreground);
   }
-  .home-lesson-info h3, .home-reservation h3, .home-pass-heading h3 {
+  .home-lesson-info h3,
+  .home-reservation h3,
+  .home-pass-heading h3 {
     font-size: var(--font-size-body);
     font-weight: 600;
   }
-  .home-lesson-action, .home-reservation-action {
+  .home-lesson-action,
+  .home-reservation-action {
     display: flex;
     flex-direction: column;
     align-items: end;
     gap: var(--space-control);
   }
-  .home-lesson-action [data-slot="button"], .home-reservation-action [data-slot="button"] {
+  .home-lesson-action [data-slot="button"],
+  .home-reservation-action [data-slot="button"] {
     font-size: var(--font-size-body);
     height: var(--control-height);
   }
@@ -161,7 +176,10 @@
     justify-content: space-between;
     gap: var(--space-control);
   }
-  .home-pass-heading h3 { min-width: 0; overflow-wrap: anywhere; }
+  .home-pass-heading h3 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
   .home-panel-pass {
     min-height: var(--home-pass-height);
     container: home-pass / inline-size;
@@ -173,7 +191,8 @@
   }
 }
 @media (max-width: 1099px) {
-  .home-lesson-list, .home-reservation-list {
+  .home-lesson-list,
+  .home-reservation-list {
     height: auto;
   }
 }
@@ -197,22 +216,49 @@
   }
 }
 @layer utilities {
-  .home-pass-footer { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-control); padding-top: var(--space-control); font-size: var(--font-size-caption); }
-  .home-panel-pass .pass-usage { align-self: center; }
-  .home-panel > [data-slot="card-content"]:has(> [data-slot="empty"]) { display: flex; align-items: center; justify-content: center; }
+  .home-pass-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--space-control);
+    padding-top: var(--space-control);
+    font-size: var(--font-size-caption);
+  }
+  .home-panel-pass .pass-usage {
+    align-self: center;
+  }
+  .home-panel > [data-slot="card-content"]:has(> [data-slot="empty"]) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 @layer utilities {
-  .home-panel { gap: 0; padding-block: 0; }
-  .home-panel > .home-panel-heading { min-height: var(--home-panel-heading-height); padding-block: var(--space-control); }
-  .home-panel-pass > [data-slot="card-content"] { padding-block: var(--space-detail); }
+  .home-panel {
+    gap: 0;
+    padding-block: 0;
+  }
+  .home-panel > .home-panel-heading {
+    min-height: var(--home-panel-heading-height);
+    padding-block: var(--space-control);
+  }
+  .home-panel-pass > [data-slot="card-content"] {
+    padding-block: var(--space-detail);
+  }
   /* 목록 바깥에 여백을 더하지 않고 첫 행부터 마지막 행까지 행 padding만 적용한다. */
   .home-panel-public > [data-slot="card-content"],
-  .home-panel-reservations > [data-slot="card-content"] { padding-block: 0; }
+  .home-panel-reservations > [data-slot="card-content"] {
+    padding-block: 0;
+  }
 }
 
 @layer utilities {
-  .home-panel-public > [data-slot="card-content"] { padding: 0; display: flex; }
+  .home-panel-public > [data-slot="card-content"] {
+    padding: 0;
+    display: flex;
+  }
   .home-panel-public [data-slot="table-container"] {
     flex: 1;
     min-height: 0;
@@ -225,22 +271,54 @@
     height: auto;
     min-width: var(--home-public-table-min-width);
   }
-  .home-public-table [data-slot="table-cell"] { font-size: var(--font-size-caption); }
+  .home-public-table [data-slot="table-cell"] {
+    font-size: var(--font-size-caption);
+  }
 }
 
 @media (min-width: 1100px) {
-  .home-page { height: 100%; grid-template-rows: auto auto minmax(0, 1fr); }
-  .home-metric { padding-block: var(--space-detail); }
-  .home-columns, .home-side, .home-panel, .home-panel > [data-slot="card-content"] { min-height: 0; }
-  .home-side { grid-template-rows: minmax(0, .9fr) minmax(0, 1.1fr); }
-  .home-panel-reservations { overflow-y: auto; }
-  .home-panel-public [data-slot="table-container"] { max-height: none; }
-  .home-reservation { padding-block: var(--space-detail); }
-  .home-reservation-action { flex-direction: row; align-items: center; flex-shrink: 0; }
-  .home-reservation-action [data-slot="button"] { height: var(--control-height-compact); }
+  .home-page {
+    height: 100%;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  .home-metric {
+    padding-block: var(--space-detail);
+  }
+  .home-columns,
+  .home-side,
+  .home-panel,
+  .home-panel > [data-slot="card-content"] {
+    min-height: 0;
+  }
+  .home-side {
+    grid-template-rows: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+  .home-panel-reservations {
+    overflow-y: auto;
+  }
+  .home-panel-public [data-slot="table-container"] {
+    max-height: none;
+  }
+  .home-reservation {
+    padding-block: var(--space-detail);
+  }
+  .home-reservation-action {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .home-reservation-action [data-slot="button"] {
+    height: var(--control-height-compact);
+  }
 }
 
 @media (min-width: 1100px) and (max-width: 1799px), (min-width: 1100px) and (max-height: 850px) {
-  .member-home-main .home-page { height: auto; min-height: 100%; grid-template-rows: auto auto auto; }
-  .member-home-main .home-side { grid-template-rows: max-content max-content; }
+  .member-home-main .home-page {
+    height: auto;
+    min-height: 100%;
+    grid-template-rows: auto auto auto;
+  }
+  .member-home-main .home-side {
+    grid-template-rows: max-content max-content;
+  }
 }

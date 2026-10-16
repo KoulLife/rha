@@ -1,10 +1,20 @@
 @layer utilities {
-  .menu-dialog-confirmation .menu-dialog-title { font-size: 1.25rem; font-weight: 700; }
+  .menu-dialog-confirmation .menu-dialog-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
 }
 @layer utilities {
-  .menu-dialog:has(> .menu-dialog-content) { grid-template-rows: auto minmax(0, 1fr) auto; }
-  .menu-dialog-content { overflow-y: auto; min-height: 0; }
-  .menu-dialog-confirmation { gap: var(--menu-gap); }
+  .menu-dialog:has(> .menu-dialog-content) {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .menu-dialog-content {
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .menu-dialog-confirmation {
+    gap: var(--menu-gap);
+  }
   .confirm-dialog-details {
     display: grid;
     margin: 0;
@@ -19,9 +29,18 @@
     gap: var(--space-detail);
     padding-block: var(--space-control);
   }
-  .confirm-dialog-details > div + div { border-top: 1px solid var(--border); }
-  .confirm-dialog-details dt { color: var(--muted-foreground); font-size: var(--font-size-caption); }
-  .confirm-dialog-details dd { margin: 0; font-size: var(--font-size-body); font-weight: 600; }
+  .confirm-dialog-details > div + div {
+    border-top: 1px solid var(--border);
+  }
+  .confirm-dialog-details dt {
+    color: var(--muted-foreground);
+    font-size: var(--font-size-caption);
+  }
+  .confirm-dialog-details dd {
+    margin: 0;
+    font-size: var(--font-size-body);
+    font-weight: 600;
+  }
   .confirm-dialog-notice {
     margin: 0;
     padding: var(--space-detail) var(--space-panel);

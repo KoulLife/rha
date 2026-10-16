@@ -1,7 +1,23 @@
 @layer utilities {
-  .instructor-table-section { display: grid; min-width: 0; gap: var(--space-detail); }
-  .instructor-table-panel[data-slot="card"] { padding-block: 0; overflow: hidden; }
-  .instructor-table-panel [data-slot="table-head"]:first-child { width: var(--control-height); }
-  .instructor-table-panel [data-state="selected"] [data-slot="table-cell"] { background: var(--accent); }
-  .instructor-table-panel [data-slot="table-body"] [data-slot="table-row"]:last-child [data-slot="table-cell"] { border-bottom: 0; }
+  .instructor-table-section {
+    display: grid;
+    min-width: 0;
+    gap: var(--space-detail);
+  }
+  .instructor-table-panel[data-slot="card"] {
+    padding-block: 0;
+    overflow: hidden;
+  }
+  .instructor-table-panel [data-slot="table-head"]:first-child {
+    width: var(--control-height);
+  }
+  .instructor-table-panel [data-state="selected"] [data-slot="table-cell"] {
+    background: var(--accent);
+  }
+  .instructor-table-panel
+    [data-slot="table-body"]
+    [data-slot="table-row"]:last-child
+    [data-slot="table-cell"] {
+    border-bottom: 0;
+  }
 }

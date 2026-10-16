@@ -9,6 +9,8 @@
     "dev:api": "VITE_ENABLE_MOCKS=false vite",
     "build": "npm run typecheck && vite build",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.mjs\" \"*.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.mjs\" \"*.ts\"",
     "generate:api": "orval"
   },
   "dependencies": {
@@ -38,7 +40,8 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "msw": "^3.0.3",
-    "orval": "^8.41.0"
+    "orval": "^8.41.0",
+    "prettier": "^3.9.10"
   },
   "msw": {
     "workerDirectory": [

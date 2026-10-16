@@ -9,4 +9,3 @@ export type DialogState = {
   details?: { label: string; value: string }[];
   notice?: string;
 } | null;
-
