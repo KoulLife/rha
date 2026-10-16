@@ -34,6 +34,9 @@ public class EmailVerification {
     private Instant usedAt;
 
     @Column(nullable = false)
+    private int failedAttempts;
+
+    @Column(nullable = false)
     private Instant createdAt;
 
     protected EmailVerification() {
@@ -46,11 +49,22 @@ public class EmailVerification {
         this.createdAt = createdAt;
     }
 
-    /** 아직 확인되지 않았고, 만료 전이며, 코드 해시가 일치하는지 확인한다. */
-    public boolean matchesCode(String codeHash, Instant now) {
+    /** 이 횟수만큼 틀리면 코드를 폐기한다. */
+    public static final int MAX_FAILED_ATTEMPTS = 5;
+
+    /** 아직 확인되지 않았고, 만료 전이며, 시도 횟수가 남아 있는 코드를 시도할 수 있다. */
+    public boolean canAttempt(Instant now) {
         return verifiedAt == null
                 && now.isBefore(codeExpiresAt)
-                && TokenHasher.matches(this.codeHash, codeHash);
+                && failedAttempts < MAX_FAILED_ATTEMPTS;
+    }
+
+    public boolean matchesCode(String codeHash) {
+        return TokenHasher.matches(this.codeHash, codeHash);
+    }
+
+    public void recordFailure() {
+        failedAttempts++;
     }
 
     public void verify(String verificationTokenHash, Instant verifiedAt, Instant tokenExpiresAt) {

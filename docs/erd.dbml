@@ -145,6 +145,7 @@ Table email_verifications {
   verification_token_hash varchar(255) [unique, note: '코드 확인 후 발급한 emailVerificationToken의 해시']
   token_expires_at timestamp
   used_at timestamp [note: '회원가입에 사용된 시각']
+  failed_attempts int [not null, default: 0, note: '코드를 틀린 횟수. 5회가 되면 코드를 폐기한다.']
   created_at timestamp [not null]
 
   Indexes {

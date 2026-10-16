@@ -117,6 +117,35 @@ class ConfirmEmailVerificationTest extends IntegrationTestSupport {
     }
 
     @Test
+    void 같은_코드로_4번_틀린_뒤_올바른_코드는_통과한다() throws Exception {
+        String code = requestCode(EMAIL);
+        String wrong = code.equals("000000") ? "111111" : "000000";
+        for (int i = 0; i < 4; i++) {
+            confirm(EMAIL, wrong).andExpect(status().isBadRequest());
+        }
+
+        confirm(EMAIL, code).andExpect(status().isOk());
+    }
+
+    @Test
+    void 같은_코드로_5번_틀리면_올바른_코드도_거절하고_재요청해야_한다() throws Exception {
+        String code = requestCode(EMAIL);
+        String wrong = code.equals("000000") ? "111111" : "000000";
+        for (int i = 0; i < 5; i++) {
+            confirm(EMAIL, wrong)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_VERIFICATION_CODE"));
+        }
+
+        confirm(EMAIL, code)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_VERIFICATION_CODE"));
+
+        String fresh = requestCode(EMAIL);
+        confirm(EMAIL, fresh).andExpect(status().isOk());
+    }
+
+    @Test
     void 코드가_6자리_숫자가_아니면_400_INVALID_INPUT을_응답한다() throws Exception {
         confirm(EMAIL, "12345")
                 .andExpect(status().isBadRequest())
