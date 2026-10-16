@@ -1,5 +1,6 @@
 package com.rha.common.error;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -54,6 +55,58 @@ class GlobalExceptionHandlerTest {
                         .content("{not json"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.timestamp").isString());
+    }
+
+    @Test
+    void 없는_주소는_NOT_FOUND와_code_timestamp를_응답한다() throws Exception {
+        mockMvc.perform(get("/test-errors/nope"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.detail").value("요청한 리소스를 찾을 수 없습니다."))
+                .andExpect(jsonPath("$.instance").value("/test-errors/nope"))
+                .andExpect(jsonPath("$.timestamp").isString());
+    }
+
+    @Test
+    void 지원하지_않는_메서드는_METHOD_NOT_ALLOWED를_응답한다() throws Exception {
+        mockMvc.perform(delete("/test-errors/validation"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"))
+                .andExpect(jsonPath("$.detail").value("지원하지 않는 HTTP 메서드입니다."))
+                .andExpect(jsonPath("$.timestamp").isString());
+    }
+
+    @Test
+    void 지원하지_않는_요청_본문_형식은_UNSUPPORTED_MEDIA_TYPE을_응답한다() throws Exception {
+        mockMvc.perform(post("/test-errors/validation")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("x"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"))
+                .andExpect(jsonPath("$.detail").value("지원하지 않는 요청 본문 형식입니다."))
+                .andExpect(jsonPath("$.timestamp").isString());
+    }
+
+    @Test
+    void 지원하지_않는_응답_형식_요청은_NOT_ACCEPTABLE을_응답한다() throws Exception {
+        mockMvc.perform(get("/test-errors/ok").accept(MediaType.APPLICATION_XML))
+                .andExpect(status().isNotAcceptable())
+                .andExpect(jsonPath("$.code").value("NOT_ACCEPTABLE"))
+                .andExpect(jsonPath("$.detail").value("지원하지 않는 응답 형식입니다."))
+                .andExpect(jsonPath("$.timestamp").isString());
+    }
+
+    @Test
+    void 예상하지_못한_예외는_내부_정보_없이_INTERNAL_SERVER_ERROR를_응답한다() throws Exception {
+        mockMvc.perform(get("/test-errors/boom"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+                .andExpect(jsonPath("$.detail").value("서버 내부 오류가 발생했습니다."))
+                .andExpect(jsonPath("$.instance").value("/test-errors/boom"))
                 .andExpect(jsonPath("$.timestamp").isString());
     }
 }

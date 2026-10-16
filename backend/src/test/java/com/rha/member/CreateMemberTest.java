@@ -1,7 +1,6 @@
 package com.rha.member;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -237,8 +236,9 @@ class CreateMemberTest extends IntegrationTestSupport {
         String token = loginAs(ADMIN_EMAIL, "ADMIN");
         mailer.failOnSend(true);
 
-        assertThatThrownBy(() -> create(token, body(NEW_EMAIL, "INSTRUCTOR")))
-                .hasRootCauseInstanceOf(IllegalStateException.class);
+        create(token, body(NEW_EMAIL, "INSTRUCTOR"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"));
 
         assertThat(count("SELECT count(*) FROM members WHERE email = ?", NEW_EMAIL)).isZero();
         assertThat(count("SELECT count(*) FROM password_reset_tokens")).isZero();

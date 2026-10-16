@@ -22,6 +22,16 @@ class ErrorTestController {
         throw new ApiException(ErrorCode.EMAIL_ALREADY_EXISTS);
     }
 
+    @GetMapping("/ok")
+    Body ok() {
+        return new Body("이름", "a@example.com");
+    }
+
+    @GetMapping("/boom")
+    void boom() {
+        throw new IllegalStateException("내부 구현 정보");
+    }
+
     @PostMapping("/validation")
     void validation(@Valid @RequestBody Body body) {
     }

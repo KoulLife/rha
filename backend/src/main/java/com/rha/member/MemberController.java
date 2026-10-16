@@ -45,10 +45,11 @@ public class MemberController {
         this.cookies = cookies;
     }
 
+    /** 본문 검증은 관리자 여부를 확인한 뒤에 하므로 `@Valid`를 붙이지 않는다. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MemberResponse createMember(@AuthenticationPrincipal AuthenticatedMember me,
-            @Valid @RequestBody MemberCreateRequest request) {
+            @RequestBody MemberCreateRequest request) {
         return MemberResponse.from(memberAdminService.createMember(me.id(), request));
     }
 
