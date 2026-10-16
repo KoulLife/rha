@@ -1,6 +1,11 @@
 package com.rha.common.error;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.lang.Nullable;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
@@ -21,7 +26,21 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     record InvalidParam(String field, String reason) {
+    }
+
+    /** 위에서 따로 다루지 않은 예외. 내부 정보는 응답에 담지 않고 로그에만 남긴다. */
+    @ExceptionHandler(Exception.class)
+    ResponseEntity<ProblemDetail> handleUnexpected(Exception e, HttpServletRequest request) throws Exception {
+        if (e instanceof AccessDeniedException || e instanceof AuthenticationException) {
+            throw e; // Spring Security가 401/403으로 처리한다.
+        }
+        log.error("처리하지 못한 예외: {} {}", request.getMethod(), request.getRequestURI(), e);
+        ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
+        return ResponseEntity.status(errorCode.status())
+                .body(problem(errorCode, errorCode.defaultMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(ApiException.class)
@@ -94,6 +113,28 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             problem.setProperty("invalidParams", List.of(new InvalidParam(field, "값의 형식이 올바르지 않습니다.")));
         }
         return ResponseEntity.status(ErrorCode.INVALID_INPUT.status()).body(problem);
+    }
+
+    /**
+     * 404(없는 주소), 405, 406, 415 등 Spring MVC가 직접 만드는 오류도 `code`와 `timestamp`를 담는 본문으로 바꾼다.
+     */
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(Exception e, @Nullable Object body,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ErrorCode errorCode = switch (status.value()) {
+            case 400 -> ErrorCode.INVALID_INPUT;
+            case 404 -> ErrorCode.NOT_FOUND;
+            case 405 -> ErrorCode.METHOD_NOT_ALLOWED;
+            case 406 -> ErrorCode.NOT_ACCEPTABLE;
+            case 415 -> ErrorCode.UNSUPPORTED_MEDIA_TYPE;
+            default -> ErrorCode.INTERNAL_SERVER_ERROR;
+        };
+        if (status.is5xxServerError()) {
+            log.error("처리하지 못한 예외: {}", requestUri(request), e);
+        }
+        ProblemDetail problem = problem(errorCode, errorCode.defaultMessage(), requestUri(request));
+        problem.setStatus(status.value());
+        return new ResponseEntity<>(problem, headers, status);
     }
 
     private ProblemDetail problem(ErrorCode errorCode, String detail, String instance) {
