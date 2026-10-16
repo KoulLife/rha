@@ -1,0 +1,5 @@
+# 로컬 개발 전용 설정. 운영 프로필에서는 읽히지 않는다.
+rha:
+  auth:
+    jwt:
+      secret: ${JWT_SECRET:local-dev-only-jwt-secret-change-me-in-production}

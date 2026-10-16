@@ -115,6 +115,7 @@ paths:
       description: |
         코드가 일치하면 회원가입에 사용할 `emailVerificationToken`을 발급한다.
         - 코드 불일치/만료 시 400 (INVALID_VERIFICATION_CODE)
+        - 같은 코드로 5회 틀리면 그 코드는 폐기된다. 이후에는 올바른 코드를 보내도 400 (INVALID_VERIFICATION_CODE)이며, 인증 코드를 다시 요청해야 한다.
       security: []
       requestBody:
         required: true

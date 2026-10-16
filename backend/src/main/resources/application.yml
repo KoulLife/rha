@@ -1,6 +1,9 @@
 spring:
   application:
     name: rha
+  profiles:
+    # 프로필을 지정하지 않으면 개발용(local)으로 동작한다. 운영은 SPRING_PROFILES_ACTIVE로 다른 프로필을 지정한다.
+    default: local
   autoconfigure:
     exclude:
       # 계정은 members 테이블이 기준이다. 기본 사용자(임시 비밀번호)가 만들어지지 않게 한다.
@@ -31,8 +34,9 @@ spring:
 rha:
   auth:
     jwt:
-      # HS256 서명 키. 32바이트 이상이어야 한다. 운영에서는 반드시 환경변수로 교체한다.
-      secret: ${JWT_SECRET:local-dev-only-jwt-secret-change-me-in-production}
+      # HS256 서명 키. 32바이트 이상이어야 한다. 기본값이 없어 환경변수가 없으면 기동에 실패한다.
+      # (개발용 기본값은 application-local.yml에만 있다.)
+      secret: ${JWT_SECRET}
 
 server:
   servlet:

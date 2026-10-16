@@ -29,7 +29,7 @@
 | `INVALID_RESET_TOKEN` | 비밀번호 재설정 토큰이 유효하지 않거나 만료됨 | `resetPassword` |
 | `INVALID_RESIGNATION_DATE` | 퇴사일이 오늘보다 과거 | `registerResignation` |
 | `INVALID_START_DATE` | 이용권 시작일 오류 (만료일이 이미 지남) | `createPass` |
-| `INVALID_VERIFICATION_CODE` | 이메일 인증 코드가 일치하지 않거나 만료됨 | `confirmEmailVerification` |
+| `INVALID_VERIFICATION_CODE` | 이메일 인증 코드가 일치하지 않거나 만료됨. 같은 코드로 5회 틀리면 폐기되어 올바른 코드도 거절한다 | `confirmEmailVerification` |
 | `INVALID_VERIFICATION_TOKEN` | 이메일 인증 토큰이 유효하지 않거나 요청 이메일과 다름 | `signUp` |
 | `LESSON_TYPE_INACTIVE` | 비활성 수업 유형으로 수업을 개설함 | `createLesson` |
 | `PERMISSION_TARGET_INVALID` | 권한 부여 대상이 강사가 아님 | `updateMemberPermissions` |
