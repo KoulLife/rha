@@ -214,18 +214,24 @@ export function AdminForm({
   toolbarAction,
   children,
   successToast = true,
+  onFieldChange,
+  deferSuccess = false,
+  submitDisabled = false,
 }: {
   fields: FormField[];
   initial?: Values;
   submitLabel?: string;
   submitVariant?: ComponentProps<typeof Button>["variant"];
-  variant?: "default" | "filter";
+  variant?: "default" | "filter" | "settings";
   primaryFilterCount?: number;
   onSubmit: (values: Values) => Promise<unknown>;
   onCancel?: () => void;
   toolbarAction?: ReactNode;
   children?: ReactNode;
   successToast?: boolean;
+  deferSuccess?: boolean;
+  submitDisabled?: boolean;
+  onFieldChange?: (name: string, values: Values) => Values;
 }) {
   const uid = useId();
   const {
@@ -235,12 +241,26 @@ export function AdminForm({
     watch,
     formState: { errors, isSubmitting },
     setError,
+    setValue,
+    getValues,
   } = useForm<Values>({ defaultValues: initial });
+  const fieldChange = useRef(onFieldChange);
+  fieldChange.current = onFieldChange;
+  useEffect(() => {
+    const subscription = watch((_, info) => {
+      if (!info.name || !fieldChange.current) return;
+      const changes = fieldChange.current(info.name, getValues());
+      for (const [name, value] of Object.entries(changes)) {
+        if (getValues(name) !== value) setValue(name, value, { shouldDirty: true });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, getValues, setValue]);
   const client = useQueryClient();
   const submit = handleSubmit(async (values) => {
     try {
       await onSubmit(values);
-      if (submitLabel !== "조회" && !submitLabel.endsWith("확인")) {
+      if (!deferSuccess && submitLabel !== "조회" && !submitLabel.endsWith("확인")) {
         await client.invalidateQueries();
         if (successToast) toast.success(`${submitLabel} 완료`);
       }
@@ -456,7 +476,7 @@ export function AdminForm({
           <Button
             type="submit"
             variant={submitVariant}
-            disabled={isSubmitting}
+            disabled={isSubmitting || submitDisabled}
           >
             {isSubmitting ? "처리 중…" : submitLabel}
           </Button>

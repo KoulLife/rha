@@ -30,8 +30,10 @@ import type { Navigate } from "./MemberPages";
 export function SettlementsPage({
   instructorId,
   onNavigate,
+  embedded = false,
 }: {
   instructorId?: number;
+  embedded?: boolean;
   onNavigate: Navigate;
 }) {
   const [page, setPage] = useState(1),
@@ -57,11 +59,8 @@ export function SettlementsPage({
   const instructorName =
     instructors.data?.content.find((instructor) => instructor.id === instructorId)?.name ??
     query.data?.content[0]?.instructor.name;
-  return (
-    <AdminPage
-      title={instructorId ? `${instructorName ?? "강사"} · 정산 내역` : "정산 내역"}
-      description="수업별 수당을 계산하고 검토·확정·외부 지급 사실을 기록합니다."
-    >
+  const content = (
+    <>
       <Filters
         key={instructorId ?? "all-instructors"}
         initial={instructorId ? { instructorId: String(instructorId) } : {}}
@@ -142,6 +141,14 @@ export function SettlementsPage({
           ]}
         />
       </QueryState>
+    </>
+  );
+  return embedded ? <div className="menu-stack">{content}</div> : (
+    <AdminPage
+      title={instructorId ? `${instructorName ?? "강사"} · 정산 내역` : "정산 내역"}
+      description="수업별 수당을 계산하고 검토·확정·외부 지급 사실을 기록합니다."
+    >
+      {content}
     </AdminPage>
   );
 }

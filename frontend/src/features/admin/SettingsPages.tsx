@@ -1,3 +1,4 @@
+import { WeeklyHoursForm, weekDays } from "./WeeklyHoursForm";
 import { currentTime } from "@/api/runtime";
 import { PAGE_SIZE } from "@/components/ui/Pagination";
 import { useState } from "react";
@@ -676,45 +677,26 @@ function BusinessHoursSettings() {
   const query = api.useGetBusinessHours(),
     save = api.useUpdateBusinessHours(),
     [action, setAction] = useState<Action | null>(null);
-  const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] as const,
-    labels = ["월", "화", "수", "목", "금", "토", "일"];
+  const labels = ["월", "화", "수", "목", "금", "토", "일"];
   return (
     <>
       <QueryState query={query}>
         {query.data && (
           <MenuPanel className="admin-hours-form">
-            <AdminForm
+            <WeeklyHoursForm
               key={JSON.stringify(query.data)}
-              fields={days.flatMap((day, i) => [
-                {
-                  name: `${day}-closed`,
-                  label: `${labels[i]}요일 정기 휴무`,
-                  type: "checkbox" as const,
-                },
-                { name: `${day}-open`, label: `${labels[i]}요일 오픈`, type: "time" as const },
-                { name: `${day}-close`, label: `${labels[i]}요일 마감`, type: "time" as const },
-              ])}
-              initial={Object.fromEntries(
-                query.data.businessHours.flatMap((h) => [
-                  [`${h.dayOfWeek}-closed`, h.closed],
-                  [`${h.dayOfWeek}-open`, h.openTime ?? "09:00"],
-                  [`${h.dayOfWeek}-close`, h.closeTime ?? "21:00"],
-                ]),
-              )}
+              initial={weekDays.map((dayOfWeek) => {
+                const hours = query.data!.businessHours.find((h) => h.dayOfWeek === dayOfWeek);
+                return { dayOfWeek, enabled: !!hours && !hours.closed, slots: [{ startTime: hours?.openTime ?? "09:00", endTime: hours?.closeTime ?? "21:00" }] };
+              })}
               submitLabel="영업시간 변경 확인"
-              onSubmit={async (v) => {
+              onSubmit={async (days) => {
                 const businessHours = days.map((day) => ({
-                  dayOfWeek: day,
-                  closed: v[`${day}-closed`] === true,
-                  openTime: v[`${day}-closed`] ? null : textValue(v, `${day}-open`),
-                  closeTime: v[`${day}-closed`] ? null : textValue(v, `${day}-close`),
+                  dayOfWeek: day.dayOfWeek,
+                  closed: !day.enabled,
+                  openTime: day.enabled ? day.slots[0].startTime : null,
+                  closeTime: day.enabled ? day.slots[0].endTime : null,
                 }));
-                if (
-                  businessHours.some(
-                    (h) => !h.closed && (!h.openTime || !h.closeTime || h.openTime >= h.closeTime),
-                  )
-                )
-                  throw new Error("영업일의 마감은 오픈 이후여야 합니다.");
                 setAction({
                   title: "영업시간 변경",
                   description:

@@ -1,3 +1,7 @@
+import { SettlementsPage } from "./SettlementPages";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { WeeklyHoursForm, weekDays } from "./WeeklyHoursForm";
 import { useAllLessonTypes } from "./queries";
 import { todayInSeoul } from "@/api/runtime";
 import { PAGE_SIZE } from "@/components/ui/Pagination";
@@ -12,7 +16,6 @@ import { MenuPanel } from "@/components/layout/MenuPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   AdminPage,
-  AdminLinks,
   AdminForm,
   DataTable,
   QueryState,
@@ -25,7 +28,7 @@ import {
   dateTime,
   textValue,
   numValue,
-  money,
+  errorMessage,
   type Values,
   type FormField,
   type Action,
@@ -116,11 +119,6 @@ export function MembersPage({
       title={`${label} 관리`}
       description={`${label}의 계정 정보와 이용 현황을 한곳에서 확인합니다.`}
     >
-      {instructor && (
-        <p className="menu-note">
-          선택한 색상은 이 브라우저에 저장됩니다. 다른 기기와 공유하는 서버 저장은 기능 적용 필요.
-        </p>
-      )}
       <Filters
         fields={[
           { name: "keyword", label: "이름·이메일 검색" },
@@ -142,6 +140,9 @@ export function MembersPage({
           rows={query.data?.content ?? []}
           pageInfo={query.data?.pageInfo}
           onPage={setPage}
+          onRowClick={
+            instructor ? (row) => onNavigate("admin-instructor-detail", row.id) : undefined
+          }
           columns={[
             ...(instructor
               ? [
@@ -153,7 +154,8 @@ export function MembersPage({
                         size="icon"
                         className="admin-color-trigger"
                         aria-label={`${r.name} 시간표 색상 지정`}
-                        onClick={() => {
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setColorInstructor(r);
                           setPreviewColor(instructorColors[r.id] ?? fallbackInstructorColor(r.id));
                         }}
@@ -196,13 +198,19 @@ export function MembersPage({
                   <div className="menu-actions">
                     <Button
                       variant="outline"
-                      onClick={() => setRateInstructorId(r.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setRateInstructorId(r.id);
+                      }}
                     >
                       수당 기준
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => onNavigate("admin-instructor-settlements", r.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onNavigate("admin-instructor-settlements", r.id);
+                      }}
                     >
                       정산 내역
                     </Button>
@@ -244,7 +252,7 @@ export function MembersPage({
             <Button
               onClick={() => {
                 if (saveInstructorColor(colorInstructor.id, previewColor)) {
-                  toast.success("이 브라우저에 색상을 저장했습니다.");
+                  toast.success("색상을 저장했습니다.");
                   setColorInstructor(null);
                 } else toast.error("색상을 저장하지 못했습니다.");
               }}
@@ -265,17 +273,10 @@ export function MembersPage({
                 value={previewColor}
                 onChange={(event) => setPreviewColor(event.target.value.toUpperCase())}
               />
+              <span className="admin-color-value">
+                RGB {rgbLabel(previewColor)} · {previewColor.toUpperCase()}
+              </span>
             </label>
-            <p className="menu-note">
-              <span
-                className="admin-instructor-swatch"
-                style={{ "--instructor-color": previewColor } as CSSProperties}
-                aria-hidden="true"
-              />{" "}
-              RGB {rgbLabel(previewColor)} · {previewColor.toUpperCase()}
-            </p>
-            <p className="menu-note">이 브라우저에 저장됩니다. 서버 연동은 기능 적용 필요.</p>
-            {/* TODO(api): 강사 RGB 색상 필드와 저장 API가 계약에 추가되면 브라우저 저장소를 교체한다. */}
           </div>
         </Dialog>
       )}
@@ -289,17 +290,17 @@ function InstructorPayRatesDialog({
   instructorId: number;
   onClose: () => void;
 }) {
+  return (
+    <Dialog dialog={{ title: "강사 수당 기준", body: "수업 유형별 한 회당 단가를 등록하거나 수정합니다." }} onClose={onClose}>
+      <InstructorPayRatesForm instructorId={instructorId} onSaved={onClose} />
+    </Dialog>
+  );
+}
+function InstructorPayRatesForm({ instructorId, onSaved }: { instructorId: number; onSaved?: () => void }) {
   const query = api.useGetPayRates(instructorId),
     types = useAllLessonTypes({ size: 100 }),
     save = api.useUpdatePayRates();
   return (
-    <Dialog
-      dialog={{
-        title: query.data ? `${query.data.instructor.name} · 수당 기준` : "강사 수당 기준",
-        body: "수업 유형별 한 회당 단가를 등록하거나 수정합니다.",
-      }}
-      onClose={onClose}
-    >
       <QueryState query={query}>
         <QueryState query={types}>
           {query.data && (
@@ -327,7 +328,7 @@ function InstructorPayRatesDialog({
                   ];
                 }),
               )}
-              submitLabel={query.data.payRates.length ? "수당 기준 수정" : "수당 기준 등록"}
+              submitLabel="수당 기준 저장"
               onSubmit={async (values) => {
                 const payRates = (types.data?.content ?? [])
                   .filter((type) => values[`enabled-${type.id}`])
@@ -336,13 +337,12 @@ function InstructorPayRatesDialog({
                     unitPrice: numValue(values, `price-${type.id}`),
                   }));
                 await save.mutateAsync({ memberId: instructorId, data: { payRates } });
-                onClose();
+                onSaved?.();
               }}
             />
           )}
         </QueryState>
       </QueryState>
-    </Dialog>
   );
 }
 export function MemberDetail({
@@ -357,8 +357,7 @@ export function MemberDetail({
   const query = api.useGetMember(id),
     update = api.useUpdateMember(),
     change = api.useChangeMemberStatus();
-  const [action, setAction] = useState<Action | null>(null),
-    [showPayRateDialog, setShowPayRateDialog] = useState(false);
+  const [action, setAction] = useState<Action | null>(null);
   const p = query.data;
   return (
     <AdminPage
@@ -455,36 +454,29 @@ export function MemberDetail({
                 ]}
               />
             </MenuPanel>
-            {instructor && (
-              <AdminLinks
-                items={[
-                  { label: "퇴사 관리", onClick: () => onNavigate("admin-resignations", id) },
-                  {
-                    label: "정산 내역",
-                    onClick: () => onNavigate("admin-instructor-settlements", id),
-                  },
-                  { label: "수당 기준", onClick: () => setShowPayRateDialog(true) },
-                ]}
-              />
-            )}
             {instructor ? (
-              <>
-                <details className="admin-detail-section">
-                  <summary>권한 관리</summary>
-                  <Permissions member={p} />
-                </details>
-                <details className="admin-detail-section">
-                  <summary>부재 내역</summary>
-                  <AbsenceList
-                    instructorId={id}
-                    onNavigate={onNavigate}
-                  />
-                </details>
-                <details className="admin-detail-section">
-                  <summary>수업 가능시간</summary>
-                  <Availability id={id} />
-                </details>
-              </>
+              <Tabs defaultValue="settlements" className="menu-tabs">
+                <TabsList>
+                  <TabsTrigger value="settlements">정산 내역</TabsTrigger>
+                  <TabsTrigger value="pay-rates">수당 기준</TabsTrigger>
+                  <TabsTrigger value="settings">운영 설정</TabsTrigger>
+                  <TabsTrigger value="absences">부재 내역</TabsTrigger>
+                </TabsList>
+                <TabsContent value="settlements">
+                  <SettlementsPage embedded instructorId={id} onNavigate={onNavigate} />
+                </TabsContent>
+                <TabsContent value="pay-rates">
+                  <MenuPanel title="수업 유형별 수당 기준">
+                    <InstructorPayRatesForm instructorId={id} />
+                  </MenuPanel>
+                </TabsContent>
+                <TabsContent value="settings">
+                  <InstructorSettings member={p} />
+                </TabsContent>
+                <TabsContent value="absences">
+                  <AbsenceList instructorId={id} onNavigate={onNavigate} />
+                </TabsContent>
+              </Tabs>
             ) : (
               <Tabs
                 defaultValue="passes"
@@ -524,123 +516,128 @@ export function MemberDetail({
           onClose={() => setAction(null)}
         />
       )}{" "}
-      {showPayRateDialog && (
-        <InstructorPayRatesDialog
-          instructorId={id}
-          onClose={() => setShowPayRateDialog(false)}
-        />
-      )}
     </AdminPage>
   );
 }
-function Permissions({ member }: { member: api.Member }) {
-  const catalog = api.useGetPermissions(),
-    current = api.useGetMemberPermissions(member.id),
-    save = api.useUpdateMemberPermissions();
-  const [action, setAction] = useState<Action | null>(null);
-  const unavailable =
-    current.data?.permissions.filter(
-      (code) => !catalog.data?.permissions.some((p) => p.code === code),
-    ) ?? [];
+function InstructorSettings({ member }: { member: api.Member }) {
+  const catalog = api.useGetPermissions();
+  const permissions = api.useGetMemberPermissions(member.id);
+  const availability = api.useGetInstructorAvailability(member.id);
   return (
     <QueryState query={catalog}>
-      <QueryState query={current}>
-        <MenuPanel title="보유 권한">
-          <AdminForm
-            key={JSON.stringify(current.data)}
-            fields={(catalog.data?.permissions ?? []).map((p) => ({
-              name: p.code,
-              label: p.name,
-              type: "checkbox",
-              description: p.description,
-              disabled: member.status === "RESIGNED" || unavailable.length > 0,
-            }))}
-            initial={Object.fromEntries(
-              (current.data?.permissions ?? []).map((code) => [code, true]),
-            )}
-            submitLabel="권한 변경 확인"
-            onSubmit={async (v) => {
-              setAction({
-                title: "권한 변경",
-                description:
-                  "선택한 권한으로 전체 교체합니다. 선택하지 않은 기존 권한은 회수됩니다.",
-                submitLabel: "권한 저장",
-                danger: true,
-                onSubmit: () =>
-                  save.mutateAsync({
-                    memberId: member.id,
-                    data: {
-                      permissions: Object.entries(v)
-                        .filter(([, checked]) => checked === true)
-                        .map(([code]) => code),
-                    },
-                  }),
-              });
-            }}
-          >
-            {member.status === "RESIGNED" && (
-              <p className="menu-note">퇴사한 강사는 활성화 후 권한을 설정할 수 있습니다.</p>
-            )}
-            {unavailable.length > 0 && (
-              <p className="menu-note">
-                비활성 유형의 기존 권한이 있어 변경을 제한합니다. 해당 유형을 활성화한 뒤 변경해
-                주세요.
-              </p>
-            )}
-          </AdminForm>
-        </MenuPanel>
-        {action && (
-          <ActionDialog
-            action={action}
-            onClose={() => setAction(null)}
-          />
-        )}
+      <QueryState query={permissions}>
+        <QueryState query={availability}>
+          {catalog.data && permissions.data && availability.data && (
+            <InstructorSettingsForm
+              key={`${member.id}-${JSON.stringify(permissions.data)}-${JSON.stringify(availability.data)}`}
+              member={member}
+              catalog={catalog.data.permissions}
+              initialPermissions={permissions.data.permissions}
+              initialSlots={availability.data.slots}
+            />
+          )}
+        </QueryState>
       </QueryState>
     </QueryState>
   );
 }
-function Availability({ id }: { id: number }) {
-  const query = api.useGetInstructorAvailability(id),
-    save = api.useUpdateInstructorAvailability();
-  const labels = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"],
-    days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] as const;
+function InstructorSettingsForm({ member, catalog, initialPermissions, initialSlots }: {
+  member: api.Member;
+  catalog: api.Permission[];
+  initialPermissions: string[];
+  initialSlots: api.AvailabilitySlot[];
+}) {
+  const [permissions, setPermissions] = useState(initialPermissions);
+  const [action, setAction] = useState<Action | null>(null);
+  const savePermissions = api.useUpdateMemberPermissions();
+  const saveAvailability = api.useUpdateInstructorAvailability();
+  const unavailable = initialPermissions.filter((code) => !catalog.some((item) => item.code === code));
+  const permissionsLocked = member.status === "RESIGNED" || unavailable.length > 0;
+  const permissionGroups = [
+    { name: "회원 관리", items: catalog.filter((p) => p.code.startsWith("MEMBER_")) },
+    { name: "수업 개설", items: catalog.filter((p) => p.code.startsWith("LESSON_CREATE:")) },
+    { name: "수업 수정", items: catalog.filter((p) => p.code.startsWith("LESSON_UPDATE:")) },
+    { name: "기타 업무", items: catalog.filter((p) => !p.code.startsWith("MEMBER_") && !p.code.startsWith("LESSON_CREATE:") && !p.code.startsWith("LESSON_UPDATE:")) },
+  ].filter((group) => group.items.length);
+  const permissionsDirty = permissions.length !== initialPermissions.length || permissions.some((code) => !initialPermissions.includes(code));
+
   return (
-    <QueryState query={query}>
-      <MenuPanel title="요일별 수업 가능시간">
-        <AdminForm
-          key={JSON.stringify(query.data)}
-          fields={days.flatMap((day, i) => [
-            { name: `${day}-enabled`, label: `${labels[i]} 수업 가능`, type: "checkbox" as const },
-            { name: `${day}-start`, label: `${labels[i]} 시작`, type: "time" as const },
-            { name: `${day}-end`, label: `${labels[i]} 종료`, type: "time" as const },
-          ])}
-          initial={Object.fromEntries(
-            days.flatMap((day) => {
-              const slot = query.data?.slots.find((s) => s.dayOfWeek === day);
-              return [
-                [`${day}-enabled`, !!slot],
-                [`${day}-start`, slot?.startTime ?? "09:00"],
-                [`${day}-end`, slot?.endTime ?? "21:00"],
-              ];
-            }),
-          )}
-          submitLabel="가능시간 저장"
-          onSubmit={(v) =>
-            save.mutateAsync({
-              memberId: id,
-              data: {
-                slots: days
-                  .filter((day) => v[`${day}-enabled`])
-                  .map((day) => ({
-                    dayOfWeek: day,
-                    startTime: textValue(v, `${day}-start`),
-                    endTime: textValue(v, `${day}-end`),
-                  })),
-              },
-            })
+    <>
+      <MenuPanel title="운영 설정" className="instructor-settings-panel">
+        <WeeklyHoursForm
+          variant="settings"
+          externalDirty={permissionsDirty}
+          multiple
+          initial={weekDays.map((dayOfWeek) => {
+            const slots = initialSlots.filter((slot) => slot.dayOfWeek === dayOfWeek);
+            return { dayOfWeek, enabled: slots.length > 0, slots: slots.length ? slots : [{ startTime: "09:00", endTime: "21:00" }] };
+          })}
+          before={
+            <section className="instructor-permissions" aria-label="권한 관리">
+              <h3>권한 관리</h3>
+              <p className="menu-note">이 강사에게 허용할 업무를 선택하세요.</p>
+              <div className="menu-actions">
+                <Button type="button" variant="outline" disabled={permissionsLocked} onClick={() => setPermissions(catalog.map((item) => item.code))}>전체 선택</Button>
+                <Button type="button" variant="outline" disabled={permissionsLocked} onClick={() => setPermissions([])}>전체 해제</Button>
+                <span aria-live="polite">{permissions.length}개 선택</span>
+              </div>
+              {permissionGroups.map((group) => (
+                <fieldset className="instructor-permission-group" key={group.name}>
+                  <legend>{group.name}</legend>
+                  {group.items.map((permission) => (
+                    <Field key={permission.code} orientation="horizontal">
+                      <Checkbox
+                        id={`instructor-${member.id}-${permission.code}`}
+                        checked={permissions.includes(permission.code)}
+                        disabled={permissionsLocked}
+                        onCheckedChange={(checked) => setPermissions((previous) => checked === true
+                          ? [...previous, permission.code]
+                          : previous.filter((code) => code !== permission.code))}
+                      />
+                      <FieldLabel title={permission.description} htmlFor={`instructor-${member.id}-${permission.code}`}>{permission.name}</FieldLabel>
+                    </Field>
+                  ))}
+                </fieldset>
+              ))}
+              {member.status === "RESIGNED" && <p className="menu-note">퇴사한 강사는 활성화 후 권한을 설정할 수 있습니다.</p>}
+              {unavailable.length > 0 && <p className="menu-note">비활성 유형의 기존 권한이 있어 권한 변경을 제한합니다. 해당 유형을 활성화한 뒤 변경해 주세요.</p>}
+            </section>
           }
+          submitLabel="변경사항 저장"
+          onSubmit={async (days) => {
+            const slots = days.filter((day) => day.enabled).flatMap((day) => day.slots.map((slot) => ({ ...slot, dayOfWeek: day.dayOfWeek })));
+            const permissionsChanged = !permissionsLocked && (
+              permissions.length !== initialPermissions.length || permissions.some((code) => !initialPermissions.includes(code))
+            );
+            let permissionsSaved = false;
+            setAction({
+              title: "운영 설정 저장",
+              description: "선택한 권한과 수업 가능시간을 적용합니다. 해제한 권한은 회수되며, 가능시간 변경은 이후 수업 개설·수정에 적용됩니다.",
+              submitLabel: "설정 저장",
+              danger: true,
+              content: <Facts items={[
+                ["권한", permissions.map((code) => catalog.find((item) => item.code === code)?.name ?? code).join(", ") || "없음"],
+                ...days.map((day) => [
+                  `${["월", "화", "수", "목", "금", "토", "일"][weekDays.indexOf(day.dayOfWeek)]}요일`,
+                  day.enabled ? day.slots.map((slot) => `${slot.startTime} ~ ${slot.endTime}`).join(", ") : "수업 불가",
+                ] as [string, string]),
+              ]} />,
+              onSubmit: async () => {
+                if (permissionsChanged && !permissionsSaved) {
+                  await savePermissions.mutateAsync({ memberId: member.id, data: { permissions } });
+                  permissionsSaved = true;
+                }
+                try {
+                  await saveAvailability.mutateAsync({ memberId: member.id, data: { slots } });
+                } catch (error) {
+                  throw new Error(`${permissionsSaved ? "권한은 저장됐지만 수업 가능시간을 저장하지 못했습니다. 다시 저장해 주세요. " : "수업 가능시간을 저장하지 못했습니다. "}${errorMessage(error)}`);
+                }
+              },
+            });
+          }}
         />
       </MenuPanel>
-    </QueryState>
+      {action && <ActionDialog action={action} onClose={() => setAction(null)} />}
+    </>
   );
 }

@@ -84,6 +84,7 @@ export function TimetablePage({
   const canEdit = user.role === "ADMIN";
   const openCreate = (day = start < today ? shiftDate(today, 1) : start, hour = 9) => {
     if (!canEdit) return;
+    setSelectedId(null);
     const endDay = hour === 23 ? shiftDate(day, 1) : day;
     setEditor({
       initialValues: {
@@ -310,6 +311,7 @@ function Schedule({
   );
   const rows = lessons.filter(
     (lesson) =>
+      (view !== "calendar" || lesson.status !== "CANCELED") &&
       (lessonType === "all" || String(lesson.lessonType.id) === lessonType) &&
       (room === "all" || String(lesson.room.id) === room) &&
       (scope === "all" ||
@@ -384,7 +386,9 @@ function Schedule({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">전체 수업 상태</SelectItem>
-                {(["CREATED", "PUBLISHED", "UNPUBLISHED", "SCHEDULED", "CANCELED"] as const).map(
+                {(["CREATED", "PUBLISHED", "UNPUBLISHED", "SCHEDULED", "CANCELED"] as const).filter(
+                  (value) => view !== "calendar" || value !== "CANCELED",
+                ).map(
                   (value) => (
                     <SelectItem
                       key={value}
@@ -571,7 +575,6 @@ function Schedule({
                         />
                       ),
                     )}
-                    {/* TODO(api): 강사 RGB 색상이 조회 계약에 포함되면 브라우저 저장소 대신 API 색상을 적용한다. */}
                     {day.map(({ lesson, start: eventStart, end, column, columns }) => (
                       <button
                         type="button"

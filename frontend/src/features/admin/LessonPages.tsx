@@ -413,7 +413,6 @@ export function LessonEditor({
   const changeStatus = api.useChangeLessonStatus();
   const l = lesson.data;
   const fields: FormField[] = [
-    { name: "title", label: "수업명", required: true, maxLength: 100 },
     ...(!id
       ? [
           {
@@ -426,6 +425,7 @@ export function LessonEditor({
           },
         ]
       : []),
+    { name: "title", label: "수업명", required: true, maxLength: 100 },
     {
       name: "instructorId",
       label: "담당 강사",
@@ -447,6 +447,11 @@ export function LessonEditor({
       required: true,
       disabled: !!l?.reservedCount,
     },
+    ...(!id ? [{
+      name: "durationMinutes", label: "수업 길이 (분)", type: "number" as const,
+      required: true, min: 1, max: 1440,
+      description: "시작 시각이나 수업 길이를 바꾸면 종료 시각을 자동 계산합니다. 종료 시각은 직접 조정할 수도 있습니다.",
+    }] : []),
     {
       name: "endAt",
       label: "종료 시각 (서울)",
@@ -496,8 +501,31 @@ export function LessonEditor({
                 startAt: toLocalInput(l.startAt),
                 endAt: toLocalInput(l.endAt),
               }
-            : { publication: "PRIVATE", ...initialValues }
+            : {
+                publication: "PRIVATE",
+                lessonTypeId: types.data?.content.length === 1 ? String(types.data.content[0].id) : "",
+                title: types.data?.content.find((type) => String(type.id) === String(initialValues.lessonTypeId))?.name ?? (types.data?.content.length === 1 ? types.data.content[0].name : ""),
+                instructorId: instructors.data?.content.length === 1 ? String(instructors.data.content[0].id) : "",
+                roomId: rooms.data?.content.length === 1 ? String(rooms.data.content[0].id) : "",
+                durationMinutes: initialValues.startAt && initialValues.endAt
+                  ? String((Date.parse(toUTC(String(initialValues.endAt))) - Date.parse(toUTC(String(initialValues.startAt)))) / 60000)
+                  : "50",
+                ...initialValues,
+              }
         }
+        onFieldChange={!id ? (name, values): Values => {
+          if (name === "lessonTypeId" && (!values.title || types.data?.content.some((type) => type.name === values.title))) {
+            return { title: types.data?.content.find((type) => String(type.id) === values.lessonTypeId)?.name ?? "" };
+          }
+          if ((name === "startAt" || name === "durationMinutes") && values.startAt) {
+            const minutes = Number(values.durationMinutes);
+            const start = Date.parse(`${values.startAt}:00+09:00`);
+            if (Number.isFinite(start) && Number.isInteger(minutes) && minutes > 0 && minutes <= 1440) {
+              return { endAt: toLocalInput(new Date(start + minutes * 60000).toISOString()) };
+            }
+          }
+          return {};
+        } : undefined}
         submitLabel={id ? "수업 수정" : "수업 개설"}
         successToast={false}
         onCancel={() =>
