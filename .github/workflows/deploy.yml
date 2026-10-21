@@ -1,0 +1,22 @@
+name: AWS 연결 확인
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+
+jobs:
+  check-aws:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: AWS 임시 권한 받기
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::592193418739:role/rha-github-deploy
+          aws-region: ap-northeast-2
+
+      - name: 인증된 계정 확인
+        run: aws sts get-caller-identity
