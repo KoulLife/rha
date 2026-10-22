@@ -1,10 +1,8 @@
-import { toast } from "sonner";
 import { InstructorPage, isInstructorScreen } from "@/features/instructor/InstructorPage";
 import { InstructorLessonRoster } from "@/features/instructor/InstructorLessonRoster";
 import { InstructorLessonDetail } from "@/features/instructor/InstructorLessonDetail";
-import { initialInstructorState, withInstructorPreview } from "@/features/instructor/preview";
-import { attendanceChangeError, type AttendanceChange } from "@/features/instructor/model";
-import type { RecordAttendance } from "@/features/instructor/AttendanceActions";
+import { InstructorHomePage } from "@/features/instructor/InstructorHomePage";
+import type { AttendanceChange } from "@/features/instructor/model";
 import { Collapsible } from "radix-ui";
 import {
   BookOpen,
@@ -68,7 +66,7 @@ import {
 import { HomePage } from "../features/member/pages/HomePage";
 import { AccountPage } from "../features/member/pages/AccountPage";
 import { LessonDetailPage } from "../features/member/pages/LessonsPage";
-import { dashboardPreview, dashboardPreviewTime } from "@/features/dashboard/preview";
+import { dashboardPreview } from "@/features/dashboard/preview";
 import { roleLabels, seoulDate, type DashboardUser } from "@/features/dashboard/model";
 import { PassDetailPage, PassesPage } from "../features/member/pages/PassesPage";
 import { reservationDialog, ReservationsPage } from "../features/member/pages/ReservationsPage";
@@ -130,14 +128,14 @@ function App({
   const [homeView, setHomeView] = useState(initialHomeView);
   const [screen, setScreen] = useState<Screen>("home");
   const [selectedId, setSelectedId] = useState(101);
-  const [data, setData] = useState(() =>
+  const [data] = useState(() =>
     initialHomeView === "empty"
       ? { lessons: [], reservations: [], absences: [], notifications: [] }
       : user.role === "INSTRUCTOR"
-        ? withInstructorPreview(dashboardPreview)
+        ? { lessons: [], reservations: [], absences: [], notifications: [] }
         : dashboardPreview,
   );
-  const [instructorState, setInstructorState] = useState(initialInstructorState);
+  const [instructorChanges, setInstructorChanges] = useState<AttendanceChange[]>([]);
   const admin = useAdminDashboard(user.role === "ADMIN");
   const viewData = user.role === "ADMIN" && homeView !== "empty" ? admin.data : data;
   const unread = api.useGetMyUnreadNotificationCount();
@@ -145,65 +143,24 @@ function App({
   const navigation = getNavigation(user.role, currentUser.permissions);
   const [dialog, setDialog] = useState<DialogState>(null);
 
-  const onRecordAttendance: RecordAttendance = (id, status, reason) => {
-    const error = attendanceChangeError(data, user, id, status, reason, dashboardPreviewTime);
-    if (error) {
-      toast.error(error);
-      return;
-    }
-    const reservation = data.reservations.find((item) => item.id === id)!;
-    setData((previous) => ({
-      ...previous,
-      reservations: previous.reservations.map((item) =>
-        item.id === id ? { ...item, status } : item,
-      ),
-    }));
-    setInstructorState((previous) => ({
-      ...previous,
-      changes: [
-        {
-          id: (previous.changes[0]?.id ?? 0) + 1,
-          reservationId: id,
-          before: reservation.status,
-          after: status,
-          reason: reason.trim(),
-          at: dashboardPreviewTime,
-        },
-        ...previous.changes,
-      ],
-    }));
-    toast.success(
-      reservation.status === "RESERVED" ? "출결을 기록했습니다." : "출결을 수정했습니다.",
-    );
-  };
-
   const onApiAttendanceRecorded = (
     reservation: api.Reservation,
     status: api.AttendanceRequestStatus,
     reason: string,
   ) => {
-    setData((previous) => ({
+    setInstructorChanges((previous) => [
+      {
+        id: (previous[0]?.id ?? 0) + 1,
+        reservationId: reservation.id,
+        lessonId: reservation.lesson.id,
+        member: reservation.member.name,
+        before: reservation.status,
+        after: status,
+        reason,
+        at: new Date().toISOString(),
+      },
       ...previous,
-      reservations: previous.reservations.map((item) =>
-        item.id === reservation.id ? { ...item, status } : item,
-      ),
-    }));
-    setInstructorState((previous) => ({
-      ...previous,
-      changes: [
-        {
-          id: (previous.changes[0]?.id ?? 0) + 1,
-          reservationId: reservation.id,
-          lessonId: reservation.lesson.id,
-          member: reservation.member.name,
-          before: reservation.status,
-          after: status,
-          reason,
-          at: new Date().toISOString(),
-        },
-        ...previous.changes,
-      ],
-    }));
+    ]);
   };
 
   const go = (next: Screen, id?: number) => {
@@ -222,12 +179,6 @@ function App({
           "attendance-corrections",
         ].includes(next)
       ) {
-        if (id === undefined)
-          id = data.lessons.find(
-            (item) =>
-              item.instructorId === user.id &&
-              seoulDate(item.startAt) === seoulDate(dashboardPreviewTime),
-          )?.id;
         next = "timetable";
       }
       if (next === "absence-requests") next = "absences";
@@ -281,17 +232,13 @@ function App({
             <InstructorPage
               screen={screen}
               user={user}
-              data={data}
-              setData={setData}
-              state={instructorState}
-              setState={setInstructorState}
             />
           ) : user.role === "INSTRUCTOR" && screen === "instructor-lesson-detail" ? (
             <InstructorLessonDetail
               lessonId={selectedId}
               user={user}
               canViewReservations={canAccessScreen("attendees", user.role, currentUser.permissions)}
-              changes={instructorState.changes}
+              changes={instructorChanges}
               onRecorded={onApiAttendanceRecorded}
               onBack={() => go("timetable", selectedId)}
             />
@@ -306,13 +253,8 @@ function App({
               screen={screen}
               user={user}
               initialLessonId={user.role === "INSTRUCTOR" ? selectedId : 0}
-              initialDate={
-                user.role === "INSTRUCTOR"
-                  ? data.lessons.find((item) => item.id === selectedId)?.startAt
-                  : undefined
-              }
               canViewReservations={canAccessScreen("attendees", user.role, currentUser.permissions)}
-              changes={instructorState.changes}
+              changes={instructorChanges}
               onRecorded={onApiAttendanceRecorded}
               onNavigate={go}
               canReserve={can("reservation.create")}
@@ -344,14 +286,19 @@ function App({
                 onNavigate={go}
               />
             )
-          ) : screen === "home" || user.role !== "MEMBER" ? (
+          ) : user.role === "INSTRUCTOR" ? (
+            <InstructorHomePage
+              user={user}
+              empty={homeView === "empty"}
+              onNavigate={go}
+            />
+          ) : screen === "home" ? (
             <HomePage
               user={user}
               data={data}
               screen={screen}
               empty={homeView === "empty"}
               onNavigate={go}
-              onRecordAttendance={onRecordAttendance}
             />
           ) : (
             <MemberScreen
@@ -385,7 +332,6 @@ function LessonViews({
   onNavigate,
   canReserve,
   initialLessonId,
-  initialDate,
   canViewReservations,
   changes,
   onRecorded,
@@ -395,7 +341,6 @@ function LessonViews({
   onNavigate: (screen: Screen, id?: number) => void;
   canReserve: boolean;
   initialLessonId: number;
-  initialDate?: string;
   canViewReservations: boolean;
   changes: AttendanceChange[];
   onRecorded: (
@@ -404,6 +349,9 @@ function LessonViews({
     reason: string,
   ) => void;
 }) {
+  const initialLesson = api.useGetLesson(initialLessonId, {
+    query: { enabled: user.role === "INSTRUCTOR" && initialLessonId > 0 },
+  });
   const [view, setView] = useState<"calendar" | "list">(
     screen === "classes" || (user.role === "INSTRUCTOR" && initialLessonId > 0)
       ? "list"
@@ -412,6 +360,12 @@ function LessonViews({
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(
     initialLessonId > 0 ? initialLessonId : null,
   );
+  if (
+    user.role === "INSTRUCTOR" &&
+    initialLessonId > 0 &&
+    (!initialLesson.data || initialLesson.isError)
+  )
+    return <QueryState query={initialLesson}>{null}</QueryState>;
   return (
     <>
       <Tabs
@@ -435,7 +389,7 @@ function LessonViews({
               onNavigate={onNavigate}
               canReserve={canReserve}
               view={view}
-              initialDate={initialDate ? seoulDate(initialDate) : undefined}
+              initialDate={initialLesson.data ? seoulDate(initialLesson.data.startAt) : undefined}
               selectedLessonId={
                 user.role === "INSTRUCTOR" || user.role === "ADMIN" ? selectedLessonId : undefined
               }

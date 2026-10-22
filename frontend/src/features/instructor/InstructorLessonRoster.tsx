@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import * as api from "@/api/generated/api";
+import { currentTime } from "@/api/runtime";
 import { MenuEmpty, MenuPanel } from "@/components/layout/MenuPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -63,7 +64,7 @@ export function InstructorLessonRoster({
     const correction = reservation.status !== "RESERVED";
     setAction({
       title: correction ? "출결 정정" : "출결 처리",
-      description: `${reservation.member.name}님의 출결을 기록합니다.${correction ? " 변경 사유도 입력해 주세요." : ""}`,
+      description: `${reservation.member.name}님의 출결을 기록합니다.${correction ? " 정정 사유는 이번 화면에서만 보관되며 서버에 저장되지 않습니다." : ""}`,
       submitLabel: correction ? "출결 정정" : "출결 저장",
       fields: [
         {
@@ -80,7 +81,7 @@ export function InstructorLessonRoster({
           ? [
               {
                 name: "reason",
-                label: "정정 사유",
+                label: "정정 사유 (이번 화면에만 보관)",
                 type: "textarea" as const,
                 required: true,
                 maxLength: 500,
@@ -99,6 +100,12 @@ export function InstructorLessonRoster({
         await client.invalidateQueries({
           queryKey: api.getGetLessonReservationsQueryKey(lessonId ?? 0),
         });
+        await client.invalidateQueries({
+          queryKey: api.getGetLessonReservationsInfiniteQueryKey(lessonId ?? 0),
+        });
+        await client.invalidateQueries({ queryKey: api.getGetReservationQueryKey(reservation.id) });
+        await client.invalidateQueries({ queryKey: api.getGetReservationsQueryKey() });
+        await client.invalidateQueries({ queryKey: api.getGetReservationsInfiniteQueryKey() });
         onRecorded(reservation, status, reason);
         toast.success(correction ? "출결을 정정했습니다." : "출결을 기록했습니다.");
       },
@@ -175,7 +182,7 @@ export function InstructorLessonRoster({
                               {reservation.status === "CANCELED" ||
                               lesson.data!.status === "CANCELED" ? (
                                 <span className="menu-muted">처리 불가</span>
-                              ) : Date.parse(lesson.data!.startAt) > Date.now() ? (
+                              ) : Date.parse(lesson.data!.startAt) > Date.parse(currentTime()) ? (
                                 <span className="menu-muted">수업 시작 후 가능</span>
                               ) : (
                                 <Button
@@ -212,7 +219,7 @@ export function InstructorLessonRoster({
               <MenuPanel
                 variant="table"
                 className="instructor-roster-panel"
-                title="이번 작업의 출결 정정 이력"
+                title="이번 화면의 출결 정정 이력 (새로고침 시 초기화)"
                 action={<span>{visibleHistory.length}건</span>}
               >
                 <Table

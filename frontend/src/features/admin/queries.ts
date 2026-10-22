@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import type { InfiniteData, UseInfiniteQueryResult } from "@tanstack/react-query";
 import * as api from "@/api/generated/api";
 
@@ -17,25 +17,17 @@ function useAllPages<P extends { content: unknown[]; pageInfo: api.PageInfo }>(
   useEffect(() => {
     if (hasNextPage && !isFetching && !isError) void fetchNextPage();
   }, [hasNextPage, isFetching, isError, fetchNextPage]);
-  const content = query.data?.pages.flatMap((page) => page.content) as P["content"] | undefined;
   const complete = !hasNextPage && !query.isFetchingNextPage;
-  return {
-    ...query,
-    isPending: query.isPending || (!isError && !complete),
-    data:
-      query.data && complete
-        ? {
-            ...query.data.pages[0],
-            content: content!,
-            pageInfo: {
-              ...query.data.pages[0].pageInfo,
-              page: 1,
-              totalPages: 1,
-              size: content!.length,
-            },
-          }
-        : undefined,
-  };
+  const data = useMemo(() => {
+    if (!query.data || !complete) return undefined;
+    const content = query.data.pages.flatMap((page) => page.content) as P["content"];
+    return {
+      ...query.data.pages[0],
+      content,
+      pageInfo: { ...query.data.pages[0].pageInfo, page: 1, totalPages: 1, size: content.length },
+    };
+  }, [query.data, complete]);
+  return { ...query, isPending: query.isPending || (!isError && !complete), data };
 }
 
 export function useAllLessons(params: api.GetLessonsParams = {}, enabled = true) {
@@ -116,5 +108,13 @@ export function useAllPayments(params: api.GetPaymentsParams = {}, enabled = tru
       { ...params, size: 100 },
       { query: { ...paging, enabled } },
     ),
+  );
+}
+
+export function useAllLessonReservations(lessonId: number) {
+  return useAllPages<api.ReservationPageResponse>(
+    api.useGetLessonReservationsInfinite<
+      InfiniteData<api.ReservationPageResponse, number | undefined>
+    >(lessonId, { size: 100 }, { query: paging }),
   );
 }

@@ -15,7 +15,8 @@ import {
   type DashboardData,
   type DashboardUser,
 } from "../dashboard/model";
-import { dashboardPreviewTime } from "../dashboard/preview";
+import { currentTime } from "@/api/runtime";
+import { errorMessage } from "../admin/adminUtils";
 import {
   absenceRestriction,
   canWithdrawAbsence,
@@ -31,8 +32,8 @@ type Props = {
   user: DashboardUser;
   data: DashboardData;
   state: InstructorState;
-  onCreate: (detail: AbsenceDetail, reason: string) => void;
-  onWithdraw: (id: number) => void;
+  onCreate: (detail: AbsenceDetail, reason: string) => Promise<void>;
+  onWithdraw: (id: number) => Promise<void>;
 };
 
 export function InstructorAbsencesPage({ user, data, state, onCreate, onWithdraw }: Props) {
@@ -203,8 +204,8 @@ export function InstructorAbsencesPage({ user, data, state, onCreate, onWithdraw
           data={data}
           state={state}
           onClose={() => setCreating(false)}
-          onSubmit={(values, reason) => {
-            onCreate(values, reason);
+          onSubmit={async (values, reason) => {
+            await onCreate(values, reason);
             setCreating(false);
             setDraft(initialFilters);
           }}
@@ -255,8 +256,8 @@ export function InstructorAbsencesPage({ user, data, state, onCreate, onWithdraw
           action="신청 철회"
           destructive
           onClose={() => setWithdrawing(null)}
-          onConfirm={() => {
-            onWithdraw(withdrawing.id);
+          onConfirm={async () => {
+            await onWithdraw(withdrawing.id);
             setWithdrawing(null);
           }}
         />
@@ -273,13 +274,13 @@ function AbsenceForm({
   onSubmit,
 }: Omit<Props, "onCreate" | "onWithdraw"> & {
   onClose: () => void;
-  onSubmit: (detail: AbsenceDetail, reason: string) => void;
+  onSubmit: (detail: AbsenceDetail, reason: string) => Promise<void>;
 }) {
   const {
     register,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<{ start: string; end: string; reason: string }>();
   return (
     <Dialog
@@ -289,12 +290,24 @@ function AbsenceForm({
         action: "부재 신청",
       }}
       formId="absence-form"
-      onClose={onClose}
+      onClose={() => {
+        if (!isSubmitting) onClose();
+      }}
+      footerAction={
+        <Button
+          type="submit"
+          form="absence-form"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "신청 중…" : "부재 신청"}
+        </Button>
+      }
     >
       <form
         id="absence-form"
         className="instructor-dialog-stack"
-        onSubmit={handleSubmit((values) => {
+        onSubmit={handleSubmit(async (values) => {
+          if (isSubmitting) return;
           const start = new Date(`${values.start}:00+09:00`),
             end = new Date(`${values.end}:00+09:00`);
           if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
@@ -307,20 +320,24 @@ function AbsenceForm({
             user.id,
             start.toISOString(),
             end.toISOString(),
-            dashboardPreviewTime,
+            currentTime(),
           );
           if (error) {
             setError("end", { message: error });
             return;
           }
-          onSubmit(
-            {
-              startAt: start.toISOString(),
-              endAt: end.toISOString(),
-              createdAt: dashboardPreviewTime,
-            },
-            values.reason.trim(),
-          );
+          try {
+            await onSubmit(
+              {
+                startAt: start.toISOString(),
+                endAt: end.toISOString(),
+                createdAt: currentTime(),
+              },
+              values.reason.trim(),
+            );
+          } catch (error) {
+            setError("root", { message: errorMessage(error) });
+          }
         })}
       >
         <Field>
@@ -356,10 +373,13 @@ function AbsenceForm({
           <Textarea
             id="absence-reason"
             placeholder="부재 사유를 입력해 주세요"
-            maxLength={500}
-            {...register("reason", { maxLength: 500 })}
+            maxLength={200}
+            {...register("reason", {
+              maxLength: { value: 200, message: "신청 사유는 200자 이내로 입력해 주세요." },
+            })}
           />
         </Field>
+        <FieldError errors={[errors.reason, errors.root]} />
         <p className="menu-note">
           서울 시간 기준으로 신청합니다. 승인 대기 중인 신청만 철회할 수 있습니다.
         </p>

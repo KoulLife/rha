@@ -1,10 +1,12 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import * as api from "@/api/generated/api";
 import type { Screen } from "@/app/routes";
-import { seoulDate, type DashboardData, type DashboardUser } from "../dashboard/model";
-import { dashboardPreviewTime } from "../dashboard/preview";
+import type { DashboardUser } from "../dashboard/model";
+import { QueryState } from "../admin/AdminUI";
+import { useAllAbsences } from "../admin/queries";
 import { InstructorAbsencesPage } from "./InstructorAbsencesPage";
-import { absenceRestriction, canWithdrawAbsence, type InstructorState } from "./model";
+import { instructorAbsenceState, instructorDashboardData } from "./apiData";
 import "./instructor.css";
 
 export type InstructorScreen = "absences";
@@ -12,81 +14,36 @@ export function isInstructorScreen(screen: Screen): screen is InstructorScreen {
   return screen === "absences";
 }
 
-export function InstructorPage({
-  user,
-  data,
-  setData,
-  state,
-  setState,
-}: {
-  screen: InstructorScreen;
-  user: DashboardUser;
-  data: DashboardData;
-  setData: Dispatch<SetStateAction<DashboardData>>;
-  state: InstructorState;
-  setState: Dispatch<SetStateAction<InstructorState>>;
-}) {
+export function InstructorPage({ user }: { screen: InstructorScreen; user: DashboardUser }) {
+  const query = useAllAbsences({ instructorId: user.id });
+  const client = useQueryClient();
+  const create = api.useCreateAbsence();
+  const withdraw = api.useCancelAbsence();
+  const rows = query.data?.content ?? [];
+  const refresh = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: api.getGetAbsencesQueryKey() }),
+      client.invalidateQueries({ queryKey: api.getGetAbsencesInfiniteQueryKey() }),
+    ]);
   return (
-    <InstructorAbsencesPage
-      user={user}
-      data={data}
-      state={state}
-      onCreate={(detail, reason) => {
-        const error = absenceRestriction(
-          data.absences,
-          state.absenceDetails,
-          user.id,
-          detail.startAt,
-          detail.endAt,
-          dashboardPreviewTime,
-        );
-        if (error) {
-          toast.error(error);
-          return;
-        }
-        const id = Math.max(0, ...data.absences.map((item) => item.id)) + 1;
-        setState((previous) => ({
-          ...previous,
-          absenceDetails: { ...previous.absenceDetails, [id]: detail },
-        }));
-        setData((previous) => ({
-          ...previous,
-          absences: [
-            {
-              id,
-              instructorId: user.id,
-              instructor: user.name,
-              from: seoulDate(detail.startAt),
-              to: seoulDate(detail.endAt),
-              reason,
-              status: "REQUESTED",
-            },
-            ...previous.absences,
-          ],
-        }));
-        toast.success("부재 신청이 접수되었습니다.");
-      }}
-      onWithdraw={(id) => {
-        const absence = data.absences.find((item) => item.id === id);
-        if (!absence || !canWithdrawAbsence(absence, user)) {
-          toast.error("승인 대기 중인 본인 신청만 철회할 수 있습니다.");
-          return;
-        }
-        setData((previous) => ({
-          ...previous,
-          absences: previous.absences.map((item) =>
-            item.id === id ? { ...item, status: "CANCELED" } : item,
-          ),
-        }));
-        setState((previous) => ({
-          ...previous,
-          absenceDetails: {
-            ...previous.absenceDetails,
-            [id]: { ...previous.absenceDetails[id], processedAt: dashboardPreviewTime },
-          },
-        }));
-        toast.success("부재 신청을 철회했습니다.");
-      }}
-    />
+    <QueryState query={query}>
+      <InstructorAbsencesPage
+        user={user}
+        data={instructorDashboardData(user.id, [], [], rows)}
+        state={instructorAbsenceState(rows)}
+        onCreate={async (detail, reason) => {
+          await create.mutateAsync({
+            data: { startAt: detail.startAt, endAt: detail.endAt, ...(reason ? { reason } : {}) },
+          });
+          await refresh();
+          toast.success("부재 신청이 접수되었습니다.");
+        }}
+        onWithdraw={async (id) => {
+          await withdraw.mutateAsync({ absenceId: id });
+          await refresh();
+          toast.success("부재 신청을 철회했습니다.");
+        }}
+      />
+    </QueryState>
   );
 }
