@@ -9,6 +9,7 @@ on:
       - 'backend/**'
       - 'VERSION'
       - '.github/workflows/backend-push.yml'
+
   workflow_dispatch:
 
 permissions:
@@ -28,48 +29,83 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. GitHub 소스코드 다운로드
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 2. VERSION 파일 읽기
       - name: Read Version
         id: version
+        shell: bash
         run: |
+          set -euo pipefail
+
           VERSION=$(tr -d '[:space:]' < VERSION)
 
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid VERSION: $VERSION"
+            echo "Invalid version: $VERSION"
             exit 1
           fi
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Backend Version: $VERSION"
 
+      # 3. AWS OIDC 인증
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           role-to-assume: arn:aws:iam::592193418739:role/r.ha_github_access
-          aws-region: ap-northeast-2
+          aws-region: ${{ env.AWS_REGION }}
 
+      # 4. AWS ECR 로그인
       - name: Login to ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and Push Backend
+      # 5. 이미지 태그 자동 생성
+      - name: Generate Image Tag
+        id: image
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
         run: |
           set -euo pipefail
 
-          SHORT_SHA="${GITHUB_SHA:0:7}"
-          TAG="backend-${VERSION}-${SHORT_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          TAG="backend-${VERSION}.${GITHUB_RUN_NUMBER}"
+
+          # 재실행 시 동일 태그 충돌 방지
+          if [ "$GITHUB_RUN_ATTEMPT" -gt 1 ]; then
+            TAG="${TAG}-r${GITHUB_RUN_ATTEMPT}"
+          fi
 
           IMAGE="$REGISTRY/$ECR_REPOSITORY:$TAG"
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "uri=$IMAGE" >> "$GITHUB_OUTPUT"
+
+          echo "Backend Image: $IMAGE"
+
+      # 6. Docker 이미지 빌드
+      - name: Build Backend Image
+        env:
+          IMAGE: ${{ steps.image.outputs.uri }}
+        run: |
+          set -euo pipefail
 
           docker build \
             --platform linux/amd64 \
             -t "$IMAGE" \
             ./backend
 
+      # 7. ECR 이미지 Push
+      - name: Push Backend Image
+        env:
+          IMAGE: ${{ steps.image.outputs.uri }}
+        run: |
+          set -euo pipefail
+
           docker push "$IMAGE"
 
-          echo "Backend Image: $IMAGE" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Backend Build Success" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image: \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
