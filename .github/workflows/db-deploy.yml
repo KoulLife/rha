@@ -1,0 +1,91 @@
+
+name: RHA PostgreSQL SSM Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: rha-db-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+  EC2_INSTANCE_ID: i-0d4ab82e506bfbac9
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: AWS OIDC Login
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::592193418739:role/r.ha_github_access
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy PostgreSQL via SSM
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SCRIPT=$(base64 -w0 scripts/deploy-db.sh)
+          COMPOSE=$(base64 -w0 deploy/postgres.compose.yaml)
+
+          CMD="set -e; \
+          install -d -m 700 /opt/rha; \
+          printf '%s' '$COMPOSE' | base64 -d > /opt/rha/postgres.compose.yaml; \
+          printf '%s' '$SCRIPT' | base64 -d > /opt/rha/deploy-db.sh; \
+          chmod 700 /opt/rha/deploy-db.sh; \
+          bash /opt/rha/deploy-db.sh"
+
+          PARAMS=$(jq -nc \
+            --arg cmd "$CMD" \
+            '{commands: [$cmd]}')
+
+          COMMAND_ID=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "$PARAMS" \
+            --comment "RHA PostgreSQL Deploy" \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM Command ID: $COMMAND_ID"
+
+          STATUS="Pending"
+
+          for i in $(seq 1 60); do
+            STATUS=$(aws ssm get-command-invocation \
+              --region "$AWS_REGION" \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$EC2_INSTANCE_ID" \
+              --query "Status" \
+              --output text 2>/dev/null || echo Pending)
+
+            echo "Status: $STATUS"
+
+            case "$STATUS" in
+              Success|Failed|TimedOut|Cancelled)
+                break
+                ;;
+            esac
+
+            sleep 5
+          done
+
+          aws ssm get-command-invocation \
+            --region "$AWS_REGION" \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$EC2_INSTANCE_ID" \
+            --query "{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}" \
+            --output json
+
+          test "$STATUS" = "Success"
