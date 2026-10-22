@@ -8,9 +8,11 @@ on:
     paths:
       - 'frontend/**'
       - 'docs/**'
-      - '.dockerignore'
       - 'VERSION'
       - '.github/workflows/ecr-push.yml'
+      - 'scripts/deploy-app.sh'
+      - 'scripts/ssm-deploy.sh'
+      - 'deploy/compose.yaml'
 
   workflow_dispatch:
 
@@ -18,24 +20,33 @@ permissions:
   id-token: write
   contents: read
 
+# Frontend / Backend 배포 동시 실행 방지
+# Backend 워크플로와 동일한 그룹 사용
 concurrency:
-  group: rha-frontend-build
+  group: rha-dev-app-deploy
   cancel-in-progress: false
 
 env:
   AWS_REGION: ap-northeast-2
   ECR_REPOSITORY: r.ha_dev
 
+  EC2_INSTANCE_ID: i-0d4ab82e506bfbac9
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
+      # ==========================================
       # 1. GitHub 소스코드 다운로드
+      # ==========================================
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ==========================================
       # 2. VERSION 파일 읽기
+      # ==========================================
       - name: Read Version
         id: version
         shell: bash
@@ -52,19 +63,25 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Frontend Version: $VERSION"
 
+      # ==========================================
       # 3. AWS OIDC 인증
+      # ==========================================
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           role-to-assume: arn:aws:iam::592193418739:role/r.ha_github_access
           aws-region: ${{ env.AWS_REGION }}
 
+      # ==========================================
       # 4. AWS ECR 로그인
+      # ==========================================
       - name: Login to ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # ==========================================
       # 5. 이미지 태그 자동 생성
+      # ==========================================
       - name: Generate Image Tag
         id: image
         env:
@@ -88,23 +105,31 @@ jobs:
 
           echo "Frontend Image: $IMAGE"
 
+      # ==========================================
       # 6. Docker 이미지 빌드
+      # ==========================================
       - name: Build Frontend Image
         env:
           IMAGE: ${{ steps.image.outputs.uri }}
+        shell: bash
         run: |
           set -euo pipefail
 
+          # docs 이미지 참조 때문에
+          # GitHub 저장소 루트를 빌드 컨텍스트로 사용
           docker build \
             --platform linux/amd64 \
             -f frontend/Dockerfile \
             -t "$IMAGE" \
             .
 
+      # ==========================================
       # 7. ECR 이미지 Push
+      # ==========================================
       - name: Push Frontend Image
         env:
           IMAGE: ${{ steps.image.outputs.uri }}
+        shell: bash
         run: |
           set -euo pipefail
 
@@ -112,3 +137,27 @@ jobs:
 
           echo "### Frontend Build Success" >> "$GITHUB_STEP_SUMMARY"
           echo "Image: \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
+
+      # ==========================================
+      # 8. AWS SSM Frontend 자동 배포
+      # ==========================================
+      - name: Deploy Frontend via SSM
+        env:
+          IMAGE: ${{ steps.image.outputs.uri }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "================================"
+          echo "RHA Frontend Deployment"
+          echo "================================"
+          echo "Instance: $EC2_INSTANCE_ID"
+          echo "Image: $IMAGE"
+          echo "Region: $AWS_REGION"
+
+          # 공통 SSM 배포 스크립트 실행
+          bash scripts/ssm-deploy.sh frontend "$IMAGE"
+
+          echo "### Frontend Deployment Success" >> "$GITHUB_STEP_SUMMARY"
+          echo "Instance: \`$EC2_INSTANCE_ID\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployed Image: \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
