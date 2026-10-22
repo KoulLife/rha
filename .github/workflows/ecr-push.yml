@@ -65,9 +65,10 @@ jobs:
           echo "Building: $IMAGE"
 
           docker build \
-            --platform linux/amd64 \
-            -t "$IMAGE" \
-            ./frontend
+          --platform linux/amd64 \
+          -f frontend/Dockerfile \
+          -t "$IMAGE" \
+          .
 
           docker push "$IMAGE"
 
