@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useGetMyPasses, useGetMyReservations } from "@/api/generated/api";
 import {
   Table,
   TableBody,
@@ -13,11 +14,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { lessons, passes } from "@/mocks/member";
-import { seoulDate, seoulTime, type DashboardData, type DashboardUser } from "./model";
+import { mocksEnabled } from "@/api/runtime";
+import { useAllLessons } from "@/features/admin/queries";
+import { seoulDate, seoulTime } from "./model";
 import { dashboardPreviewTime } from "./preview";
-import { dateInSeoul, weekRange, weekStart } from "@/features/timetable/model";
+import { dateInSeoul, timeInSeoul, weekRange, weekStart } from "@/features/timetable/model";
 import { PassUsage } from "@/features/member/PassUsage";
+import { passUsage } from "@/features/member/pages/PassesPage";
 import "./member-home.css";
 
 const weekdayFormatter = new Intl.DateTimeFormat("ko-KR", {
@@ -63,32 +66,56 @@ function HomePanel({
 }
 
 export function MemberHomePage({
-  user,
-  data,
   onNavigate,
   empty = false,
 }: {
-  user: DashboardUser;
-  data: DashboardData;
   onNavigate: (screen: Screen, id?: number) => void;
   empty?: boolean;
 }) {
-  const pass = !empty && user.id === 1 ? passes[0] : undefined;
-  const { from: weekFrom, to: weekTo } = weekRange(weekStart(dateInSeoul(dashboardPreviewTime)));
-  const publicLessons = empty
-    ? []
-    : lessons
-        .filter((lesson) => lesson.startAt >= weekFrom && lesson.startAt < weekTo)
-        .sort((a, b) => a.startAt.localeCompare(b.startAt));
-  const ownReservations = data.reservations.filter((item) => item.memberId === user.id);
-  const reserved = ownReservations.filter((item) => item.status === "RESERVED");
+  const activePassQuery = useGetMyPasses(
+    { page: 1, size: 1, status: "ACTIVE" },
+    { query: { enabled: !empty } },
+  );
+  const allPassQuery = useGetMyPasses({ page: 1, size: 1 }, { query: { enabled: !empty } });
+  const reservedQuery = useGetMyReservations(
+    { page: 1, size: 3, status: "RESERVED", order: "ASC" },
+    { query: { enabled: !empty } },
+  );
+  const allReservationsQuery = useGetMyReservations(
+    { page: 1, size: 1 },
+    { query: { enabled: !empty } },
+  );
+  const pass = activePassQuery.data?.content[0];
+  const reserved = reservedQuery.data?.content ?? [];
+  const { from: weekFrom, to: weekTo } = weekRange(
+    weekStart(dateInSeoul(mocksEnabled ? dashboardPreviewTime : Date.now())),
+  );
+  const lessonsQuery = useAllLessons(
+    { from: weekFrom, to: weekTo, status: "PUBLISHED", order: "ASC" },
+    !empty,
+  );
+  const publicLessons = empty ? [] : (lessonsQuery.data?.content ?? []);
   const metrics: { label: string; value: string; target: Screen }[] = [
-    { label: "예약 완료", value: String(reserved.length), target: "reservations" },
-    { label: "대기 신청", value: "0", target: "reservations" },
-    { label: "이용권 현재 잔여", value: `${pass?.remaining ?? 0}회`, target: "passes" },
     {
-      label: "지난 수업·취소 기록",
-      value: String(ownReservations.length - reserved.length),
+      label: "예약 완료",
+      value: reservedQuery.data ? String(reservedQuery.data.pageInfo.totalElements) : "—",
+      target: "reservations",
+    },
+    {
+      label: "보유 이용권",
+      value: allPassQuery.data ? String(allPassQuery.data.pageInfo.totalElements) : "—",
+      target: "passes",
+    },
+    {
+      label: "이용권 현재 잔여",
+      value: activePassQuery.data ? `${pass?.remainingCount ?? 0}회` : "—",
+      target: "passes",
+    },
+    {
+      label: "전체 예약 내역",
+      value: allReservationsQuery.data
+        ? String(allReservationsQuery.data.pageInfo.totalElements)
+        : "—",
       target: "reservations",
     },
   ];
@@ -176,25 +203,24 @@ export function MemberHomePage({
                 {publicLessons.map((lesson) => (
                   <TableRow key={lesson.id}>
                     <TableCell>
-                      {lesson.date} ({weekdayFormatter.format(new Date(lesson.startAt))})
+                      {dateInSeoul(lesson.startAt).slice(5).replace("-", ".")} (
+                      {weekdayFormatter.format(new Date(lesson.startAt))})
                     </TableCell>
-                    <TableCell>{lesson.time}</TableCell>
                     <TableCell>
-                      <strong>{lesson.type}</strong>
+                      {timeInSeoul(lesson.startAt)}–{timeInSeoul(lesson.endAt)}
                     </TableCell>
-                    <TableCell>{lesson.teacher}</TableCell>
-                    <TableCell>{lesson.room}</TableCell>
-                    <TableCell>{lesson.booked}</TableCell>
+                    <TableCell>
+                      <strong>{lesson.title}</strong>
+                    </TableCell>
+                    <TableCell>{lesson.instructor.name}</TableCell>
+                    <TableCell>{lesson.room.name}</TableCell>
+                    <TableCell>
+                      {lesson.reservedCount} / {lesson.capacity}명
+                    </TableCell>
                     <TableCell>
                       <StatusBadge
                         domain="lesson"
-                        status={
-                          lesson.status === "예약 가능"
-                            ? "AVAILABLE"
-                            : lesson.status === "대기 신청 가능"
-                              ? "WAITING"
-                              : "CLOSED"
-                        }
+                        status={lesson.reservedCount >= lesson.capacity ? "CLOSED" : "AVAILABLE"}
                       />
                     </TableCell>
                     <TableCell>
@@ -202,7 +228,7 @@ export function MemberHomePage({
                         variant="outline"
                         size="sm"
                         onClick={() => onNavigate("lesson-detail", lesson.id)}
-                        aria-label={`${lesson.type} 상세 보기`}
+                        aria-label={`${lesson.title} 상세 보기`}
                       >
                         상세 보기
                       </Button>
@@ -214,8 +240,18 @@ export function MemberHomePage({
           ) : (
             <Empty>
               <EmptyHeader>
-                <EmptyTitle>이번 주 수업이 없습니다</EmptyTitle>
-                <EmptyDescription>새 수업이 공개되면 이곳에서 확인할 수 있습니다.</EmptyDescription>
+                <EmptyTitle>
+                  {lessonsQuery.isPending && !empty
+                    ? "수업을 불러오는 중입니다"
+                    : lessonsQuery.isError
+                      ? "수업을 불러오지 못했습니다"
+                      : "이번 주 수업이 없습니다"}
+                </EmptyTitle>
+                <EmptyDescription>
+                  {lessonsQuery.isError
+                    ? "잠시 후 다시 확인해 주세요."
+                    : "새 수업이 공개되면 이곳에서 확인할 수 있습니다."}
+                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}
@@ -227,19 +263,19 @@ export function MemberHomePage({
           >
             {reserved.length ? (
               <div className="home-reservation-list">
-                {reserved.slice(0, 3).map((item) => {
-                  const lesson = data.lessons.find((lesson) => lesson.id === item.lessonId);
+                {reserved.map((item) => {
+                  const lesson = item.lesson;
                   return (
                     <div
                       className="home-reservation"
                       key={item.id}
                     >
                       <div>
-                        <h3>{lesson?.title ?? "예약한 수업"}</h3>
+                        <h3>{lesson.title}</h3>
                         {lesson && (
                           <p>
                             {seoulDate(lesson.startAt).replace(/-/g, ".")}{" "}
-                            {seoulTime(lesson.startAt)} · {lesson.instructor}
+                            {seoulTime(lesson.startAt)} · {lesson.instructor?.name ?? "-"}
                           </p>
                         )}
                       </div>
@@ -250,7 +286,7 @@ export function MemberHomePage({
                         />
                         <Button
                           variant="ghost"
-                          onClick={() => onNavigate("reservation-detail", item.id)}
+                          onClick={() => onNavigate("reservations")}
                         >
                           내역 보기
                         </Button>
@@ -262,8 +298,18 @@ export function MemberHomePage({
             ) : (
               <Empty>
                 <EmptyHeader>
-                  <EmptyTitle>예약한 수업이 없습니다</EmptyTitle>
-                  <EmptyDescription>수업 목록에서 예약할 수 있습니다.</EmptyDescription>
+                  <EmptyTitle>
+                    {reservedQuery.isPending && !empty
+                      ? "예약을 불러오는 중입니다"
+                      : reservedQuery.isError
+                        ? "예약을 불러오지 못했습니다"
+                        : "예약한 수업이 없습니다"}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {reservedQuery.isError
+                      ? "잠시 후 다시 확인해 주세요."
+                      : "수업 목록에서 예약할 수 있습니다."}
+                  </EmptyDescription>
                 </EmptyHeader>
               </Empty>
             )}
@@ -283,25 +329,33 @@ export function MemberHomePage({
             {pass ? (
               <>
                 <div className="home-pass-heading">
-                  <h3>{pass.name}</h3>
+                  <h3>{pass.passProduct.name}</h3>
                 </div>
                 <PassUsage
-                  pass={pass}
+                  pass={passUsage(pass)}
                   compact
                 />
                 <div className="home-pass-footer">
                   <StatusBadge
                     domain="pass"
-                    status="ACTIVE"
+                    status={pass.status}
                   />
                 </div>
               </>
             ) : (
               <Empty>
                 <EmptyHeader>
-                  <EmptyTitle>보유 이용권이 없습니다</EmptyTitle>
+                  <EmptyTitle>
+                    {activePassQuery.isPending && !empty
+                      ? "이용권을 불러오는 중입니다"
+                      : activePassQuery.isError
+                        ? "이용권을 불러오지 못했습니다"
+                        : "사용 중인 이용권이 없습니다"}
+                  </EmptyTitle>
                   <EmptyDescription>
-                    이용권이 발급되면 잔여 횟수와 만료일을 확인할 수 있습니다.
+                    {activePassQuery.isError
+                      ? "잠시 후 다시 확인해 주세요."
+                      : "내 이용권에서 잔여 횟수와 만료일을 확인할 수 있습니다."}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>

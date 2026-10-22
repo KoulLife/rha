@@ -38,7 +38,6 @@ import { AppFooter } from "../components/layout/AppFooter";
 import { AppHeader } from "../components/layout/AppHeader";
 import { BrandLogo } from "../components/layout/BrandLogo";
 import { PageBreadcrumb } from "../components/layout/PageBreadcrumb";
-import { Dialog } from "../components/ui/Dialog";
 import {
   canAccessScreen,
   getMenuScreen,
@@ -71,9 +70,9 @@ import { LessonDetailPage } from "../features/member/pages/LessonsPage";
 import { dashboardPreview, dashboardPreviewTime } from "@/features/dashboard/preview";
 import { roleLabels, seoulDate, type DashboardUser } from "@/features/dashboard/model";
 import { PassDetailPage, PassesPage } from "../features/member/pages/PassesPage";
-import { reservationDialog, ReservationsPage } from "../features/member/pages/ReservationsPage";
+import { ReservationsPage } from "../features/member/pages/ReservationsPage";
 import { NotificationsPage } from "../features/member/pages/NotificationsPage";
-import type { DialogState, Screen } from "./routes";
+import type { Screen } from "./routes";
 import { DashboardError, DashboardLoading } from "@/features/dashboard/DashboardState";
 import type { HomeView } from "@/features/dashboard/viewState";
 import { AdminWorkspace, useAdminDashboard } from "@/features/admin/AdminWorkspace";
@@ -143,7 +142,6 @@ function App({
   const unread = api.useGetMyUnreadNotificationCount();
   const unreadCount = homeView === "empty" ? 0 : (unread.data?.unreadCount ?? 0);
   const navigation = getNavigation(user.role, currentUser.permissions);
-  const [dialog, setDialog] = useState<DialogState>(null);
 
   const onRecordAttendance: RecordAttendance = (id, status, reason) => {
     const error = attendanceChangeError(data, user, id, status, reason, dashboardPreviewTime);
@@ -233,10 +231,7 @@ function App({
       if (next === "absence-requests") next = "absences";
     }
     if (!canAccessScreen(next, user.role, currentUser.permissions)) return;
-    if (user.role === "MEMBER" && next === "reservation-detail" && id !== undefined) {
-      setDialog(reservationDialog(id));
-      return;
-    }
+    if (user.role === "MEMBER" && next === "reservation-detail") next = "reservations";
     if (id !== undefined) setSelectedId(id);
     else if (user.role === "INSTRUCTOR" && next === "timetable") setSelectedId(0);
     else if (next === "admin-settlement-create") setSelectedId(0);
@@ -358,9 +353,7 @@ function App({
               screen={screen}
               selectedId={selectedId}
               onNavigate={go}
-              onDialog={setDialog}
               canReserve={can("reservation.create")}
-              canWaitlist={can("waitlist.create")}
               canCancel={can("reservation.cancel")}
               canUpdate={can("profile.update")}
               canChangePassword={can("password.change")}
@@ -369,12 +362,6 @@ function App({
         </div>
         <AppFooter />
       </main>
-      {dialog && (
-        <Dialog
-          dialog={dialog}
-          onClose={() => setDialog(null)}
-        />
-      )}
     </SidebarProvider>
   );
 }
@@ -629,9 +616,7 @@ function MemberScreen({
   screen,
   selectedId,
   onNavigate,
-  onDialog,
   canReserve,
-  canWaitlist,
   canCancel,
   canUpdate,
   canChangePassword,
@@ -639,9 +624,7 @@ function MemberScreen({
   screen: Screen;
   selectedId: number;
   onNavigate: (screen: Screen, id?: number) => void;
-  onDialog: (dialog: DialogState) => void;
   canReserve: boolean;
-  canWaitlist: boolean;
   canCancel: boolean;
   canUpdate: boolean;
   canChangePassword: boolean;
@@ -652,9 +635,7 @@ function MemberScreen({
         <LessonDetailPage
           lessonId={selectedId}
           onBack={() => onNavigate("timetable")}
-          onDialog={onDialog}
           canReserve={canReserve}
-          canWaitlist={canWaitlist}
         />
       );
     case "passes":
@@ -667,16 +648,10 @@ function MemberScreen({
         />
       );
     case "reservations":
-      return (
-        <ReservationsPage
-          onDialog={onDialog}
-          canCancel={canCancel}
-        />
-      );
+      return <ReservationsPage canCancel={canCancel} />;
     case "profile":
       return (
         <AccountPage
-          onDialog={onDialog}
           canUpdate={canUpdate}
           canChangePassword={canChangePassword}
         />

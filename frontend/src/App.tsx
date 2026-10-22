@@ -125,7 +125,7 @@ export function App() {
         <MemberApp
           key={member.id}
           user={member}
-          name={member.name}
+          name={profile.data?.id === member.id ? profile.data.name : member.name}
           onLogout={requestLogout}
           initialHomeView={homeView}
           onLogin={endSession}

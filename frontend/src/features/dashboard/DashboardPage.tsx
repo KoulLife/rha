@@ -473,8 +473,6 @@ export function DashboardPage({
   if (member)
     return (
       <MemberHomePage
-        user={user}
-        data={data}
         onNavigate={onNavigate}
         empty={empty}
       />
