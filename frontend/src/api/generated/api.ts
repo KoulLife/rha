@@ -8,7 +8,9 @@
  * - 목록 응답은 { content, pageInfo } 형태
  *   - 항목 수가 고정되었거나 적은 설정성 응답(영업시간, 권한 목록, 회원 보유 권한, 수당 단가, 활동 이력 카테고리)은 페이징 없이 해당 이름의 배열 필드로 반환한다.
  * - 인증 불필요 API는 security: [] 로 명시
- * - 날짜/시간은 ISO 8601 (UTC)
+ * - 날짜/시간은 ISO 8601이다. 시각(`date-time`)은 UTC이고, 날짜만 있는 필드(`date`)는 센터 현지(Asia/Seoul) 날짜이다.
+ * - 에러 응답은 모두 `ErrorResponse` 형식이다. 업무 코드가 없는 오류도 `code`와 `timestamp`를 담으며, 공통 코드는 `ErrorResponse.code`에 나열한다.
+ * - 400/403 확인 순서: 요청을 읽을 수 없는 오류(JSON 문법 오류, 필드 타입 불일치, 경로·쿼리 값의 형식 오류)는 권한 확인보다 먼저 400 (INVALID_INPUT)이다. 읽을 수 있는 요청의 값 검증은 각 API 설명의 "확인 순서"를 따르며, 권한 확인이 먼저인 API는 권한이 없으면 값이 올바르지 않아도 403이다. 인증(401)은 항상 가장 먼저 확인한다.
  *
  * OpenAPI spec version: 1.0.0
  */
@@ -59,7 +61,15 @@ export interface ErrorResponse {
   detail: string;
   /** 에러가 발생한 요청 경로 */
   instance?: string;
-  /** 서비스 내부 에러 코드 */
+  /**
+     * 서비스 내부 에러 코드. API별 업무 코드는 각 API 설명과 `docs/error-codes.md`를 따른다.
+     * 업무 코드가 없는 오류는 다음 공통 코드를 쓴다.
+     * - `NOT_FOUND` (404): 리소스나 경로가 없음
+     * - `METHOD_NOT_ALLOWED` (405): 지원하지 않는 HTTP 메서드
+     * - `NOT_ACCEPTABLE` (406): 지원하지 않는 응답 형식 요청 (`Accept`)
+     * - `UNSUPPORTED_MEDIA_TYPE` (415): 지원하지 않는 요청 본문 형식 (`Content-Type`)
+     * - `INTERNAL_SERVER_ERROR` (500): 서버 내부 오류. `detail`에는 내부 정보를 담지 않는다.
+     */
   code: string;
   timestamp: string;
   /** 유효성 검증 실패 상세 목록 (필요 시 포함) */
@@ -1437,7 +1447,7 @@ export type NotFoundErrorResponse = ErrorResponse;
 export type ConflictErrorResponse = ErrorResponse;
 
 /**
- * 500 서버 내부 오류
+ * 500 서버 내부 오류. `code`는 `INTERNAL_SERVER_ERROR`이다.
  */
 export type InternalServerErrorResponse = ErrorResponse;
 
@@ -2138,6 +2148,7 @@ export const getConfirmEmailVerificationUrl = () => {
 /**
  * 코드가 일치하면 회원가입에 사용할 `emailVerificationToken`을 발급한다.
  * - 코드 불일치/만료 시 400 (INVALID_VERIFICATION_CODE)
+ * - 같은 코드로 5회 틀리면 그 코드는 폐기된다. 이후에는 올바른 코드를 보내도 400 (INVALID_VERIFICATION_CODE)이며, 인증 코드를 다시 요청해야 한다.
  * @summary 이메일 인증 코드 확인
  */
 export const confirmEmailVerification = async (emailVerificationConfirmRequest: EmailVerificationConfirmRequest, options?: Parameters<typeof apiRequest>[1]): Promise<EmailVerificationTokenResponse> => {
@@ -2870,6 +2881,7 @@ export const getUpdateMyProfileUrl = () => {
  * - 수정할 수 있는 필드(`name`, `phoneNumber`, `birthDate`, `address`)가 하나도 없으면 400 (INVALID_INPUT). 이메일, 역할, 상태 등 그 외의 필드는 무시한다.
  * - `name`은 공백만으로 이루어질 수 없다 (400, INVALID_INPUT).
  * - 기존과 같은 값을 보내도 오류 없이 200으로 응답한다.
+ * - 활성(`ACTIVE`) 상태가 아닌 회원이 이미 발급된 Access Token으로 호출하면 401 (UNAUTHENTICATED)이다.
  * @summary 내 정보 수정
  */
 export const updateMyProfile = async (memberUpdateRequest: MemberUpdateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<Member> => {
@@ -2964,6 +2976,7 @@ export const getWithdrawMyAccountUrl = () => {
  * - 남은 이용권은 탈퇴와 함께 사용할 수 없게 된다 (이력은 보존된다).
  * - 이용권/결제 이력 등 연관 데이터는 보존되고, 계정 상태는 `WITHDRAWN`이 된다. 같은 이메일로 다시 가입할 수 없으며, 필요하면 관리자가 `changeMemberStatus`로 `ACTIVE`로 복구한다.
  * - 모든 Refresh Token이 폐기되고 쿠키가 만료된다.
+ * - 활성(`ACTIVE`) 상태가 아닌 회원이 이미 발급된 Access Token으로 호출하면 401 (UNAUTHENTICATED)이다.
  * @summary 회원탈퇴
  */
 export const withdrawMyAccount = async ( options?: Parameters<typeof apiRequest>[1]): Promise<void> => {
@@ -3045,6 +3058,7 @@ export const getChangeMyPasswordUrl = () => {
  * - 새 비밀번호가 현재 비밀번호와 같으면 400 (SAME_AS_CURRENT_PASSWORD)
  * - 검증은 요청 형식(INVALID_INPUT), 현재 비밀번호(INVALID_CURRENT_PASSWORD), 새 비밀번호 동일 여부(SAME_AS_CURRENT_PASSWORD) 순서로 한다. 현재 비밀번호가 틀리면 새 비밀번호가 같은지는 알려주지 않는다.
  * - 실패하면 Refresh Token은 폐기되지 않는다.
+ * - 활성(`ACTIVE`) 상태가 아닌 회원이 이미 발급된 Access Token으로 호출하면 401 (UNAUTHENTICATED)이다.
  * - 이미 발급된 Access Token은 만료될 때까지 유효하다 (서버가 Access Token을 추적하지 않는다). 다만 Refresh Token이 모두 폐기되어 재발급은 할 수 없다.
  * @summary 비밀번호 변경
  */
@@ -3326,11 +3340,11 @@ export const getCreateMemberUrl = () => {
  * - 설정 링크는 `resetPassword`(POST /auth/password-resets)로 처리한다. 링크가 만료되면 `requestPasswordReset`으로 다시 받을 수 있다.
  * - 비밀번호를 설정하기 전까지는 로그인할 수 없다.
  * - 설정 링크의 토큰은 `requestPasswordReset`이 발급하는 것과 같은 형식(`prt_`)이며 유효 시간은 30분이다.
- * - 관리자(`ADMIN`)가 아닌 호출자는 403 (PERMISSION_DENIED)
- * - 이미 가입된 이메일이면 409 (EMAIL_ALREADY_EXISTS). 탈퇴, 비활성화, 퇴사한 계정의 이메일도 포함한다.
+ * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 이미 가입된 이메일이면 409 (EMAIL_ALREADY_EXISTS).
+ * - 이미 가입된 이메일은 탈퇴, 비활성화, 퇴사한 계정의 이메일도 포함한다.
  * - 계정 생성과 초대 메일 발송은 하나의 작업으로 처리한다. 메일 발송에 실패하면 계정도 생성되지 않는다.
  * - 성공하면 201과 함께 `ACTIVE` 상태의 회원 정보를 반환한다. 권한은 비어 있고 비밀번호는 없다.
- * - 요청 형식이 올바르지 않으면 400 (INVALID_INPUT)
  * @summary 강사/관리자 등록 (관리자)
  */
 export const createMember = async (memberCreateRequest: MemberCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<Member> => {
@@ -3529,7 +3543,7 @@ export const getUpdateMemberUrl = (memberId: number,) => {
  * - 본인의 역할은 변경할 수 없다 (403, CANNOT_CHANGE_OWN_ROLE). 마지막 관리자가 사라지는 것을 막기 위함이다.
  * - 역할이 바뀌면 해당 회원의 Refresh Token은 폐기된다.
  * - 강사(`INSTRUCTOR`)의 역할을 다른 역할로 바꾸려는데 시작 전이고 취소되지 않은 담당 수업이 있으면 409 (INSTRUCTOR_HAS_UPCOMING_LESSONS). 담당 강사를 바꾸거나 수업을 취소한 뒤 다시 시도한다.
- * - 강사에게 부여된 권한은 역할이 바뀌면 모두 회수된다.
+ * - 강사에게 부여된 권한은 역할이 바뀌면 모두 회수되고, 등록된 퇴사일(`resignationDate`)도 지워진다.
  * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
  * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없는 회원이면 404 → 본인의 역할을 다른 역할로 바꾸려 하면 403 (CANNOT_CHANGE_OWN_ROLE) → 담당 수업이 있으면 409 (INSTRUCTOR_HAS_UPCOMING_LESSONS).
  * - 본인 `id`에 `role`을 현재와 같은 값으로 보내면 무시하고 나머지 필드는 정상 수정한다. 본인의 역할을 *다른* 역할로 바꾸려 할 때만 403이다.
@@ -3634,8 +3648,9 @@ export const getChangeMemberStatusUrl = (memberId: number,) => {
  * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
  * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없는 회원이면 404 → 본인 계정이면 403 (CANNOT_CHANGE_OWN_STATUS) → 상태 변경 불가면 409.
  * - 이미 요청한 상태와 같으면 변경 없이 200으로 현재 회원 정보를 반환한다. Refresh Token 폐기 등 부작용도 없다.
- * - 탈퇴나 퇴사한 계정을 `ACTIVE`로 복구하면 탈퇴일과 퇴사일(`resignationDate`)이 지워진다.
+ * - 탈퇴나 퇴사한 계정을 `ACTIVE`로 복구하면 탈퇴일과 퇴사일(`resignationDate`)이 지워진다. 비활성(`INACTIVE`) 계정을 `ACTIVE`로 되돌릴 때는 등록된 퇴사일을 지우지 않는다.
  * - 비활성화와 Refresh Token 폐기는 같은 트랜잭션으로 처리한다.
+ * - 비활성화, 탈퇴, 퇴사한 회원이 이미 발급받은 Access Token은 만료(서버 설정, 기본 1시간)될 때까지 유효하다. 그 동안 본인 정보와 목록 조회는 가능하지만 본인 정보 수정, 비밀번호 변경, 탈퇴는 401 (UNAUTHENTICATED)이고, 권한 확인이 필요한 API는 호출 시점의 DB 기준으로 거절된다.
  * @summary 회원 상태 변경 (관리자)
  */
 export const changeMemberStatus = async (memberId: number,
@@ -4225,6 +4240,7 @@ export const getCreateLessonTypeUrl = () => {
  * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
  * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 코드 중복이면 409 (LESSON_TYPE_CODE_DUPLICATED).
  * - 새로 등록한 유형은 활성(`active: true`)이다.
+ * - 이름의 앞뒤 공백은 제거해 저장하며, 제거한 뒤 길이가 1~50자여야 한다. 공백만으로 이루어진 이름은 400 (INVALID_INPUT)이다.
  * @summary 수업 유형 등록 (관리자)
  */
 export const createLessonType = async (lessonTypeCreateRequest: LessonTypeCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<LessonType> => {
@@ -4320,6 +4336,7 @@ export const getUpdateLessonTypeUrl = (lessonTypeId: number,) => {
  * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
  * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없는 유형이면 404.
  * - 비활성 유형도 수정할 수 있으며, 다시 활성화하면 권한 목록에 되돌아온다.
+ * - 이름의 앞뒤 공백은 제거해 저장하며, 제거한 뒤 길이가 1~50자여야 한다. 공백만으로 이루어진 이름은 400 (INVALID_INPUT)이다.
  * @summary 수업 유형 수정 (관리자)
  */
 export const updateLessonType = async (lessonTypeId: number,
@@ -5494,7 +5511,7 @@ export const getUpdatePassProductUrl = (passProductId: number,) => {
  * - `totalCount`, `validityDays`: 기본적으로 앞으로 발급하는 이용권부터 적용된다.
  *   `applyToIssued`를 true로 보내면 이 상품으로 발급된 이용권 중 만료되지 않은(`UPCOMING`, `ACTIVE`, `PAUSED`) 모든 이용권에도 반영된다.
  *   - 총 횟수가 변경되면 변경된 만큼 이용권의 총 횟수와 잔여 횟수를 함께 증감한다. 잔여 횟수는 0 미만이 되지 않고, 총 횟수는 1 미만이 되지 않으며, 잔여 횟수는 총 횟수를 넘지 않는다.
- *   - 유효 기간이 변경되면 만료일을 `시작일 + 유효 기간 - 1일`로 다시 계산한다. 개별 수정한 만료일은 덮어써진다. 새 만료일이 과거이면 해당 이용권은 `EXPIRED`가 된다.
+ *   - 유효 기간이 변경되면 만료일을 `시작일 + 유효 기간 - 1일 + 일시정지로 연장된 일수`로 다시 계산한다. 연장된 일수는 취소되지 않은 정지의 일수 합이며, 조기 해제한 정지는 실제로 정지한 일수만 더한다. 개별 수정한 만료일은 덮어써진다. 새 만료일이 과거이면 해당 이용권은 `EXPIRED`가 된다.
  * - `applyToIssued`는 보유 회원 전체에 영향을 주므로, 클라이언트는 영향받는 이용권 수를 먼저 확인시킨 뒤 호출해야 한다. 영향 수는 `GET /passes?passProductId=...`의 `pageInfo.totalElements`로 알 수 있다.
  * - `description`에 null을 보내면 설명이 지워진다. 전달하지 않은 필드는 바뀌지 않는다.
  * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않거나 필드가 하나도 없으면 400 (INVALID_INPUT) → 없는 상품이면 404.
@@ -6969,6 +6986,7 @@ export const getTerminatePassPauseUrl = (passId: number,
  * - 아직 시작하지 않은(`SCHEDULED`) 정지는 취소(`CANCELED`)되며, 연장했던 만료일이 모두 원래대로 돌아간다.
  * - 진행 중인(`ACTIVE`) 정지는 오늘부터 해제된다. 정지 종료일이 어제로 바뀌고(`ENDED`), 사용하지 않은 일수만큼 만료일이 줄어든다. 시작일 당일에 해제하면 사용한 일수가 0이므로 취소와 같이 처리된다.
  * - 이미 끝났거나(`ENDED`) 취소된(`CANCELED`) 정지이면 409 (INVALID_PAUSE_STATUS)
+ * - 해제로 줄어든 만료일은 이용권의 시작일보다 앞서지 않는다. 만료일을 직접 줄여 둔 경우 시작일에서 멈춘다.
  * - 해제 후에는 이용권의 만료일과 상태가 바뀌므로 클라이언트는 이용권을 다시 조회한다.
  * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 이용권이나 그 이용권의 정지가 없으면 404 → 상태 409 (INVALID_PAUSE_STATUS).
  * @summary 이용권 일시정지 해제 (관리자)
@@ -7762,12 +7780,91 @@ export const getLessonReservations = async (lessonId: number,
 
 
 
+export const getGetLessonReservationsInfiniteQueryKey = (lessonId: number,
+    params?: GetLessonReservationsParams,) => {
+    return [
+    'infinite', `/lessons/${lessonId}/reservations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetLessonReservationsQueryKey = (lessonId: number,
     params?: GetLessonReservationsParams,) => {
     return [
     `/lessons/${lessonId}/reservations`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetLessonReservationsInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getLessonReservations>>, GetLessonReservationsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | InternalServerErrorResponse>(lessonId: number,
+    params?: GetLessonReservationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonReservations>>, TError, TData, QueryKey, GetLessonReservationsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLessonReservationsInfiniteQueryKey(lessonId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLessonReservations>>, QueryKey, GetLessonReservationsParams['page']> = ({ signal, pageParam }) => getLessonReservations(lessonId,{...params, 'page': pageParam ?? params?.['page']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lessonId !== null && lessonId !== undefined, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonReservations>>, TError, TData, QueryKey, GetLessonReservationsParams['page']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetLessonReservationsInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getLessonReservations>>>
+export type GetLessonReservationsInfiniteQueryError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | InternalServerErrorResponse
+
+
+export function useGetLessonReservationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessonReservations>>, GetLessonReservationsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | InternalServerErrorResponse>(
+ lessonId: number,
+    params: undefined |  GetLessonReservationsParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonReservations>>, TError, TData, QueryKey, GetLessonReservationsParams['page']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLessonReservations>>,
+          TError,
+          Awaited<ReturnType<typeof getLessonReservations>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLessonReservationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessonReservations>>, GetLessonReservationsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | InternalServerErrorResponse>(
+ lessonId: number,
+    params?: GetLessonReservationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonReservations>>, TError, TData, QueryKey, GetLessonReservationsParams['page']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLessonReservations>>,
+          TError,
+          Awaited<ReturnType<typeof getLessonReservations>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLessonReservationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessonReservations>>, GetLessonReservationsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | InternalServerErrorResponse>(
+ lessonId: number,
+    params?: GetLessonReservationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonReservations>>, TError, TData, QueryKey, GetLessonReservationsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 수업 예약자 목록 조회 (관리자 또는 담당 강사)
+ */
+
+export function useGetLessonReservationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getLessonReservations>>, GetLessonReservationsParams['page']>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | InternalServerErrorResponse>(
+ lessonId: number,
+    params?: GetLessonReservationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getLessonReservations>>, TError, TData, QueryKey, GetLessonReservationsParams['page']>>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetLessonReservationsInfiniteQueryOptions(lessonId,params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetLessonReservationsQueryOptions = <TData = Awaited<ReturnType<typeof getLessonReservations>>, TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | InternalServerErrorResponse>(lessonId: number,
@@ -9083,7 +9180,7 @@ export const getCreateSettlementUrl = () => {
 /**
  * 관리자 전용. 강사 한 명의 지정한 기간(정산 기간)에 대한 수당을 계산하고 `CALCULATED` 상태의 정산을 만든다.
  * 계산과 동시에 기간 안의 수업 실적이 확정(정산에 편입)되며, 이때의 수업 유형별 단가가 기록된다.
- * - 기간은 센터 현지 날짜이며 시작일과 종료일을 모두 포함한다. 종료일은 오늘보다 과거여야 한다 (400, INVALID_PERIOD).
+ * - 기간은 센터 현지 날짜이며 시작일과 종료일을 모두 포함한다. 시작일이 종료일보다 늦거나 종료일이 오늘 이후이면 400 (INVALID_PERIOD)이다. 종료일은 오늘보다 과거여야 한다.
  * - 수업 시작일이 기간 안에 있는 담당 수업 중, 취소되지 않았고 이미 끝난 수업이 대상이다.
  * - 수업당 금액은 담당 강사와 수업 유형으로 정해진 단가이며 출석 인원 수와 무관하다.
  * - 정산 여부는 예약을 기준으로 정한다. 취소되지 않은 예약(`RESERVED`, `ATTENDED`, `NO_SHOW`)이 한 건이라도 있으면 수업이 진행된 것으로 보아 정산하며, 전원 노쇼여도 정산 대상이다.
@@ -10069,7 +10166,7 @@ export const getReassignLessonsUrl = (memberId: number,) => {
 /**
  * 관리자 전용. 대상 강사가 담당하는 수업 중 `from` 이후에 시작하고 취소되지 않은 수업을 모두 다른 강사에게 넘긴다. 퇴사 전에 수업을 인계할 때 쓴다.
  * - 모두 성공하거나 모두 실패한다. 넘기려는 수업 중 하나라도 새 강사에게 배정할 수 없으면 아무것도 바뀌지 않고 409 (REASSIGNMENT_FAILED)이며, 실패한 수업 ID와 사유가 `invalidParams`에 담긴다.
- * - 새 강사는 `updateLesson`으로 강사를 바꿀 때와 같은 검증(활성 상태, 수업 가능시간, 부재, 퇴사일, 시간 겹침)을 통과해야 한다.
+ * - 새 강사는 `updateLesson`으로 강사를 바꿀 때와 같은 검증(활성 상태, 영업시간, 수업 가능시간, 부재, 퇴사일, 강사와 룸의 시간 겹침)을 통과해야 한다.
  * - `from`을 생략하면 현재 시각이다.
  * - `from`이 과거여도 이미 시작한 수업은 넘기지 않는다.
  * - 예약이 있는 수업도 넘길 수 있다 (예약은 그대로 유지된다).
@@ -11172,7 +11269,7 @@ export const getCreateRoomUrl = () => {
  * - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED). 삭제된 룸의 이름은 다시 사용할 수 있다.
  * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
  * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 이름 중복이면 409 (ROOM_NAME_DUPLICATED).
- * - 이름의 앞뒤 공백은 제거해 저장한다.
+ * - 이름의 앞뒤 공백은 제거해 저장하며, 제거한 뒤 길이가 1~50자여야 한다. 공백만으로 이루어진 이름은 400 (INVALID_INPUT)이다.
  * @summary 룸 등록 (관리자)
  */
 export const createRoom = async (roomCreateRequest: RoomCreateRequest, options?: Parameters<typeof apiRequest>[1]): Promise<Room> => {
@@ -11367,7 +11464,7 @@ export const getUpdateRoomUrl = (roomId: number,) => {
  * - 이미 같은 이름의 룸이 있으면 409 (ROOM_NAME_DUPLICATED). 자기 자신과 같은 이름으로 수정하는 것은 허용한다.
  * - 호출자는 호출 시점의 DB 기준으로 `ACTIVE` 상태의 관리자여야 한다. 아니면 요청 본문의 값 검증보다 먼저 403 (PERMISSION_DENIED)이다.
  * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값이 올바르지 않으면 400 (INVALID_INPUT) → 없거나 삭제된 룸이면 404 → 이름 중복이면 409 (ROOM_NAME_DUPLICATED).
- * - 이름의 앞뒤 공백은 제거해 저장한다.
+ * - 이름의 앞뒤 공백은 제거해 저장하며, 제거한 뒤 길이가 1~50자여야 한다. 공백만으로 이루어진 이름은 400 (INVALID_INPUT)이다.
  * @summary 룸 수정 (관리자)
  */
 export const updateRoom = async (roomId: number,
