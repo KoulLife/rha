@@ -575,10 +575,6 @@ export function RoomsPage({ onNavigate }: { onNavigate: Navigate }) {
           ]}
         />
       </QueryState>
-      <PendingFeature
-        title="룸 비활성"
-        description="룸의 사용 중지 기준이 확정되면 제공됩니다. 현재는 룸 수정과 사용 예정 수업이 없는 룸의 삭제를 지원합니다."
-      />
       {selected && (
         <RoomDetail
           id={selected}
@@ -753,7 +749,7 @@ function ReservationPolicySettings() {
     <>
       <QueryState query={query}>
         {query.data && (
-          <MenuPanel className="admin-full-form">
+          <MenuPanel>
             <AdminForm
               key={JSON.stringify(query.data)}
               fields={[

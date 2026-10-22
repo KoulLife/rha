@@ -159,10 +159,10 @@ export function LessonsPage({
               className="admin-lesson-instructor-filter"
             />
           }
+          navigationSuffix={
+            <Button onClick={() => onNavigate("admin-lesson-create")}>수업 개설</Button>
+          }
         />
-        <div className="menu-actions timetable-edit-actions">
-          <Button onClick={() => onNavigate("admin-lesson-create")}>수업 개설</Button>
-        </div>
       </div>
       <div
         className="timetable-layout admin-lesson-list-layout"

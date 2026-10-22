@@ -318,12 +318,14 @@ function Schedule({
         (user.role === "MEMBER" ? myLessonIds.has(lesson.id) : lesson.instructor.id === user.id)) &&
       (status === "all" || lesson.status === status),
   );
+  const visibleRows =
+    view === "list" && !editing ? rows : rows.filter((lesson) => lesson.status !== "CANCELED");
   const instructors = [
-    ...new Map(rows.map((lesson) => [lesson.instructor.id, lesson.instructor])).values(),
+    ...new Map(visibleRows.map((lesson) => [lesson.instructor.id, lesson.instructor])).values(),
   ].sort((a, b) => a.name.localeCompare(b.name, "ko"));
-  const selected = rows.find((lesson) => lesson.id === selectedId);
+  const selected = visibleRows.find((lesson) => lesson.id === selectedId);
   const dates = Array.from({ length: 7 }, (_, i) => shiftDate(start, i));
-  const days = dates.map((date) => layoutDay(rows, date));
+  const days = dates.map((date) => layoutDay(visibleRows, date));
   const events = days.flat();
   const fromHour = Math.min(9, ...events.map((event) => Math.floor(event.start / 60)));
   const toHour = Math.max(21, ...events.map((event) => Math.ceil(event.end / 60)));
@@ -474,7 +476,6 @@ function Schedule({
             className="timetable-legend"
             aria-label="강사별 시간표 색상"
           >
-            <span>강사 색상</span>
             <ul>
               {instructors.map((instructor) => (
                 <li key={instructor.id}>
@@ -495,8 +496,8 @@ function Schedule({
           </div>
         ) : undefined,
       )}
-      {(editing || !rows.length) && filtersPanel}
-      {!rows.length && !editing ? (
+      {(editing || !visibleRows.length) && filtersPanel}
+      {!visibleRows.length && !editing ? (
         <MenuPanel>
           <MenuEmpty
             title="이번 주에 표시할 수업이 없습니다"

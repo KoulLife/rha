@@ -33,8 +33,8 @@ export function SettlementsPage({
   embedded = false,
 }: {
   instructorId?: number;
-  embedded?: boolean;
   onNavigate: Navigate;
+  embedded?: boolean;
 }) {
   const [page, setPage] = useState(1),
     [filters, setFilters] = useState<Values>(

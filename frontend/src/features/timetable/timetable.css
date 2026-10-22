@@ -19,9 +19,6 @@
     color: var(--muted-foreground);
     font-size: var(--font-size-caption);
   }
-  .timetable-legend > span {
-    white-space: nowrap;
-  }
   .timetable-legend ul {
     display: flex;
     align-items: center;

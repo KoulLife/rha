@@ -343,30 +343,118 @@
     border-radius: var(--radius-lg);
     background: var(--card);
   }
-  .admin-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(var(--timetable-preview-width), 1fr));
-    gap: var(--menu-gap);
+  .admin-instructor-detail-actions {
+    justify-content: flex-end;
+    margin-top: var(--space-detail);
   }
-  .admin-stat-card {
+  .admin-availability-form .admin-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .admin-availability-form .admin-form-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-detail);
     min-width: 0;
-    cursor: help;
+    padding: var(--space-detail);
+    border: 1px solid var(--border);
     border-radius: var(--radius-panel);
   }
-  .admin-stat-card .menu-panel {
-    height: 100%;
+  .admin-availability-form .admin-form-group h3,
+  .admin-availability-form .admin-form-group [data-field$="-enabled"],
+  .admin-availability-form .admin-form-actions,
+  .admin-availability-form [data-slot="alert"] {
+    grid-column: 1 / -1;
   }
-  .admin-stat-card:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: var(--space-control);
+  .admin-availability-form .admin-form-group h3 {
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-heading);
+  }
+  .admin-stats-layout {
+    display: grid;
+    gap: var(--menu-gap);
+    min-width: 0;
+  }
+  .admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--menu-gap);
+  }
+  .admin-stats-grid.admin-sales-summary-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .admin-stats-visuals {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--menu-gap);
+  }
+  .admin-stat-card,
+  .admin-stats-panel {
+    min-width: 0;
+  }
+  .admin-stat-card:has([data-featured="true"]) {
+    background: var(--secondary);
+    border-color: var(--ring);
+  }
+  .admin-stat-card-content {
+    min-height: var(--stats-card-height);
+    display: grid;
+    align-content: space-between;
+    gap: var(--space-detail);
+  }
+  .admin-stat-label {
+    color: var(--secondary-foreground);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-heading);
+  }
+  .admin-stat-value {
+    color: var(--foreground);
+    font-size: var(--font-size-metric);
+    font-weight: var(--font-weight-heading);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .admin-stat-note,
+  .admin-chart-caption,
+  .admin-stats-footnote,
+  .admin-sales-chart-period {
+    color: var(--muted-foreground);
+    font-size: var(--font-size-caption);
+  }
+  .admin-chart-caption {
+    margin-bottom: var(--space-panel);
+  }
+  .admin-stats-footnote {
+    line-height: 1.6;
+  }
+  .admin-chart-row[data-tone="1"],
+  .admin-donut-legend-row[data-tone="1"],
+  .admin-sales-chart-column[data-tone="1"] {
+    --stat-tone: var(--chart-1);
+  }
+  .admin-chart-row[data-tone="2"],
+  .admin-donut-legend-row[data-tone="2"],
+  .admin-sales-chart-column[data-tone="2"] {
+    --stat-tone: var(--chart-2);
+  }
+  .admin-chart-row[data-tone="3"],
+  .admin-donut-legend-row[data-tone="3"],
+  .admin-sales-chart-column[data-tone="3"] {
+    --stat-tone: var(--chart-3);
+  }
+  .admin-chart-row[data-tone="4"],
+  .admin-donut-legend-row[data-tone="4"],
+  .admin-sales-chart-column[data-tone="4"] {
+    --stat-tone: var(--chart-4);
   }
   .admin-chart {
     display: grid;
-    gap: var(--space-detail);
+    gap: var(--space-panel);
   }
   .admin-chart-row {
     display: grid;
-    gap: var(--space-control);
+    gap: var(--space-detail);
     min-width: 0;
   }
   .admin-chart-row-heading {
@@ -383,16 +471,117 @@
     font-variant-numeric: tabular-nums;
   }
   .admin-chart-track {
-    height: var(--space-control);
+    height: var(--space-detail);
     overflow: hidden;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-panel);
     background: var(--secondary);
   }
   .admin-chart-bar {
     display: block;
     height: 100%;
     border-radius: inherit;
-    background: var(--primary);
+    background: var(--stat-tone);
+  }
+  .admin-donut-layout {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-panel);
+  }
+  .admin-donut {
+    width: var(--stats-donut-size);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+  }
+  .admin-donut-center {
+    width: calc(100% - var(--stats-donut-ring) * 2);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-control);
+    font-size: var(--font-size-caption);
+    color: var(--muted-foreground);
+  }
+  .admin-donut-center strong {
+    color: var(--foreground);
+    font-size: var(--font-size-metric);
+    font-variant-numeric: tabular-nums;
+  }
+  .admin-donut-legend {
+    display: grid;
+  }
+  .admin-donut-legend-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-detail);
+    padding-block: var(--space-detail);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--font-size-caption);
+  }
+  .admin-donut-legend-row:last-child {
+    border-bottom: 0;
+  }
+  .admin-donut-legend-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-control);
+  }
+  .admin-donut-swatch {
+    width: var(--space-detail);
+    aspect-ratio: 1;
+    flex: none;
+    border-radius: 50%;
+    background: var(--stat-tone);
+  }
+  .admin-donut-legend-row strong,
+  .admin-donut-percent {
+    font-variant-numeric: tabular-nums;
+  }
+  .admin-donut-percent {
+    color: var(--muted-foreground);
+    min-width: var(--stats-percent-width);
+    text-align: right;
+  }
+  .admin-sales-chart {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-panel);
+  }
+  .admin-sales-chart-column {
+    display: grid;
+    grid-template-rows: auto var(--stats-plot-height) auto auto;
+    gap: var(--space-detail);
+    min-width: 0;
+    text-align: center;
+  }
+  .admin-sales-chart-value {
+    font-size: var(--font-size-body);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  .admin-sales-chart-track {
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    border-bottom: 1px solid var(--border);
+    background-image: linear-gradient(to top, var(--border) 1px, transparent 1px);
+    background-size: 100% 25%;
+  }
+  .admin-sales-chart-track span {
+    display: block;
+    width: min(70%, var(--stats-bar-width));
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+    background: var(--stat-tone);
+  }
+  .admin-sales-chart-label {
+    font-weight: var(--font-weight-heading);
   }
   .admin-detail-section > summary {
     cursor: pointer;
@@ -406,6 +595,7 @@
   .admin-detail-section > :not(summary) {
     margin: var(--space-detail);
   }
+  /* 수업 인계 이력 UI 임시 숨김
   .admin-reassignment-lessons {
     list-style: none;
     padding: 0;
@@ -427,6 +617,7 @@
   .admin-reassignment-lessons span {
     color: var(--muted-foreground);
   }
+  */
   .admin-guide {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -671,8 +862,19 @@
     margin-top: var(--space-control);
   }
   .admin-hours-form .admin-form {
-    grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr)) max-content;
     align-items: center;
+  }
+  .admin-hours-form .admin-form > [data-orientation="horizontal"] {
+    align-self: end;
+    min-height: var(--control-height);
+  }
+  .admin-checkbox-selection {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+  .admin-form-actions > .admin-checkbox-selection {
+    margin-right: auto;
   }
   .admin-hours-form .admin-form-actions,
   .admin-hours-form [data-slot="alert"] {
@@ -683,8 +885,21 @@
     height: var(--control-height);
   }
 }
+@media (max-width: 1400px) {
+  .admin-stats-grid.admin-sales-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .admin-sales-summary-grid > :first-child {
+    grid-column: span 2;
+  }
+}
 @media (max-width: 1100px) {
   .admin-setting-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .admin-availability-form .admin-form {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -698,6 +913,8 @@
   }
   .admin-hours-form [data-orientation="horizontal"] {
     grid-column: 1 / -1;
+    width: max-content;
+    justify-self: end;
     padding-top: var(--space-detail);
   }
 }
@@ -795,7 +1012,6 @@
     height: 100%;
   }
 }
-
 @layer components {
   .weekly-hours,
   .weekly-hours-slots {
@@ -921,5 +1137,41 @@
   .instructor-settings-grid .weekly-hours-slots > button {
     grid-column: 1;
     grid-row: auto;
+  }
+}
+@media (max-width: 1100px) {
+  .admin-stat-value {
+    font-size: var(--font-size-title);
+  }
+  .admin-stats-grid,
+  .admin-stats-visuals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-stats-visuals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-stats-grid.admin-sales-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .admin-stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-stats-grid.admin-sales-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-sales-summary-grid > :first-child {
+    grid-column: auto;
+  }
+  .admin-donut-layout {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+  .admin-donut-legend {
+    width: 100%;
+  }
+  .admin-sales-chart {
+    gap: var(--space-detail);
   }
 }

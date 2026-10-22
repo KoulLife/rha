@@ -1,6 +1,6 @@
 import { useAllMembers, useAllInstructors, useAllRooms } from "./queries";
 import { todayInSeoul } from "@/api/runtime";
-import { PAGE_SIZE, Pagination } from "@/components/ui/Pagination";
+import { PAGE_SIZE } from "@/components/ui/Pagination";
 import { useState } from "react";
 import * as api from "@/api/generated/api";
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Badge } from "@/components/ui/badge";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { MenuPanel, MenuEmpty } from "@/components/layout/MenuPanel";
-import { Dialog } from "@/components/ui/Dialog";
+import { MenuPanel } from "@/components/layout/MenuPanel";
 import {
   AdminPage,
   AdminLinks,
@@ -24,7 +21,6 @@ import {
   Filters,
   Facts,
   ActionDialog,
-  SearchChoice,
   ALL,
   options,
   filterValue,
@@ -388,21 +384,20 @@ export function AbsenceDetail({ id, onNavigate }: { id: number; onNavigate: Navi
 export function ResignationsPage({ onNavigate }: { onNavigate: Navigate }) {
   const [page, setPage] = useState(1),
     [action, setAction] = useState<Action | null>(null);
-  const [historyInstructor, setHistoryInstructor] = useState<{ id: number; name: string } | null>(
-    null,
-  );
-  const [handoffInstructor, setHandoffInstructor] = useState<api.Member | null>(null),
-    [handoffRecipient, setHandoffRecipient] = useState("");
-  const query = api.useGetMembers({ role: "INSTRUCTOR", page, size: PAGE_SIZE }),
-    candidates = useAllInstructors({ size: 100 });
+  // 수업 인계 UI를 다시 사용할 때 복원한다.
+  // const [historyInstructor, setHistoryInstructor] = useState<{ id: number; name: string } | null>(null);
+  // const [handoffInstructor, setHandoffInstructor] = useState<api.Member | null>(null);
+  // const [handoffRecipient, setHandoffRecipient] = useState("");
+  const query = api.useGetMembers({ role: "INSTRUCTOR", page, size: PAGE_SIZE });
+  // const candidates = useAllInstructors({ size: 100 });
   const register = api.useRegisterResignation(),
     cancel = api.useCancelResignation(),
-    complete = api.useCompleteResignation(),
-    reassign = api.useReassignLessons();
+    complete = api.useCompleteResignation();
+  // const reassign = api.useReassignLessons();
   return (
     <AdminPage
       title="퇴사 관리"
-      description="퇴사일 등록, 시작 전 수업 인계, 퇴사 처리와 정산을 진행합니다."
+      description="퇴사일 등록, 퇴사 처리와 정산을 진행합니다."
       action={
         <Button
           variant="ghost"
@@ -412,10 +407,12 @@ export function ResignationsPage({ onNavigate }: { onNavigate: Navigate }) {
         </Button>
       }
     >
+      {/* 수업 인계 UI 임시 숨김
       <p className="menu-note">
         수업 인계는 즉시 미래 수업의 담당 강사를 변경합니다. 담당 이용권은 자동으로 변경되지
         않으므로 회원 이용권에서 별도로 조정해 주세요.
       </p>
+      */}
       <QueryState query={query}>
         <DataTable
           rows={query.data?.content ?? []}
@@ -434,6 +431,7 @@ export function ResignationsPage({ onNavigate }: { onNavigate: Navigate }) {
               ),
             },
             { label: "퇴사일", render: (r) => r.resignationDate ?? "" },
+            /* 수업 인계 현황 UI 임시 숨김
             {
               label: "수업 인계 현황",
               render: (r) =>
@@ -441,53 +439,54 @@ export function ResignationsPage({ onNavigate }: { onNavigate: Navigate }) {
                   <InstructorHandoffStatus resigned={r.status === "RESIGNED"} />
                 ) : null,
             },
+            */
             {
               label: "처리",
               render: (r) => (
                 <div className="menu-actions">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        style={resignationActionStyle}
-                        aria-label={`${r.name} 퇴사 관리`}
+                  {r.status === "ACTIVE" && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          style={resignationActionStyle}
+                          aria-label={`${r.name} 퇴사 관리`}
+                        >
+                          관리
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="admin-resignation-menu"
                       >
-                        관리
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="admin-resignation-menu"
-                    >
-                      {r.status === "ACTIVE" && (
-                        <>
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              setAction({
-                                title: "퇴사일 등록",
-                                description:
-                                  "퇴사일 당일부터 새 수업 배정이 제한됩니다. 계정은 퇴사 처리 전까지 유지됩니다.",
-                                submitLabel: "퇴사일 저장",
-                                fields: [
-                                  {
-                                    name: "resignationDate",
-                                    label: "퇴사일",
-                                    type: "date",
-                                    required: true,
-                                    min: todayInSeoul(),
-                                  },
-                                ],
-                                initial: { resignationDate: r.resignationDate ?? todayInSeoul() },
-                                onSubmit: (v) =>
-                                  register.mutateAsync({
-                                    memberId: r.id,
-                                    data: { resignationDate: textValue(v, "resignationDate") },
-                                  }),
-                              })
-                            }
-                          >
-                            퇴사일 {r.resignationDate ? "변경" : "등록"}
-                          </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            setAction({
+                              title: "퇴사일 등록",
+                              description:
+                                "퇴사일 당일부터 새 수업 배정이 제한됩니다. 계정은 퇴사 처리 전까지 유지됩니다.",
+                              submitLabel: "퇴사일 저장",
+                              fields: [
+                                {
+                                  name: "resignationDate",
+                                  label: "퇴사일",
+                                  type: "date",
+                                  required: true,
+                                  min: todayInSeoul(),
+                                },
+                              ],
+                              initial: { resignationDate: r.resignationDate ?? todayInSeoul() },
+                              onSubmit: (v) =>
+                                register.mutateAsync({
+                                  memberId: r.id,
+                                  data: { resignationDate: textValue(v, "resignationDate") },
+                                }),
+                            })
+                          }
+                        >
+                          퇴사일 {r.resignationDate ? "변경" : "등록"}
+                        </DropdownMenuItem>
+                        {/* 수업 인계 실행 UI 임시 숨김
                           <DropdownMenuItem
                             disabled={!candidates.data}
                             onSelect={() =>
@@ -518,8 +517,10 @@ export function ResignationsPage({ onNavigate }: { onNavigate: Navigate }) {
                           >
                             수업 인계
                           </DropdownMenuItem>
-                          {r.resignationDate && (
-                            <>
+                          */}
+                        {r.resignationDate && (
+                          <>
+                            {/* 인계 대상 등록 UI 임시 숨김
                               <DropdownMenuItem
                                 onSelect={() => {
                                   setHandoffInstructor(r);
@@ -528,50 +529,51 @@ export function ResignationsPage({ onNavigate }: { onNavigate: Navigate }) {
                               >
                                 인계 대상 등록
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="admin-resignation-warning"
-                                onSelect={() =>
-                                  setAction({
-                                    title: "퇴사일 취소",
-                                    description: "등록된 퇴사일을 제거합니다.",
-                                    submitLabel: "퇴사일 취소",
-                                    submitVariant: "warning",
-                                    danger: true,
-                                    onSubmit: () => cancel.mutateAsync({ memberId: r.id }),
-                                  })
-                                }
-                              >
-                                퇴사일 취소
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onSelect={() =>
-                                  setAction({
-                                    title: "퇴사 처리",
-                                    description:
-                                      "퇴사일 도래 및 시작 전 수업이 없어야 합니다. 계정 로그인과 권한이 해제되고 대기·미래 부재가 취소됩니다.",
-                                    submitLabel: "퇴사 처리",
-                                    submitVariant: "destructive",
-                                    danger: true,
-                                    onSubmit: () => complete.mutateAsync({ memberId: r.id }),
-                                  })
-                                }
-                              >
-                                퇴사 처리
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
+                              */}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="admin-resignation-warning"
+                              onSelect={() =>
+                                setAction({
+                                  title: "퇴사일 취소",
+                                  description: "등록된 퇴사일을 제거합니다.",
+                                  submitLabel: "퇴사일 취소",
+                                  submitVariant: "warning",
+                                  danger: true,
+                                  onSubmit: () => cancel.mutateAsync({ memberId: r.id }),
+                                })
+                              }
+                            >
+                              퇴사일 취소
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onSelect={() =>
+                                setAction({
+                                  title: "퇴사 처리",
+                                  description:
+                                    "퇴사일 도래 및 시작 전 수업이 없어야 합니다. 계정 로그인과 권한이 해제되고 대기·미래 부재가 취소됩니다.",
+                                  submitLabel: "퇴사 처리",
+                                  submitVariant: "destructive",
+                                  danger: true,
+                                  onSubmit: () => complete.mutateAsync({ memberId: r.id }),
+                                })
+                              }
+                            >
+                              퇴사 처리
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {/* 수업 인계 정보 UI 임시 숨김
                       <DropdownMenuItem
                         onSelect={() => setHistoryInstructor({ id: r.id, name: r.name })}
                       >
                         수업 인계 정보
                       </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      */}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                   <Button
                     variant="ghost"
                     style={resignationActionStyle}
@@ -591,6 +593,7 @@ export function ResignationsPage({ onNavigate }: { onNavigate: Navigate }) {
           onClose={() => setAction(null)}
         />
       )}
+      {/* 인계 대상 등록 팝업 임시 숨김
       {handoffInstructor && (
         <Dialog
           dialog={{
@@ -616,13 +619,15 @@ export function ResignationsPage({ onNavigate }: { onNavigate: Navigate }) {
               기능 적용 필요 · 현재 수업 인계 기능은 대상을 미리 등록하지 않고 수업 담당 강사를 즉시
               변경합니다.
             </p>
-            {/* TODO(api): 퇴사 예정 강사의 인계 대상 조회·저장 계약이 추가되면 선택한 강사를 저장하고 상태 CHIP을 갱신한다. */}
+            TODO(api): 퇴사 예정 강사의 인계 대상 조회·저장 계약이 추가되면 선택한 강사를 저장하고 상태 CHIP을 갱신한다.
             <div className="menu-actions">
               <Button disabled>인계 대상 저장 · 기능 적용 필요</Button>
             </div>
           </div>
         </Dialog>
       )}
+      */}
+      {/* 수업 인계 이력 팝업 임시 숨김
       {historyInstructor && (
         <Dialog
           dialog={{
@@ -634,10 +639,12 @@ export function ResignationsPage({ onNavigate }: { onNavigate: Navigate }) {
           <ReassignmentHistory instructorId={historyInstructor.id} />
         </Dialog>
       )}
+      */}
     </AdminPage>
   );
 }
 
+/* 수업 인계 UI 임시 숨김
 function InstructorHandoffStatus({ resigned }: { resigned: boolean }) {
   if (resigned)
     return (
@@ -707,3 +714,4 @@ function ReassignmentHistory({ instructorId }: { instructorId: number }) {
     </QueryState>
   );
 }
+*/

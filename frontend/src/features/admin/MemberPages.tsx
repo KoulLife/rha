@@ -1,4 +1,3 @@
-import { SettlementsPage } from "./SettlementPages";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { WeeklyHoursForm, weekDays } from "./WeeklyHoursForm";
@@ -34,6 +33,7 @@ import {
   type Action,
 } from "./AdminUI";
 import { PassList, PaymentsList } from "./PassPages";
+import { SettlementsPage } from "./SettlementPages";
 import { ReservationsList } from "./LessonPages";
 import { AbsenceList } from "./InstructorPages";
 import {
@@ -358,6 +358,7 @@ export function MemberDetail({
     update = api.useUpdateMember(),
     change = api.useChangeMemberStatus();
   const [action, setAction] = useState<Action | null>(null);
+  const [showPayRateDialog, setShowPayRateDialog] = useState(false);
   const p = query.data;
   return (
     <AdminPage
@@ -415,7 +416,7 @@ export function MemberDetail({
                         title: "계정 상태 변경",
                         description:
                           p.status === "ACTIVE"
-                            ? "비활성 계정은 로그인할 수 없습니다. 강사는 시작 전 수업을 먼저 인계해야 합니다."
+                            ? "비활성 계정은 로그인할 수 없습니다. 강사는 시작 전 담당 수업이 없어야 합니다."
                             : "계정을 활성화합니다. 퇴사했던 강사의 권한은 자동으로 복구되지 않습니다.",
                         submitLabel: p.status === "ACTIVE" ? "비활성화" : "활성화",
                         submitVariant: p.status === "ACTIVE" ? "warning" : "default",
@@ -453,28 +454,28 @@ export function MemberDetail({
                     : []),
                 ]}
               />
+              {instructor && (
+                <div className="menu-actions admin-instructor-detail-actions">
+                  <Button onClick={() => onNavigate("admin-resignations", id)}>퇴사 관리</Button>
+                  <Button onClick={() => setShowPayRateDialog(true)}>수당 기준</Button>
+                </div>
+              )}
             </MenuPanel>
             {instructor ? (
-              <Tabs defaultValue="settlements" className="menu-tabs">
+              <Tabs defaultValue="settings" className="menu-tabs">
                 <TabsList>
-                  <TabsTrigger value="settlements">정산 내역</TabsTrigger>
-                  <TabsTrigger value="pay-rates">수당 기준</TabsTrigger>
                   <TabsTrigger value="settings">운영 설정</TabsTrigger>
                   <TabsTrigger value="absences">부재 내역</TabsTrigger>
+                  <TabsTrigger value="settlements">정산 내역</TabsTrigger>
                 </TabsList>
-                <TabsContent value="settlements">
-                  <SettlementsPage embedded instructorId={id} onNavigate={onNavigate} />
-                </TabsContent>
-                <TabsContent value="pay-rates">
-                  <MenuPanel title="수업 유형별 수당 기준">
-                    <InstructorPayRatesForm instructorId={id} />
-                  </MenuPanel>
-                </TabsContent>
                 <TabsContent value="settings">
                   <InstructorSettings member={p} />
                 </TabsContent>
                 <TabsContent value="absences">
                   <AbsenceList instructorId={id} onNavigate={onNavigate} />
+                </TabsContent>
+                <TabsContent value="settlements">
+                  <SettlementsPage instructorId={id} onNavigate={onNavigate} embedded />
                 </TabsContent>
               </Tabs>
             ) : (
@@ -516,6 +517,12 @@ export function MemberDetail({
           onClose={() => setAction(null)}
         />
       )}{" "}
+      {showPayRateDialog && (
+        <InstructorPayRatesDialog
+          instructorId={id}
+          onClose={() => setShowPayRateDialog(false)}
+        />
+      )}
     </AdminPage>
   );
 }

@@ -90,7 +90,20 @@ export function DataTable<T extends { id: number }>({
                 data-selectable={onRowClick ? "true" : undefined}
                 aria-selected={onRowClick ? selectedId === row.id : undefined}
                 tabIndex={onRowClick ? 0 : undefined}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onClick={
+                  onRowClick
+                    ? (event) => {
+                        if (
+                          event.target instanceof Element &&
+                          event.target.closest(
+                            "button, a, input, select, textarea, [role='button']",
+                          )
+                        )
+                          return;
+                        onRowClick(row);
+                      }
+                    : undefined
+                }
                 onKeyDown={
                   onRowClick
                     ? (event) => {

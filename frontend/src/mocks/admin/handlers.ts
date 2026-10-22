@@ -288,7 +288,7 @@ export const adminHandlers = [
         )
           fail("MEMBER_HAS_UPCOMING_RESERVATIONS", "시작 전 예약을 먼저 취소해 주세요.");
         if (input.status === "INACTIVE" && row.role === "INSTRUCTOR" && futureLessons(id).length)
-          fail("INSTRUCTOR_HAS_UPCOMING_LESSONS", "시작 전 담당 수업을 인계하거나 취소해 주세요.");
+          fail("INSTRUCTOR_HAS_UPCOMING_LESSONS", "시작 전 담당 수업을 조정하거나 취소해 주세요.");
         result = update(
           row,
           {
