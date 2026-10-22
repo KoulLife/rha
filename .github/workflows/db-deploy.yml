@@ -36,11 +36,11 @@ jobs:
           set -euo pipefail
 
           SCRIPT=$(base64 -w0 scripts/deploy-db.sh)
-          COMPOSE=$(base64 -w0 deploy/postgres.compose.yaml)
+          COMPOSE=$(base64 -w0 deploy/compose.yaml)
 
           CMD="set -e; \
           install -d -m 700 /opt/rha; \
-          printf '%s' '$COMPOSE' | base64 -d > /opt/rha/postgres.compose.yaml; \
+          printf '%s' '$COMPOSE' | base64 -d > /opt/rha/compose.yaml; \
           printf '%s' '$SCRIPT' | base64 -d > /opt/rha/deploy-db.sh; \
           chmod 700 /opt/rha/deploy-db.sh; \
           bash /opt/rha/deploy-db.sh"
