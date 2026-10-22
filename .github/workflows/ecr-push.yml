@@ -1,11 +1,19 @@
 
 name: RHA Frontend Build and ECR Push
 
+
 on:
   push:
     branches:
       - main
+    paths:
+      - 'frontend/**'
+      - 'docs/**'
+      - 'VERSION'
+      - '.github/workflows/ecr-push.yml'
+
   workflow_dispatch:
+
 
 permissions:
   id-token: write
@@ -72,31 +80,7 @@ jobs:
 
           docker push "$IMAGE"
 
-          
-      # 6. Backend 이미지 빌드 및 ECR Push
-      - name: Build and Push Backend
-        env:
-          REGISTRY: ${{ steps.ecr.outputs.registry }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          set -euo pipefail
 
-          SHORT_SHA="${GITHUB_SHA:0:7}"
-          TAG="backend-${VERSION}-${SHORT_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-
-          IMAGE="$REGISTRY/$ECR_REPOSITORY:$TAG"
-
-          echo "Building Backend: $IMAGE"
-
-          docker build \
-            --platform linux/amd64 \
-            -t "$IMAGE" \
-            ./backend
-
-          docker push "$IMAGE"
-
-          echo "Pushed: $IMAGE"
-          echo "Backend Image: $IMAGE" >> "$GITHUB_STEP_SUMMARY"
 
 
           echo "Pushed: $IMAGE"
