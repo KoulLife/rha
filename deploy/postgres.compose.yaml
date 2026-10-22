@@ -1,0 +1,35 @@
+
+name: rha-db
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rha-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: rha
+      POSTGRES_USER: rha
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?DB password required}
+      TZ: UTC
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+    networks:
+      - rha-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rha -d rha"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  postgres-data:
+    name: rha-postgres-data
+
+networks:
+  rha-network:
+    name: rha-network
