@@ -1,4 +1,4 @@
-export const mocksEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS !== "false";
+export const mocksEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS === "true";
 
 export const currentTime = () => (mocksEnabled ? "2026-10-13T03:00:00Z" : new Date().toISOString());
 export const todayInSeoul = () =>
