@@ -1,0 +1,86 @@
+
+# 기존 PostgreSQL 프로젝트명 유지
+name: rha-db
+
+services:
+
+  # =================================
+  # 1. PostgreSQL - 기존 DB 유지
+  # =================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: rha-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: rha
+      POSTGRES_USER: rha
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Required}
+      TZ: UTC
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+    networks:
+      - rha-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rha -d rha"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  # =================================
+  # 2. Backend - Spring Boot
+  # =================================
+  backend:
+    image: ${BACKEND_IMAGE:?Required}
+    container_name: rha-backend
+    restart: unless-stopped
+
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/rha
+      DB_USERNAME: rha
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Required}
+      JWT_SECRET: ${JWT_SECRET:?Required}
+      TZ: UTC
+
+    expose:
+      - "8080"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - rha-network
+
+  # =================================
+  # 3. Frontend - React + Nginx
+  # =================================
+  frontend:
+    image: ${FRONTEND_IMAGE:?Required}
+    container_name: rha-frontend
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:8080:80"
+
+    depends_on:
+      - backend
+
+    networks:
+      - rha-network
+
+# 기존 DB 영구 볼륨 재사용
+volumes:
+  postgres-data:
+    external: true
+    name: rha-postgres-data
+
+# 기존 Docker Bridge 네트워크 재사용
+networks:
+  rha-network:
+    external: true
+    name: rha-network
