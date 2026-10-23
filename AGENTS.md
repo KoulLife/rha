@@ -10,6 +10,7 @@
 /docs/                   ERD, 에러 코드, 결정 기록
 /frontend/               React + TypeScript (Vite)
 /backend/                Spring Boot
+/e2e/                    Playwright FE+BE 통합 E2E (배포 서버 대상, 비즈니스 코드와 독립)
 ```
 
 ## 핵심 원칙
@@ -56,6 +57,7 @@
 - 백엔드 테스트: `cd backend && ./gradlew test` (Testcontainers 사용, Docker 필요)
 - API 코드 생성: `{명령어}`
 - 프론트 타입체크/테스트: `{명령어}`
+- E2E 테스트: `cd e2e && npm test` (Node 20 이상, 대상 서버·계정은 `e2e/.env`에 지정)
 
 ## 결정 기록
 - 주요 결정은 `/docs/`에 마크다운으로 남긴다.
@@ -84,6 +86,7 @@
 - `fe`: `/frontend`
 - `be`: `/backend`
 - `docs`: `/docs`
+- `e2e`: `/e2e`
 - scope가 여러 개면 커밋을 나눈다
 
 ### 쪼개는 기준
