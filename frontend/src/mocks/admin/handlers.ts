@@ -402,19 +402,72 @@ export const adminHandlers = [
           db.members.filter((m) => m.role === "INSTRUCTOR" && m.status === "ACTIVE").map(summary),
           url,
         );
-      else if (path === "/absences" && method === "GET")
+      else if (path === "/absences" && method === "POST") {
+        const user = authPreview.session;
+        if (!user) fail("UNAUTHORIZED", "로그인이 필요합니다.", 401);
+        if (user!.role !== "INSTRUCTOR")
+          fail("PERMISSION_DENIED", "강사만 신청할 수 있습니다.", 403);
+        const input = payload<API.AbsenceCreateRequest>();
+        if ((input.reason?.length ?? 0) > 200)
+          fail("INVALID_INPUT", "사유는 200자 이내로 입력해 주세요.", 400);
+        const start = Date.parse(input.startAt),
+          end = Date.parse(input.endAt);
+        if (
+          !Number.isFinite(start) ||
+          !Number.isFinite(end) ||
+          start < Date.parse(previewNow) ||
+          end <= start
+        )
+          fail("INVALID_ABSENCE_PERIOD", "부재 기간을 확인해 주세요.", 400);
+        if (
+          db.absences.some(
+            (row) =>
+              row.instructor.id === user!.id &&
+              ["REQUESTED", "APPROVED"].includes(row.status) &&
+              start < Date.parse(row.endAt) &&
+              end > Date.parse(row.startAt),
+          )
+        )
+          fail("ABSENCE_PERIOD_OVERLAP", "이미 신청하거나 승인된 부재 기간과 겹칩니다.");
+        const row: API.Absence = {
+          id: nextId(),
+          instructor: { id: user!.id, name: user!.name },
+          ...input,
+          status: "REQUESTED",
+          createdAt: previewNow,
+        };
+        db.absences.unshift(row);
+        result = row;
+      } else if (path === "/absences" && method === "GET") {
+        const user = authPreview.session;
+        if (!user) fail("UNAUTHORIZED", "로그인이 필요합니다.", 401);
         result = page(
-          db.absences.filter(
-            (a) =>
-              match("instructorId", a.instructor.id) &&
-              match("status", a.status) &&
-              (!q.get("from") || a.endAt > q.get("from")!) &&
-              (!q.get("to") || a.startAt < q.get("to")!),
-          ),
+          db.absences
+            .filter(
+              (a) =>
+                (user!.role === "ADMIN"
+                  ? match("instructorId", a.instructor.id)
+                  : user!.role === "INSTRUCTOR" && a.instructor.id === user!.id) &&
+                match("status", a.status) &&
+                (!q.get("from") || a.endAt > q.get("from")!) &&
+                (!q.get("to") || a.startAt < q.get("to")!),
+            )
+            .sort((a, b) => Date.parse(b.startAt) - Date.parse(a.startAt) || b.id - a.id),
           url,
         );
-      else if (parts[0] === "absences" && id) {
+      } else if (parts[0] === "absences" && id) {
         const row = find(db.absences, id);
+        const user = authPreview.session;
+        if (!user) fail("UNAUTHORIZED", "로그인이 필요합니다.", 401);
+        if (
+          user!.role !== "ADMIN" &&
+          !(user!.role === "INSTRUCTOR" && row.instructor.id === user!.id)
+        )
+          fail("NOT_FOUND", "대상을 찾을 수 없습니다.", 404);
+        if (method !== "GET" && user!.role !== "ADMIN" && parts[2] !== "cancellations")
+          fail("PERMISSION_DENIED", "처리 권한이 없습니다.", 403);
+        if (method !== "GET" && user!.role === "INSTRUCTOR" && row.status !== "REQUESTED")
+          fail("INVALID_ABSENCE_STATUS", "승인 대기 중인 신청만 철회할 수 있습니다.");
         if (parts.length === 2 && method === "GET") result = row;
         else {
           if (
@@ -447,7 +500,7 @@ export const adminHandlers = [
                     : "CANCELED",
               rejectReason: payload<API.AbsenceRejectRequest>().reason,
               processedAt: previewNow,
-              processedBy: { id: 3, name: "센터 관리자" },
+              processedBy: { id: user!.id, name: user!.name },
             },
             "ABSENCE",
             parts[2] === "approvals"

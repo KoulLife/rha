@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { errorMessage } from "../admin/adminUtils";
+import { useRef, useState } from "react";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -69,16 +70,19 @@ export function InstructorConfirm({
   description: string;
   action: string;
   destructive?: boolean;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onClose: () => void;
   returnFocus?: HTMLElement | null;
 }) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const submitting = useRef(false);
   const opener = useRef(returnFocus ?? (document.activeElement as HTMLElement | null));
   return (
     <AlertDialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open && !submitting.current) onClose();
       }}
     >
       <AlertDialogContent
@@ -96,13 +100,34 @@ export function InstructorConfirm({
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {error && <p role="alert">{error}</p>}
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>취소</AlertDialogCancel>
+          <AlertDialogCancel
+            disabled={pending}
+            onClick={onClose}
+          >
+            취소
+          </AlertDialogCancel>
           <AlertDialogAction
             variant={destructive ? "destructive" : "default"}
-            onClick={onConfirm}
+            disabled={pending}
+            onClick={async (event) => {
+              event.preventDefault();
+              if (submitting.current) return;
+              submitting.current = true;
+              setPending(true);
+              setError("");
+              try {
+                await onConfirm();
+              } catch (error) {
+                setError(errorMessage(error));
+              } finally {
+                submitting.current = false;
+                setPending(false);
+              }
+            }}
           >
-            {action}
+            {pending ? "처리 중…" : action}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

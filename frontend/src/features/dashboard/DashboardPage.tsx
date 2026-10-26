@@ -143,7 +143,7 @@ export function DashboardPage({
   const snapshot = getDashboardSnapshot(
     data,
     user,
-    user.role === "ADMIN" ? currentTime() : dashboardPreviewTime,
+    user.role === "MEMBER" ? dashboardPreviewTime : currentTime(),
   );
   const notificationQuery = api.useGetMyNotifications(
     { page: 1, size: 100 },
@@ -503,7 +503,7 @@ export function DashboardPage({
               (reservation) =>
                 reservation.lessonId === lesson.id &&
                 reservation.status === "RESERVED" &&
-                Date.parse(lesson.endAt) <= Date.parse(dashboardPreviewTime),
+                Date.parse(lesson.endAt) <= Date.parse(currentTime()),
             ),
           )?.id,
     },

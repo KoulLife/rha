@@ -13,6 +13,7 @@ export default defineConfig({
           [
             "getLessons",
             "getReservations",
+            "getLessonReservations",
             "getAbsences",
             "getMembers",
             "getInstructors",
