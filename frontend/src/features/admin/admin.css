@@ -59,7 +59,12 @@
     color: var(--muted-foreground);
   }
   .admin-form[data-variant="filter"]
-    :is([data-slot="input"], [data-slot="select-trigger"], .admin-choice) {
+    :is(
+      [data-slot="input"],
+      [data-slot="select-trigger"],
+      [data-slot="date-picker"],
+      .admin-choice
+    ) {
     height: var(--control-height);
     min-height: var(--control-height);
     background: var(--card);

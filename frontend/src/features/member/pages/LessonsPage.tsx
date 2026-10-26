@@ -18,7 +18,7 @@ import { PageTitle } from "@/components/ui/PageTitle";
 import { Pagination, PAGE_SIZE } from "@/components/ui/Pagination";
 import { MenuPanel, MenuEmpty } from "@/components/layout/MenuPanel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -97,26 +97,24 @@ export function LessonsPage({
         <div className="menu-filters">
           <Field>
             <FieldLabel htmlFor="lesson-from">시작일</FieldLabel>
-            <Input
+            <DatePicker
               id="lesson-from"
-              type="date"
               value={draft.from}
               max={draft.to || undefined}
-              onChange={(event) => {
-                setDraft({ ...draft, from: event.target.value });
+              onChange={(from) => {
+                setDraft({ ...draft, from });
                 setPage(1);
               }}
             />
           </Field>
           <Field>
             <FieldLabel htmlFor="lesson-to">종료일</FieldLabel>
-            <Input
+            <DatePicker
               id="lesson-to"
-              type="date"
               value={draft.to}
               min={draft.from || undefined}
-              onChange={(event) => {
-                setDraft({ ...draft, to: event.target.value });
+              onChange={(to) => {
+                setDraft({ ...draft, to });
                 setPage(1);
               }}
             />

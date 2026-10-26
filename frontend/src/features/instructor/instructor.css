@@ -41,6 +41,7 @@
   }
   .instructor-page [data-slot="input"],
   .instructor-page [data-slot="select-trigger"],
+  .instructor-page [data-slot="date-picker"],
   .instructor-dialog-stack [data-slot="input"] {
     min-height: var(--control-height);
     width: 100%;

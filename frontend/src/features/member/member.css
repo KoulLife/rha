@@ -74,7 +74,8 @@
     min-width: 0;
   }
   .menu-filters [data-slot="input"],
-  .menu-filters [data-slot="select-trigger"] {
+  .menu-filters [data-slot="select-trigger"],
+  .menu-filters [data-slot="date-picker"] {
     min-width: 0;
     width: 100%;
     background: var(--background);

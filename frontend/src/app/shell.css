@@ -230,7 +230,9 @@
   }
   .member-preview .main-content [data-slot="input"],
   .member-preview .main-content [data-slot="select-trigger"],
-  .auth-page [data-slot="input"] {
+  .member-preview .main-content [data-slot="date-picker"],
+  .auth-page [data-slot="input"],
+  .auth-page [data-slot="date-picker"] {
     min-height: var(--control-height);
     font-size: var(--font-size-body);
   }
