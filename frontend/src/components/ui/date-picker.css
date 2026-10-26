@@ -1,0 +1,22 @@
+@layer utilities {
+  .date-picker-trigger[data-slot="date-picker"] {
+    width: 100%;
+    justify-content: space-between;
+    border-color: var(--input);
+    color: var(--foreground);
+    font-weight: 400;
+  }
+  .date-picker-trigger[data-empty="true"],
+  .date-picker-trigger svg {
+    color: var(--muted-foreground);
+  }
+  .date-picker-popup[data-slot="popover-content"] {
+    width: auto;
+  }
+  .date-picker-footer {
+    display: flex;
+    justify-content: space-between;
+    padding-top: var(--space-tight);
+    border-top: 1px solid var(--border);
+  }
+}

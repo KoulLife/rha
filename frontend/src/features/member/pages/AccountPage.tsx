@@ -14,6 +14,8 @@ import { MenuEmpty, MenuPanel } from "@/components/layout/MenuPanel";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
+import { todayInSeoul } from "@/api/runtime";
 
 export function AccountPage({
   canUpdate,
@@ -43,6 +45,10 @@ export function AccountPage({
 
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!form.birthDate) {
+      toast.error("생년월일을 선택해 주세요.");
+      return;
+    }
     const data: MemberUpdateRequest = {
       name: form.name.trim(),
       phoneNumber: form.phoneNumber.replace(/-/g, ""),
@@ -197,12 +203,11 @@ export function AccountPage({
               </Field>
               <Field>
                 <FieldLabel htmlFor="member-birth">생년월일</FieldLabel>
-                <Input
+                <DatePicker
                   id="member-birth"
-                  type="date"
-                  required
                   value={form.birthDate}
-                  onChange={(event) => setForm({ ...form, birthDate: event.target.value })}
+                  max={todayInSeoul()}
+                  onChange={(birthDate) => setForm({ ...form, birthDate })}
                 />
               </Field>
               <Field>

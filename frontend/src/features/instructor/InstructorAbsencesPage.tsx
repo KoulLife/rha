@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { StatusBadge, getStatusLabel } from "@/components/ui/StatusBadge";
@@ -77,22 +78,20 @@ export function InstructorAbsencesPage({ user, data, state, onCreate, onWithdraw
           </Field>
           <Field>
             <FieldLabel htmlFor="absence-from">시작일</FieldLabel>
-            <Input
+            <DatePicker
               id="absence-from"
-              type="date"
               max={draft.to || undefined}
               value={draft.from}
-              onChange={(event) => setDraft({ ...draft, from: event.target.value })}
+              onChange={(from) => setDraft({ ...draft, from })}
             />
           </Field>
           <Field>
             <FieldLabel htmlFor="absence-to">종료일</FieldLabel>
-            <Input
+            <DatePicker
               id="absence-to"
-              type="date"
               min={draft.from || undefined}
               value={draft.to}
-              onChange={(event) => setDraft({ ...draft, to: event.target.value })}
+              onChange={(to) => setDraft({ ...draft, to })}
             />
           </Field>
           <InstructorSelect

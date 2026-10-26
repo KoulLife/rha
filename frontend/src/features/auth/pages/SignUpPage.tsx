@@ -1,11 +1,12 @@
 import * as api from "@/api/generated/api";
-import { mocksEnabled } from "@/api/runtime";
+import { mocksEnabled, todayInSeoul } from "@/api/runtime";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { FieldGroup } from "@/components/ui/field";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { AuthField, AuthLayout } from "../components/AuthLayout";
 import {
   authPreview,
@@ -22,6 +23,15 @@ type Values = {
   address: string;
   password: string;
   confirmPassword: string;
+};
+
+/** 숫자만 남겨 010-1234-5678 형태로 맞춘다. 010이 아닌 10자리 번호는 011-123-4567 형태다. */
+const formatPhoneNumber = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  const middle = digits.length === 11 || digits.startsWith("010") ? 4 : 3;
+  return [digits.slice(0, 3), digits.slice(3, 3 + middle), digits.slice(3 + middle)]
+    .filter(Boolean)
+    .join("-");
 };
 export function SignUpPage({
   verified,
@@ -40,8 +50,14 @@ export function SignUpPage({
     register,
     handleSubmit,
     getValues,
+    control,
     formState: { errors, isSubmitting },
-  } = useForm<Values>({ mode: "onTouched" });
+  } = useForm<Values>({ mode: "onTouched", defaultValues: { birthDate: "" } });
+  const phoneField = register("phoneNumber", {
+    required: "휴대전화 번호를 입력해 주세요.",
+    validate: (value) =>
+      /^01\d{8,9}$/.test(value.replace(/-/g, "")) || "올바른 휴대전화 번호를 입력해 주세요.",
+  });
   return (
     <AuthLayout
       title="회원가입"
@@ -96,28 +112,44 @@ export function SignUpPage({
                 maxLength: { value: 50, message: "이름은 50자 이내로 입력해 주세요." },
               })}
             />
-            <AuthField
-              label="생년월일"
-              id="signup-birth"
-              type="date"
-              autoComplete="bday"
-              error={errors.birthDate?.message}
-              {...register("birthDate", { required: "생년월일을 입력해 주세요." })}
+            <Controller
+              name="birthDate"
+              control={control}
+              rules={{ required: "생년월일을 선택해 주세요." }}
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="signup-birth">생년월일</FieldLabel>
+                  <DatePicker
+                    id="signup-birth"
+                    ref={field.ref}
+                    className="auth-input"
+                    placeholder="생년월일 선택"
+                    max={todayInSeoul()}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? "signup-birth-error" : undefined}
+                  />
+                  {error && <FieldError id="signup-birth-error">{error.message}</FieldError>}
+                </Field>
+              )}
             />
           </div>
           <AuthField
             label="휴대전화"
             id="signup-phone"
             type="tel"
+            inputMode="numeric"
             autoComplete="tel"
             placeholder="010-1234-5678"
+            maxLength={13}
             error={errors.phoneNumber?.message}
-            {...register("phoneNumber", {
-              required: "휴대전화 번호를 입력해 주세요.",
-              validate: (value) =>
-                /^01\d{8,9}$/.test(value.replace(/-/g, "")) ||
-                "올바른 휴대전화 번호를 입력해 주세요.",
-            })}
+            {...phoneField}
+            onChange={(event) => {
+              event.target.value = formatPhoneNumber(event.target.value);
+              return phoneField.onChange(event);
+            }}
           />
           <AuthField
             label="주소 (선택)"
