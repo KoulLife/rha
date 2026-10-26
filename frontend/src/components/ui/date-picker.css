@@ -11,6 +11,8 @@
     color: var(--muted-foreground);
   }
   .date-picker-popup[data-slot="popover-content"] {
+    /* 대화상자(overlay 60, content 61) 안에서 열려도 가려지지 않게 선택 목록(.admin-select-popup)과 같은 층에 둔다 */
+    z-index: 100;
     width: auto;
   }
   .date-picker-footer {
