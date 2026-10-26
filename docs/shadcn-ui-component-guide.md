@@ -141,7 +141,8 @@
 - 목록 구조: 제목/설명 → 필터 바 → 결과 건수 → `Table` 또는 카드 목록 → 페이지 바. 필터 바의 필드 순서는 검색어, 날짜 범위, 분류/상태, 조회, 초기화 순서로 고정한다.
 - 관리자 조회 바는 스튜디오 시에나 데모 회원 화면의 검색·상태 선택과 목록이 가까운 구성을 참고한다. 별도 카드의 테두리·배경·패딩 없이 목록 위에 배치하고, 검색창은 최대 18rem, 날짜·선택 조건은 10rem 기준으로 자연스럽게 줄바꿈한다. 입력과 버튼 높이는 공통 44px을 유지한다. 6개를 초과하는 조건은 앞 4개를 먼저 표시하고 나머지는 `상세 조건`으로 펼친다. 접어도 입력값은 유지하며 `초기화`로 전체 조건을 지운다. 모바일은 검색창 한 줄, 나머지 조건 두 열, 조회·초기화 한 묶음으로 배치한다.
 - 검색은 `Input`, 고정된 상태·유형·수단은 `Select`, 사람/상품처럼 길고 검색이 필요한 선택지는 `Combobox`를 쓴다. 같은 필드를 메뉴마다 `Select`와 `Combobox`로 바꾸지 않는다. [Combobox 공식 안내](https://ui.shadcn.com/docs/components/radix/combobox).
-- 날짜·시간 범위는 첫 구현에서 `Input type="date"`/`type="datetime-local"` + `FieldLabel`을 쓴다. 모든 화면에 달력 `Popover`를 섞지 않는다. 날짜 입력 UI를 교체할 경우 전체 화면에 함께 적용한다.
+- 날짜 입력은 모든 화면에서 공통 `DatePicker`(`components/ui/date-picker.tsx`, `Popover` + `Calendar`) + `FieldLabel`을 쓴다. 네이티브 `Input type="date"`를 새로 쓰지 않는다. 칸을 누르면 달력이 바로 열리고, 연·월은 드롭다운으로 고르며, `min`/`max` 밖의 날짜는 선택할 수 없다. 값은 기존과 같은 `YYYY-MM-DD` 문자열이다. (2026-10-26 결정: 네이티브 입력의 연·월·일 블록 선택과 브라우저마다 다른 달력 모양을 없애기 위해 교체)
+- 날짜+시각(`datetime-local`)은 아직 네이티브 입력을 유지한다. 교체할 때는 `DatePicker` + 시각 `Input`으로 전체 화면에 함께 적용한다.
 - 회원 수업 메뉴의 주간 목록은 일시, 수업명·유형, 강사·룸, 예약 인원, 상태, 정보 보기를 묶은 열로 표시한다. 선택한 행을 강조하고 수업 신청은 시간표와 같은 요약 영역에서 처리한다. 회원 홈 예약 목록의 이전·다음 버튼은 항상 표시하고 이동할 페이지가 없으면 비활성화한다.
 - 페이지 바는 `Pagination` 셸과 텍스트 `이전`/`다음` 버튼으로 통일한다. 기본 `PaginationPrevious`/`PaginationNext`가 아이콘을 포함하면 그대로 사용하지 않고 텍스트 전용 버튼으로 구성한다. 항상 `현재 페이지 / 전체 페이지`, 전체 건수, 이전·다음 비활성 상태를 같은 위치에 표시한다. API의 1부터 시작하는 `pageInfo.page`를 그대로 쓴다. [Pagination 공식 안내](https://ui.shadcn.com/docs/components/radix/pagination).
 - 표의 상태 열은 `StatusBadge`, 금액 열은 우측 정렬, 날짜는 같은 서울 시간 표기, 식별자/상세 이동은 명시적인 링크로 둔다. 행 전체 클릭에만 의존하지 않는다.
@@ -247,10 +248,10 @@
 
 1. 공통 셸/화면: `sidebar`, `breadcrumb`, `card`, `button`, `badge`, `separator`, `dropdown-menu`.
 2. 목록/상태: `table`, `pagination`, `tabs`, `skeleton`, `empty`, `alert`, `sonner`, `progress`.
-3. 폼/작업: `field`, `input`, `textarea`, `select`, `checkbox`, `radio-group`, `switch`, `dialog`, `alert-dialog`.
+3. 폼/작업: `field`, `input`, `textarea`, `select`, `checkbox`, `radio-group`, `switch`, `dialog`, `alert-dialog`, 날짜 선택용 `calendar`/`popover`(공통 `DatePicker`로만 사용).
 4. 사람·상품 검색이 실제 필요한 시점: `combobox`.
 
-`sheet`, `drawer`, `toast`, `input-otp`, 날짜 선택용 `calendar`/`popover`, `command`는 이 와이어프레임 기준의 기본 도입 목록에서 제외한다. 화면 요구가 바뀌어 도입한다면 이 문서의 전역 결정을 먼저 갱신한다.
+`sheet`, `drawer`, `toast`, `input-otp`, `command`는 이 와이어프레임 기준의 기본 도입 목록에서 제외한다. 화면 요구가 바뀌어 도입한다면 이 문서의 전역 결정을 먼저 갱신한다.
 
 ## 8. 공통 수업 보기
 
