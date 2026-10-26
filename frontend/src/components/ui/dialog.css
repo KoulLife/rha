@@ -11,6 +11,8 @@
   .menu-dialog-content {
     overflow-y: auto;
     min-height: 0;
+    margin: calc(var(--focus-ring-space) * -1);
+    padding: var(--focus-ring-space);
   }
   .menu-dialog-confirmation {
     gap: var(--menu-gap);

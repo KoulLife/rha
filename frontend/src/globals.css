@@ -228,6 +228,8 @@
   --destructive-border: color-mix(in srgb, var(--destructive) 25%, var(--card));
   --border-hover: color-mix(in srgb, var(--primary) 35%, var(--card));
   --focus-color: color-mix(in srgb, var(--ring) 25%, transparent);
+  /* 스크롤 영역이 입력칸 포커스 링(ring-3, 3px)을 자르지 않도록 남기는 여백 */
+  --focus-ring-space: 4px;
   --shadow-color: color-mix(in srgb, var(--foreground) 8%, transparent);
   --shadow-dialog-color: color-mix(in srgb, var(--foreground) 18%, transparent);
   --overlay: color-mix(in srgb, var(--foreground) 30%, transparent);

@@ -91,6 +91,8 @@
   .admin-dialog > form {
     overflow-y: auto;
     min-height: 0;
+    margin: calc(var(--focus-ring-space) * -1);
+    padding: var(--focus-ring-space);
   }
   .admin-textarea {
     min-height: var(--admin-textarea-height);
