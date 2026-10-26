@@ -16,6 +16,7 @@ ECR_REGISTRY="592193418739.dkr.ecr.ap-northeast-2.amazonaws.com"
 
 DB_PARAMETER="/rha/dev/postgres/password"
 JWT_PARAMETER="/rha/dev/jwt/secret"
+MAIL_PARAMETER_PREFIX="/rha/dev/mail"
 
 case "$SERVICE" in
   backend)
@@ -60,10 +61,28 @@ JWT_SECRET=$(aws ssm get-parameter \
   --query 'Parameter.Value' \
   --output text)
 
+read_mail_parameter() {
+  aws ssm get-parameter \
+    --region "$REGION" \
+    --name "$MAIL_PARAMETER_PREFIX/$1" \
+    --with-decryption \
+    --query 'Parameter.Value' \
+    --output text
+}
+
+MAIL_HOST=$(read_mail_parameter host)
+MAIL_USERNAME=$(read_mail_parameter username)
+MAIL_PASSWORD=$(read_mail_parameter password)
+MAIL_FROM=$(read_mail_parameter from)
+
 test -n "$POSTGRES_PASSWORD"
 test -n "$JWT_SECRET"
+test -n "$MAIL_HOST"
+test -n "$MAIL_USERNAME"
+test -n "$MAIL_PASSWORD"
+test -n "$MAIL_FROM"
 
-export POSTGRES_PASSWORD JWT_SECRET
+export POSTGRES_PASSWORD JWT_SECRET MAIL_HOST MAIL_USERNAME MAIL_PASSWORD MAIL_FROM
 
 # ==========================================
 # 2. 현재 컨테이너 이미지 확인

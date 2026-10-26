@@ -40,10 +40,16 @@ services:
     restart: unless-stopped
 
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/rha
       DB_USERNAME: rha
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Required}
       JWT_SECRET: ${JWT_SECRET:?Required}
+      # 메일 발송 (SMTP). Gmail → SES 전환은 Parameter Store 값만 바꾼다.
+      MAIL_HOST: ${MAIL_HOST:?Required}
+      MAIL_USERNAME: ${MAIL_USERNAME:?Required}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?Required}
+      MAIL_FROM: ${MAIL_FROM:?Required}
       TZ: UTC
 
     expose:
