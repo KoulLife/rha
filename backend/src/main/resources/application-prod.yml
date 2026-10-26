@@ -1,0 +1,24 @@
+# 배포 서버 설정. SPRING_PROFILES_ACTIVE=prod로 켠다.
+# MAIL_* 값이 하나라도 없으면 기동에 실패한다 (메일이 조용히 발송되지 않는 상태를 막는다).
+# Gmail SMTP → SES SMTP 전환은 이 값들만 바꾼다. 절차는 /docs/email-delivery.md 참고.
+spring:
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          # SMTP 서버가 응답하지 않을 때 요청 스레드가 오래 묶이지 않게 한다 (ms)
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+rha:
+  mail:
+    from: ${MAIL_FROM}
