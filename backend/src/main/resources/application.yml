@@ -4,6 +4,9 @@ spring:
   profiles:
     # 프로필을 지정하지 않으면 개발용(local)으로 동작한다. 운영은 SPRING_PROFILES_ACTIVE로 다른 프로필을 지정한다.
     default: local
+  config:
+    # 로컬 테스트용 비밀값(backend/.env, git·docker 제외). 파일이 없으면 무시한다. 환경변수가 있으면 환경변수가 우선한다.
+    import: optional:file:.env[.properties]
   autoconfigure:
     exclude:
       # 계정은 members 테이블이 기준이다. 기본 사용자(임시 비밀번호)가 만들어지지 않게 한다.
