@@ -42,7 +42,7 @@ const statuses = {
     UNPAID: ["미결제", "destructive"],
     PARTIAL: ["일부 결제", "warning"],
     PAID: ["완납", "success"],
-    REFUNDED: ["환불 기록", "destructive"],
+    REFUNDED: ["환불", "destructive"],
   },
   settlement: {
     CALCULATED: ["계산 완료", "neutral"],
