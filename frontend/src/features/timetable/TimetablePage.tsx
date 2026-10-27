@@ -40,6 +40,7 @@ import { ApiError } from "@/api/client";
 import { fallbackInstructorColor, useInstructorColors } from "@/features/instructor/colors";
 import { LessonSelectionCard } from "./LessonSelectionCard";
 import { WeekToolbarControls } from "./WeekToolbarControls";
+import { useLessonPermissions } from "./lessonPermissions";
 import { dateInSeoul, layoutDay, shiftDate, timeInSeoul, weekRange, weekStart } from "./model";
 import "./timetable.css";
 
@@ -81,9 +82,11 @@ export function TimetablePage({
     setSelectedId(null);
   };
   const start = weekStart(date);
-  const canEdit = user.role === "ADMIN";
+  // 관리자와, 수업 개설·수정 권한을 받은 강사만 시간표를 편집한다.
+  const lessonPermissions = useLessonPermissions(user);
+  const canEdit = lessonPermissions.canManage;
   const openCreate = (day = start < today ? shiftDate(today, 1) : start, hour = 9) => {
-    if (!canEdit) return;
+    if (!lessonPermissions.canCreate) return;
     setSelectedId(null);
     const endDay = hour === 23 ? shiftDate(day, 1) : day;
     setEditor({
@@ -100,6 +103,7 @@ export function TimetablePage({
       <LessonEditor
         id={editor.id}
         initialValues={editor.initialValues}
+        allowedTypeCodes={lessonPermissions.createCodes}
         onNavigate={onNavigate}
         onBack={() => setEditor(null)}
         onSaved={(lesson) => {
@@ -131,12 +135,14 @@ export function TimetablePage({
             <div className="menu-actions timetable-edit-actions">
               {editing ? (
                 <>
-                  <Button
-                    variant="outline"
-                    onClick={() => openCreate()}
-                  >
-                    수업 추가
-                  </Button>
+                  {lessonPermissions.canCreate && (
+                    <Button
+                      variant="outline"
+                      onClick={() => openCreate()}
+                    >
+                      수업 추가
+                    </Button>
+                  )}
                   <Button onClick={() => setEditing(false)}>편집 완료</Button>
                 </>
               ) : (
@@ -167,6 +173,8 @@ export function TimetablePage({
         status={status}
         setStatus={setStatus}
         editing={editing && canEdit}
+        canCreate={lessonPermissions.canCreate}
+        canUpdate={lessonPermissions.canUpdate}
         onCreate={openCreate}
         onEdit={(id) => {
           if (canEdit) setEditor({ id });
@@ -185,6 +193,8 @@ type ScheduleProps = {
   lessonType: string;
   setLessonType: (value: string) => void;
   editing: boolean;
+  canCreate: boolean;
+  canUpdate: (lesson: Lesson) => boolean;
   onCreate: (day: string, hour: number) => void;
   onEdit: (id: number) => void;
   selectedId: number | null;
@@ -288,6 +298,8 @@ function Schedule({
   status,
   setStatus,
   editing,
+  canCreate,
+  canUpdate,
   onCreate,
   onEdit,
   selectedId,
@@ -554,7 +566,7 @@ function Schedule({
                     aria-label={`${dates[i]} ${weekdays[i]}요일`}
                   >
                     {hours.map((hour) =>
-                      editing ? (
+                      editing && canCreate ? (
                         <button
                           key={hour}
                           type="button"
@@ -632,7 +644,9 @@ function Schedule({
             {filtersPanel}
             <LessonSelectionCard
               lesson={selected}
-              emptyMessage={editing ? "빈 시간칸을 선택해 수업을 등록하세요." : undefined}
+              emptyMessage={
+                editing && canCreate ? "빈 시간칸을 선택해 수업을 등록하세요." : undefined
+              }
             >
               {selected && (
                 <>
@@ -676,6 +690,7 @@ function Schedule({
                       );
                     })()}
                   {editing &&
+                    canUpdate(selected) &&
                     selected.status !== "CANCELED" &&
                     Date.parse(selected.startAt) > Date.now() && (
                       <Button onClick={() => onEdit(selected.id)}>수업 수정</Button>

@@ -2,7 +2,9 @@ import * as api from "@/api/generated/api";
 import { Button } from "@/components/ui/button";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { QueryState } from "@/features/admin/AdminUI";
+import { isLessonEditable, LessonStatusActions } from "@/features/admin/LessonPages";
 import { LessonInfoCard } from "@/features/timetable/LessonInfoCard";
+import { useLessonPermissions } from "@/features/timetable/lessonPermissions";
 import type { DashboardUser } from "@/features/dashboard/model";
 import type { AttendanceChange } from "./model";
 import { InstructorLessonRoster } from "./InstructorLessonRoster";
@@ -27,6 +29,7 @@ export function InstructorLessonDetail({
   onBack: () => void;
 }) {
   const lesson = api.useGetLesson(lessonId);
+  const { canUpdate } = useLessonPermissions(user);
   return (
     <section className="menu-page instructor-page">
       <PageTitle
@@ -44,7 +47,17 @@ export function InstructorLessonDetail({
       <QueryState query={lesson}>
         {lesson.data && (
           <>
-            <LessonInfoCard lesson={lesson.data} />
+            <LessonInfoCard
+              lesson={lesson.data}
+              action={
+                canUpdate(lesson.data) &&
+                isLessonEditable(lesson.data) && (
+                  <div className="menu-actions">
+                    <LessonStatusActions lesson={lesson.data} />
+                  </div>
+                )
+              }
+            />
             <InstructorLessonRoster
               lessonId={lessonId}
               user={user}
