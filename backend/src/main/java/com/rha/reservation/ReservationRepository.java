@@ -20,6 +20,15 @@ public interface ReservationRepository
 
     List<Reservation> findByLessonIdAndStatus(Long lessonId, ReservationStatus status);
 
+    /** 이용권으로 한 예약(RESERVED) 중 아직 시작하지 않은 수업의 것. */
+    @Query("""
+            select r from Reservation r, com.rha.lesson.Lesson l
+            where r.lessonId = l.id and r.passId = :passId
+              and r.status = com.rha.reservation.ReservationStatus.RESERVED and l.startAt > :now
+            order by r.id
+            """)
+    List<Reservation> findUpcomingReservedOnPass(@Param("passId") Long passId, @Param("now") Instant now);
+
     /** 수업별 취소되지 않은 예약 수. 예약이 없는 수업은 결과에 없다. */
     @Query("""
             select r.lessonId, count(r) from Reservation r

@@ -21,6 +21,8 @@ public interface PassPauseRepository extends JpaRepository<PassPause, Long> {
 
     boolean existsByPassIdAndStatus(Long passId, PassPauseStatus status);
 
+    List<PassPause> findByPassIdAndStatusIn(Long passId, Collection<PassPauseStatus> statuses);
+
     /** 취소되지 않은 정지 중 [start, end]와 겹치는 것이 있는지. */
     @Query("""
             select count(pp) > 0 from PassPause pp
