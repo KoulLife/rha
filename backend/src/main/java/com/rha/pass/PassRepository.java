@@ -33,12 +33,13 @@ public interface PassRepository extends JpaRepository<Pass, Long>, JpaSpecificat
     Optional<Pass> findByIdForUpdate(@Param("id") Long id);
 
     /**
-     * 예약에 쓸 수 있는 이용권. 수업일이 시작일~만료일 안에 있고, 취소되지 않은 일시정지 기간에 속하지 않으며,
-     * 잔여 횟수가 있는 것을 만료일이 이른 순(같으면 먼저 발급된 순)으로 반환한다.
+     * 예약에 쓸 수 있는 이용권. 환불되지 않았고, 수업일이 시작일~만료일 안에 있고, 취소되지 않은 일시정지 기간에
+     * 속하지 않으며, 잔여 횟수가 있는 것을 만료일이 이른 순(같으면 먼저 발급된 순)으로 반환한다.
      */
     @Query("""
             select p from Pass p
             where p.memberId = :memberId and p.remainingCount > 0
+              and p.status <> com.rha.pass.PassStatus.REFUNDED
               and p.startDate <= :lessonDate and p.endDate >= :lessonDate
               and not exists (select 1 from PassPause pp
                               where pp.passId = p.id and pp.status <> com.rha.pass.PassPauseStatus.CANCELED
@@ -52,6 +53,7 @@ public interface PassRepository extends JpaRepository<Pass, Long>, JpaSpecificat
     @Query("""
             select count(p) > 0 from Pass p
             where p.id = :passId and p.remainingCount > 0
+              and p.status <> com.rha.pass.PassStatus.REFUNDED
               and p.startDate <= :lessonDate and p.endDate >= :lessonDate
               and not exists (select 1 from PassPause pp
                               where pp.passId = p.id and pp.status <> com.rha.pass.PassPauseStatus.CANCELED
@@ -60,13 +62,14 @@ public interface PassRepository extends JpaRepository<Pass, Long>, JpaSpecificat
     boolean isReservableOn(@Param("passId") Long passId, @Param("lessonDate") LocalDate lessonDate);
 
     /**
-     * 만료일이 지났지만 아직 EXPIRED가 아닌 이용권. 이용권마다 활동 이력을 남기기 위해 한 건씩 바꾸며,
-     * 동시에 상태를 갱신하는 요청이 같은 만료를 두 번 기록하지 않도록 행을 잠근다(id 순).
+     * 만료일이 지났지만 아직 EXPIRED가 아닌 이용권(환불된 이용권 제외). 이용권마다 활동 이력을 남기기 위해 한 건씩
+     * 바꾸며, 동시에 상태를 갱신하는 요청이 같은 만료를 두 번 기록하지 않도록 행을 잠근다(id 순).
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select p from Pass p
-            where p.endDate < :today and p.status <> com.rha.pass.PassStatus.EXPIRED
+            where p.endDate < :today
+              and p.status not in (com.rha.pass.PassStatus.EXPIRED, com.rha.pass.PassStatus.REFUNDED)
             order by p.id
             """)
     List<Pass> findExpiringForUpdate(@Param("today") LocalDate today);

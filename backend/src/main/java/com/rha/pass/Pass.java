@@ -49,6 +49,13 @@ public class Pass {
     private PassStatus status;
 
     @Column(nullable = false)
+    private long refundedAmount;
+
+    private LocalDate refundedAt;
+
+    private String refundMemo;
+
+    @Column(nullable = false)
     private Instant createdAt;
 
     @Column(nullable = false)
@@ -113,6 +120,19 @@ public class Pass {
         this.updatedAt = now;
     }
 
+    /** 환불 처리한다. 되돌릴 수 없으며, 이후 날짜에 따른 자동 상태 전환 대상에서 빠진다. */
+    public void refund(long amount, LocalDate refundedAt, String memo, Instant now) {
+        this.status = PassStatus.REFUNDED;
+        this.refundedAmount = amount;
+        this.refundedAt = refundedAt;
+        this.refundMemo = memo;
+        this.updatedAt = now;
+    }
+
+    public boolean isRefunded() {
+        return status == PassStatus.REFUNDED;
+    }
+
     public Long getId() {
         return id;
     }
@@ -151,6 +171,18 @@ public class Pass {
 
     public PassStatus getStatus() {
         return status;
+    }
+
+    public long getRefundedAmount() {
+        return refundedAmount;
+    }
+
+    public LocalDate getRefundedAt() {
+        return refundedAt;
+    }
+
+    public String getRefundMemo() {
+        return refundMemo;
     }
 
     public Instant getCreatedAt() {

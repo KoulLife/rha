@@ -65,6 +65,12 @@ public class PassController {
         return passService.updatePass(me.id(), passId, request);
     }
 
+    @PostMapping("/passes/{passId}/refunds")
+    public PassResponse refundPass(@AuthenticationPrincipal AuthenticatedMember me, @PathVariable Long passId,
+            @RequestBody PassRefundRequest request) {
+        return passService.refundPass(me.id(), passId, request);
+    }
+
     @GetMapping("/passes/{passId}/pauses")
     public PassPausePageResponse getPassPauses(@AuthenticationPrincipal AuthenticatedMember me,
             @PathVariable Long passId,

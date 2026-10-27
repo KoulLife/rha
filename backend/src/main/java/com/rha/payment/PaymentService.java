@@ -136,7 +136,7 @@ public class PaymentService {
 
     // ===== 기록·정정·삭제·환불 =====
 
-    /** 확인 순서: 관리자(403) → 입력(400) → 이용권(404) → 합계 초과(409). */
+    /** 확인 순서: 관리자(403) → 입력(400) → 이용권(404) → 이용권 환불(409) → 합계 초과(409). */
     @Transactional
     public PassPaymentResponse recordPayment(Long callerId, Long passId, PassPaymentCreateRequest request) {
         adminGuard.requireAdmin(callerId);
@@ -145,6 +145,7 @@ public class PaymentService {
         requireNotFuture(paidAt);
 
         Pass pass = lockPass(passId);
+        requireNotRefunded(pass);
         if (paymentRepository.sumByPassId(passId) + request.amount() > pass.getPrice()) {
             throw new ApiException(ErrorCode.PAYMENT_EXCEEDS_PRICE);
         }
@@ -157,7 +158,7 @@ public class PaymentService {
         return toResponses(List.of(payment)).get(0);
     }
 
-    /** 확인 순서: 관리자(403) → 입력(400) → 이용권·기록(404) → 환불 체크(409) → 합계 초과(409). */
+    /** 확인 순서: 관리자(403) → 입력(400) → 이용권·기록(404) → 이용권 환불(409) → 환불 체크(409) → 합계 초과(409). */
     @Transactional
     public PassPaymentResponse correctPayment(Long callerId, Long passId, Long paymentId,
             PassPaymentUpdateRequest request) {
@@ -173,6 +174,7 @@ public class PaymentService {
 
         Pass pass = lockPass(passId);
         PassPayment payment = findPayment(passId, paymentId);
+        requireNotRefunded(pass);
         if (payment.isRefunded()) {
             throw new ApiException(ErrorCode.PAYMENT_REFUNDED);
         }
@@ -198,12 +200,13 @@ public class PaymentService {
         return toResponses(List.of(payment)).get(0);
     }
 
-    /** 확인 순서: 관리자(403) → 이용권·기록(404) → 환불 체크(409). */
+    /** 확인 순서: 관리자(403) → 이용권·기록(404) → 이용권 환불(409) → 환불 체크(409). */
     @Transactional
     public void deletePayment(Long callerId, Long passId, Long paymentId) {
         adminGuard.requireAdmin(callerId);
         Pass pass = lockPass(passId);
         PassPayment payment = findPayment(passId, paymentId);
+        requireNotRefunded(pass);
         if (payment.isRefunded()) {
             throw new ApiException(ErrorCode.PAYMENT_REFUNDED);
         }
@@ -259,6 +262,13 @@ public class PaymentService {
     private Pass lockPass(Long passId) {
         return passRepository.findByIdForUpdate(passId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+    }
+
+    /** 환불된 이용권은 결제 기록을 남기거나 고칠 수 없다. */
+    private static void requireNotRefunded(Pass pass) {
+        if (pass.isRefunded()) {
+            throw new ApiException(ErrorCode.PASS_REFUNDED);
+        }
     }
 
     private PassPayment findPayment(Long passId, Long paymentId) {

@@ -5,14 +5,19 @@ import com.rha.common.error.ErrorCode;
 import com.rha.common.paging.LikePattern;
 import com.rha.common.paging.PageInfo;
 import com.rha.common.validation.RequestValidator;
+import com.rha.lesson.Lesson;
+import com.rha.lesson.LessonRepository;
 import com.rha.member.AdminGuard;
 import com.rha.member.Member;
 import com.rha.member.MemberRepository;
 import com.rha.member.MemberRole;
 import com.rha.member.MemberStatus;
+import com.rha.notification.NotificationPublisher;
 import com.rha.passproduct.PassProduct;
 import com.rha.payment.PassPayment;
 import com.rha.payment.PassPaymentRepository;
+import com.rha.reservation.CanceledBy;
+import com.rha.reservation.Reservation;
 import com.rha.reservation.ReservationRepository;
 import com.rha.passproduct.PassProductRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -63,24 +68,29 @@ public class PassService {
     private final PassProductRepository productRepository;
     private final PassPaymentRepository paymentRepository;
     private final ReservationRepository reservationRepository;
+    private final LessonRepository lessonRepository;
     private final MemberRepository memberRepository;
     private final AdminGuard adminGuard;
     private final RequestValidator requestValidator;
     private final ActivityLogRecorder activityLogRecorder;
+    private final NotificationPublisher notificationPublisher;
 
     public PassService(PassRepository passRepository, PassPauseRepository pauseRepository,
             PassProductRepository productRepository, PassPaymentRepository paymentRepository,
-            ReservationRepository reservationRepository, MemberRepository memberRepository, AdminGuard adminGuard, RequestValidator requestValidator,
-            ActivityLogRecorder activityLogRecorder) {
+            ReservationRepository reservationRepository, LessonRepository lessonRepository,
+            MemberRepository memberRepository, AdminGuard adminGuard, RequestValidator requestValidator,
+            ActivityLogRecorder activityLogRecorder, NotificationPublisher notificationPublisher) {
         this.activityLogRecorder = activityLogRecorder;
         this.passRepository = passRepository;
         this.pauseRepository = pauseRepository;
         this.productRepository = productRepository;
         this.paymentRepository = paymentRepository;
         this.reservationRepository = reservationRepository;
+        this.lessonRepository = lessonRepository;
         this.memberRepository = memberRepository;
         this.adminGuard = adminGuard;
         this.requestValidator = requestValidator;
+        this.notificationPublisher = notificationPublisher;
     }
 
     // ===== 상태 전환 =====
@@ -108,8 +118,11 @@ public class PassService {
         return LocalDate.now(CENTER_ZONE);
     }
 
-    /** 날짜와 진행 중인 정지로 이용권의 상태를 정한다. */
+    /** 날짜와 진행 중인 정지로 이용권의 상태를 정한다. 환불된 이용권은 날짜와 관계없이 그대로 둔다. */
     private PassStatus statusOf(Pass pass, LocalDate today) {
+        if (pass.isRefunded()) {
+            return PassStatus.REFUNDED;
+        }
         if (pass.getEndDate().isBefore(today)) {
             return PassStatus.EXPIRED;
         }
@@ -186,17 +199,20 @@ public class PassService {
                 predicates.add(cb.equal(root.get("status"), filter.status()));
             }
             if (filter.paymentStatus() != null) {
-                // 결제 합계(환불로 체크된 기록 포함)와 이용권 금액을 비교한다.
+                // 결제 합계(환불로 체크된 기록 포함)와 이용권 금액을 비교한다. 환불된 이용권은 미수금이 0이므로 PAID이다.
                 Subquery<Long> sum = query.subquery(Long.class);
                 Root<PassPayment> payment = sum.from(PassPayment.class);
                 sum.select(cb.sum(payment.<Long>get("amount")))
                         .where(cb.equal(payment.get("passId"), root.get("id")));
                 var paid = cb.coalesce(sum, 0L);
                 var price = root.<Long>get("price");
+                var refunded = cb.equal(root.get("status"), PassStatus.REFUNDED);
                 switch (filter.paymentStatus()) {
-                    case UNPAID -> predicates.add(cb.and(cb.equal(paid, 0L), cb.greaterThan(price, 0L)));
-                    case PARTIAL -> predicates.add(cb.and(cb.greaterThan(paid, 0L), cb.lessThan(paid, price)));
-                    case PAID -> predicates.add(cb.greaterThanOrEqualTo(paid, price));
+                    case UNPAID -> predicates.add(cb.and(cb.not(refunded), cb.equal(paid, 0L),
+                            cb.greaterThan(price, 0L)));
+                    case PARTIAL -> predicates.add(cb.and(cb.not(refunded), cb.greaterThan(paid, 0L),
+                            cb.lessThan(paid, price)));
+                    case PAID -> predicates.add(cb.or(refunded, cb.greaterThanOrEqualTo(paid, price)));
                 }
             }
             if (filter.createdFrom() != null) {
@@ -246,7 +262,7 @@ public class PassService {
     }
 
     /**
-     * 확인 순서: 관리자(403) → 형식(400) → 이용권·강사(404) → 값(400: 잔여 횟수, 만료일, 강사 자격)
+     * 확인 순서: 관리자(403) → 형식(400) → 이용권·강사(404) → 환불(409) → 값(400: 잔여 횟수, 만료일, 강사 자격)
      * → 퇴사 예정 강사(409).
      */
     @Transactional
@@ -262,6 +278,9 @@ public class PassService {
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
         Member instructor = request.instructorId() == null ? null : memberRepository
                 .findById(request.instructorId()).orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+        if (pass.isRefunded()) {
+            throw new ApiException(ErrorCode.PASS_REFUNDED);
+        }
 
         if (request.remainingCount() != null
                 && (request.remainingCount() < 0 || request.remainingCount() > pass.getTotalCount())) {
@@ -325,7 +344,7 @@ public class PassService {
     }
 
     /**
-     * 확인 순서: 관리자(403) → 형식(400) → 이용권(404) → 만료(409) → 기간(400) → 겹침(409).
+     * 확인 순서: 관리자(403) → 형식(400) → 이용권(404) → 환불·만료(409) → 기간(400) → 겹침(409).
      * 정지 일수만큼 만료일을 즉시 연장한다.
      */
     @Transactional
@@ -339,6 +358,9 @@ public class PassService {
         refreshStatuses(today);
         Pass pass = passRepository.findByIdForUpdate(passId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+        if (pass.isRefunded()) {
+            throw new ApiException(ErrorCode.PASS_REFUNDED);
+        }
         if (pass.getStatus() == PassStatus.EXPIRED) {
             throw new ApiException(ErrorCode.PASS_EXPIRED);
         }
@@ -390,6 +412,20 @@ public class PassService {
 
         Instant now = Instant.now();
         LocalDate beforeEndDate = pass.getEndDate();
+        release(pass, pause, today, now);
+        pass.changeStatus(statusOf(pass, today), now);
+        activityLogRecorder.record(ActivityAction.PASS_PAUSE_TERMINATED, callerId, pass.getMemberId(), "PASS_PAUSE",
+                pause.getId(), "이용권 #" + passId + "의 일시정지(" + pause.getStartDate() + " ~ "
+                        + pause.getEndDate() + ") 해제",
+                ActivityChange.ifChanged("endDate", beforeEndDate, pass.getEndDate()));
+        return PassPauseResponse.from(pause);
+    }
+
+    /**
+     * 정지를 조기에 끝내고 만료일을 되돌린다. 시작 전이거나 시작일 당일이면 취소해 연장한 일수를 모두 되돌리고,
+     * 진행 중이면 오늘부터 해제해 사용하지 않은 일수만큼 줄인다. 이용권 상태는 호출한 쪽이 정한다.
+     */
+    private void release(Pass pass, PassPause pause, LocalDate today, Instant now) {
         if (pause.getStatus() == PassPauseStatus.SCHEDULED || !pause.getStartDate().isBefore(today)) {
             pass.changeEndDate(shortened(pass, pause.plannedDays()), now);
             pause.cancel(now);
@@ -400,12 +436,80 @@ public class PassService {
             pause.endEarly(newEnd, now);
         }
         pauseRepository.saveAndFlush(pause);
-        pass.changeStatus(statusOf(pass, today), now);
-        activityLogRecorder.record(ActivityAction.PASS_PAUSE_TERMINATED, callerId, pass.getMemberId(), "PASS_PAUSE",
-                pause.getId(), "이용권 #" + passId + "의 일시정지(" + pause.getStartDate() + " ~ "
-                        + pause.getEndDate() + ") 해제",
+    }
+
+    // ===== 환불 =====
+
+    /**
+     * 이용권을 환불 처리한다. 상태를 REFUNDED로 바꾸고, 시작 전·진행 중 정지를 해제하며, 아직 시작하지 않은 수업의
+     * 예약을 취소한다. 되돌릴 수 없다.
+     * 확인 순서: 관리자(403) → 형식(400) → 이용권(404) → 이미 환불(409) → 환불 금액(400) → 환불일(400).
+     */
+    @Transactional
+    public PassResponse refundPass(Long callerId, Long passId, PassRefundRequest request) {
+        adminGuard.requireAdmin(callerId);
+        requestValidator.validate(request);
+        LocalDate requestedDate = request.refundedAt() == null ? null : parseDate(request.refundedAt());
+
+        LocalDate today = today();
+        refreshStatuses(today);
+        if (!passRepository.existsById(passId)) {
+            throw new ApiException(ErrorCode.NOT_FOUND);
+        }
+        Instant now = Instant.now();
+        // 예약 생성·취소와 같은 순서(수업 → 이용권)로 잠가 서로 기다리다 멈추지 않게 한다. 수업은 id 순이다.
+        Set<Long> lessonIds = reservationRepository.findUpcomingReservedOnPass(passId, now).stream()
+                .map(Reservation::getLessonId).collect(Collectors.toCollection(java.util.TreeSet::new));
+        Map<Long, Lesson> lessons = new java.util.HashMap<>();
+        for (Long lessonId : lessonIds) {
+            lessonRepository.findByIdForUpdate(lessonId).ifPresent(lesson -> lessons.put(lessonId, lesson));
+        }
+        Pass pass = passRepository.findByIdForUpdate(passId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+        if (pass.isRefunded()) {
+            throw new ApiException(ErrorCode.PASS_REFUNDED);
+        }
+        if (request.amount() > paymentRepository.sumRefundableByPassId(passId)) {
+            throw new ApiException(ErrorCode.INVALID_REFUND_AMOUNT);
+        }
+        LocalDate refundedAt = requestedDate != null ? requestedDate : today;
+        if (refundedAt.isAfter(today) || refundedAt.isBefore(paymentRepository.firstPaidAtByPassId(passId))) {
+            throw new ApiException(ErrorCode.INVALID_PAYMENT_DATE);
+        }
+
+        PassStatus beforeStatus = pass.getStatus();
+        LocalDate beforeEndDate = pass.getEndDate();
+        List<PassPause> pauses = pauseRepository.findByPassIdAndStatusIn(passId,
+                List.of(PassPauseStatus.SCHEDULED, PassPauseStatus.ACTIVE));
+        for (PassPause pause : pauses) {
+            release(pass, pause, today, now);
+        }
+        // 잠그기 전에 고른 예약이므로, 잠근 뒤 아직 시작 전 예약인 것만 취소한다.
+        List<Reservation> canceled = reservationRepository.findUpcomingReservedOnPass(passId, now);
+        for (Reservation reservation : canceled) {
+            reservation.cancel(CanceledBy.ADMIN, "이용권 환불", now);
+            pass.restoreOne(now);
+            Lesson lesson = lessons.get(reservation.getLessonId());
+            if (lesson != null) {
+                notificationPublisher.reservationCanceledByAdmin(reservation, lesson);
+            }
+        }
+        pass.refund(request.amount(), refundedAt, request.memo(), now);
+
+        List<String> notes = new ArrayList<>();
+        notes.add(String.format("%,d원", request.amount()));
+        if (!pauses.isEmpty()) {
+            notes.add("일시정지 " + pauses.size() + "건 해제");
+        }
+        if (!canceled.isEmpty()) {
+            notes.add("예약 " + canceled.size() + "건 자동 취소");
+        }
+        activityLogRecorder.record(ActivityAction.PASS_REFUNDED, callerId, pass.getMemberId(), "PASS", pass.getId(),
+                "이용권 #" + pass.getId() + " 환불 (" + String.join(", ", notes) + ")",
+                ActivityChange.of("status", beforeStatus, PassStatus.REFUNDED),
+                ActivityChange.of("refundedAmount", 0, request.amount()),
                 ActivityChange.ifChanged("endDate", beforeEndDate, pass.getEndDate()));
-        return PassPauseResponse.from(pause);
+        return toResponse(pass);
     }
 
     // ===== 상품 수정 반영 =====

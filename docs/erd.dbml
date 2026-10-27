@@ -48,6 +48,7 @@ Enum pass_status {
   ACTIVE [note: '사용 중']
   PAUSED [note: '일시정지 중']
   EXPIRED [note: '만료됨']
+  REFUNDED [note: '환불됨. 날짜에 따른 자동 전환 대상이 아님']
 }
 
 Enum payment_method {
@@ -352,7 +353,10 @@ Table passes {
   remaining_count int [not null, note: '예약 시 1회 차감, 예약 취소 시 복구']
   start_date date [not null]
   end_date date [not null, note: '일시정지로 연장된 일수 포함']
-  status pass_status [not null, note: '날짜에 따라 서버(스케줄러)가 전환']
+  status pass_status [not null, note: '날짜에 따라 서버(스케줄러)가 전환. REFUNDED는 전환하지 않음']
+  refunded_amount bigint [not null, default: 0, note: '환불 금액. 결제 합계에서 빼지 않고 따로 남김']
+  refunded_at date [note: '환불일 (환불된 이용권만)']
+  refund_memo varchar(200)
   created_at timestamp [not null]
   updated_at timestamp [not null]
 

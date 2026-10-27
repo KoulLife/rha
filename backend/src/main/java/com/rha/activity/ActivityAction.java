@@ -35,6 +35,7 @@ public enum ActivityAction {
     PASS_PAUSED(PASS, "일시정지 등록"),
     PASS_PAUSE_TERMINATED(PASS, "일시정지 해제"),
     PASS_EXPIRED(PASS, "이용권 만료"),
+    PASS_REFUNDED(PASS, "이용권 환불"),
 
     PAYMENT_RECORDED(PAYMENT, "결제 기록"),
     PAYMENT_UPDATED(PAYMENT, "결제 정정"),

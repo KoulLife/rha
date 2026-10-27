@@ -30,6 +30,7 @@ const statuses = {
     ACTIVE: ["이용 중", "success"],
     PAUSED: ["홀딩 중", "warning"],
     EXPIRED: ["만료", "destructive"],
+    REFUNDED: ["환불 완료", "destructive"],
   },
   member: {
     ACTIVE: ["활성", "success"],
@@ -41,7 +42,7 @@ const statuses = {
     UNPAID: ["미결제", "destructive"],
     PARTIAL: ["일부 결제", "warning"],
     PAID: ["완납", "success"],
-    REFUNDED: ["환불 기록", "destructive"],
+    REFUNDED: ["환불", "destructive"],
   },
   settlement: {
     CALCULATED: ["계산 완료", "neutral"],

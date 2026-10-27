@@ -315,7 +315,10 @@ class ActivityLogQueryTest extends ActivityLogTestSupport {
         assertThat(lessonActions).containsExactly("LESSON_CREATED", "LESSON_UPDATED", "LESSON_STATUS_CHANGED",
                 "LESSON_CANCELED", "LESSON_PUBLISHED");
         List<String> allActions = JsonPath.read(body, "$.categories[*].actions[*].code");
-        assertThat(allActions).hasSize(55).doesNotHaveDuplicates();
+        assertThat(allActions).hasSize(56).doesNotHaveDuplicates();
+        List<String> passActions = JsonPath.read(body, "$.categories[?(@.code=='PASS')].actions[*].code");
+        assertThat(passActions).containsExactly("PASS_ISSUED", "PASS_UPDATED", "PASS_PAUSED",
+                "PASS_PAUSE_TERMINATED", "PASS_EXPIRED", "PASS_REFUNDED");
     }
 
     @Test

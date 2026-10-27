@@ -20,11 +20,12 @@
 | `INVALID_LESSON_TIME` | 수업 시간 오류 (종료가 시작보다 늦지 않거나 시작이 과거) | `createLesson`, `updateLesson` |
 | `INVALID_MEMBER` | 이용권 발급 대상이 활성 상태의 일반 회원이 아님 | `createPass` |
 | `INVALID_PAUSE_PERIOD` | 일시정지 기간 오류 (시작일이 과거, 종료일이 시작일보다 빠름, 이용권 기간 밖) | `createPassPause` |
-| `INVALID_PAYMENT_DATE` | 결제일이나 환불일이 오늘보다 미래이거나, 환불일이 결제일보다 빠름 | `recordPassPayment`, `setPassPaymentRefund`, `updatePassPayment` |
+| `INVALID_PAYMENT_DATE` | 결제일이나 환불일이 오늘보다 미래이거나, 환불일이 결제일보다 빠름 | `recordPassPayment`, `refundPass`, `setPassPaymentRefund`, `updatePassPayment` |
 | `INVALID_PAY_RATE` | 수당 단가 목록 오류 (수업 유형 중복, 존재하지 않는 수업 유형) | `updatePayRates` |
 | `INVALID_PERIOD` | 정산 기간 오류 (시작일이 종료일보다 늦거나 종료일이 오늘 이후) | `createSettlement` |
 | `INVALID_PERMISSION` | 권한 코드가 목록에 없거나 중복됨 | `updateMemberPermissions` |
 | `INVALID_PUBLISH_AT` | 공개 예약 시각 오류 (누락, 과거, 수업 시작 이후) | `changeLessonStatus`, `updateLesson` |
+| `INVALID_REFUND_AMOUNT` | 환불 금액이 환불할 수 있는 금액(결제 합계에서 환불 체크된 기록을 뺀 금액)을 넘음 | `refundPass` |
 | `INVALID_REMAINING_COUNT` | 잔여 횟수가 0 미만이거나 총 횟수를 초과 | `updatePass` |
 | `INVALID_RESET_TOKEN` | 비밀번호 재설정 토큰이 유효하지 않거나 만료됨 | `resetPassword` |
 | `INVALID_RESIGNATION_DATE` | 퇴사일이 오늘보다 과거 | `registerResignation` |
@@ -87,6 +88,7 @@
 | `OUTSIDE_BUSINESS_HOURS` | 영업시간 밖이거나 휴무일 | `createLesson`, `updateLesson` |
 | `PASS_EXPIRED` | 이미 만료된 이용권 | `createPassPause` |
 | `PASS_PRODUCT_IN_USE` | 발급된 이용권이 있는 상품은 삭제할 수 없음 | `deletePassProduct` |
+| `PASS_REFUNDED` | 환불된 이용권은 수정·일시정지·결제 기록을 할 수 없고, 다시 환불할 수 없음 | `createPassPause`, `deletePassPayment`, `recordPassPayment`, `refundPass`, `updatePass`, `updatePassPayment` |
 | `PASS_UNPAID` | 미수 예약이 허용되지 않아 완납한 이용권이 필요함 | `createReservation` |
 | `PAUSE_HAS_RESERVATIONS` | 정지 기간에 속한 예약이 있어 먼저 취소해야 함 | `createPassPause` |
 | `PAUSE_PERIOD_OVERLAP` | 다른 일시정지 기간과 겹침 | `createPassPause` |

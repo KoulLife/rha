@@ -26,6 +26,15 @@ const sales = (query: { data?: api.PassPaymentPageResponse }) =>
         .filter((payment) => !payment.refunded)
         .reduce((sum, payment) => sum + payment.amount, 0)
     : undefined;
+/** 환불일이 그 달인 이용권의 환불 금액 합계. 매출은 결제한 달이 아니라 환불한 달에서 뺀다. */
+const refunds = (query: { data?: api.PassPageResponse }, month: string) =>
+  query.data && query.data.pageInfo.totalPages <= 1
+    ? query.data.content
+        .filter((pass) => pass.refundedAt?.startsWith(month))
+        .reduce((sum, pass) => sum + pass.refundedAmount, 0)
+    : undefined;
+const net = (paid?: number, refunded?: number) =>
+  paid === undefined || refunded === undefined ? undefined : paid - refunded;
 const number = (value: number) => value.toLocaleString("ko-KR");
 
 type Bar = { label: string; value?: number; tone: 1 | 2 | 3 | 4 };
@@ -306,10 +315,12 @@ export function SalesStatisticsPage() {
     paidTo: monthEnd(lastYear),
     size: 100,
   });
-  const queries = [current, previous, yearly];
-  const thisSales = sales(current),
-    lastSales = sales(previous),
-    yearSales = sales(yearly);
+  const refundedPasses = api.useGetPasses({ status: "REFUNDED", size: 100 });
+  const queries = [current, previous, yearly, refundedPasses];
+  const thisRefunds = refunds(refundedPasses, month);
+  const thisSales = net(sales(current), thisRefunds),
+    lastSales = net(sales(previous), refunds(refundedPasses, last)),
+    yearSales = net(sales(yearly), refunds(refundedPasses, lastYear));
   const payments =
     current.data && current.data.pageInfo.totalPages <= 1
       ? current.data.content.filter((payment) => !payment.refunded)
@@ -346,9 +357,9 @@ export function SalesStatisticsPage() {
               title="이번 달 매출"
               value={thisSales === undefined ? "—" : money(thisSales)}
               note={
-                payments === undefined
+                payments === undefined || thisRefunds === undefined
                   ? `${month} · 집계 불가`
-                  : `결제 ${number(payments.length)}건 · 건당 평균 ${payments.length ? money(Math.round((thisSales ?? 0) / payments.length)) : "—"}`
+                  : `결제 ${number(payments.length)}건 · 환불 ${money(thisRefunds)} 차감`
               }
               featured
             />
@@ -359,8 +370,8 @@ export function SalesStatisticsPage() {
                 value={methodSales === undefined ? "—" : money(methodSales[method])}
                 note={
                   payments === undefined
-                    ? "환불 표시 제외 · 집계 불가"
-                    : `환불 표시 제외 · 매출의 ${thisSales ? (((methodSales?.[method] ?? 0) / thisSales) * 100).toFixed(1) : "0.0"}%`
+                    ? "환불 차감 전 결제 · 집계 불가"
+                    : "환불 차감 전 결제 금액"
                 }
               />
             ))}
@@ -373,8 +384,10 @@ export function SalesStatisticsPage() {
             ]}
           />
           <p className="admin-stats-footnote">
-            매출은 결제일이 해당 월인 기록에서 환불 표시된 건을 제외한 금액입니다. 결제 기록이 한
-            페이지를 넘으면 해당 월의 매출과 수단별 합계는 집계 불가로 표시합니다.
+            매출은 결제일이 해당 월인 결제 합계에서 환불일이 해당 월인 이용권 환불 금액을 뺀
+            금액입니다. 환불은 환불한 달에 차감되며 지난 달의 매출은 바뀌지 않습니다. 수단별 금액은
+            환불 차감 전 결제 금액이고, 이전 방식으로 환불 표시된 결제 기록은 제외합니다. 결제
+            기록이나 환불 이용권이 한 페이지를 넘으면 집계 불가로 표시합니다.
           </p>
         </div>
       </QueryState>
