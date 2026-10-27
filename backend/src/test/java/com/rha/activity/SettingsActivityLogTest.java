@@ -46,7 +46,7 @@ class SettingsActivityLogTest extends ActivityLogTestSupport {
         assertThat(log.get("target_type")).isEqualTo("LESSON_TYPE");
         assertThat(((Number) log.get("target_id")).longValue()).isEqualTo(id);
         assertThat(log.get("subject_member_id")).isNull();
-        assertThat((String) log.get("summary")).startsWith("관리자가 ").contains("요가").contains("YOGA");
+        assertThat((String) log.get("summary")).startsWith("수업 유형 '요가' 등록").contains("YOGA");
         assertThat(changesOf(log)).isEmpty();
     }
 

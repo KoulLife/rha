@@ -72,7 +72,7 @@ class LessonActivityLogTest extends ActivityLogTestSupport {
         assertThat(log.get("target_type")).isEqualTo("LESSON");
         assertThat(((Number) log.get("target_id")).longValue()).isEqualTo(id);
         assertThat(log.get("subject_member_id")).isNull();
-        assertThat((String) log.get("summary")).startsWith("관리자가 ").contains("아침 필라테스").contains("개설");
+        assertThat((String) log.get("summary")).startsWith("수업 '아침 필라테스' 개설");
     }
 
     @Test

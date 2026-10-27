@@ -43,7 +43,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.ActivityTime;
 
 /**
@@ -216,8 +215,8 @@ public class SettlementService {
         itemRepository.saveAll(items);
         activityLogRecorder.record(ActivityAction.SETTLEMENT_CREATED, callerId, instructor.getId(), "SETTLEMENT",
                 settlement.getId(), "강사 '" + instructor.getName() + "'의 정산(" + start + " ~ " + end
-                        + ")을 계산했다. 정산 수업 " + settledCount + "건, 제외 " + excludedCount + "건, 합계 "
-                        + String.format("%,d원", total));
+                        + ") 계산 (정산 수업 " + settledCount + "건, 제외 " + excludedCount + "건, 합계 "
+                        + String.format("%,d원", total) + ")");
         return toDetail(settlement);
     }
 
@@ -255,7 +254,7 @@ public class SettlementService {
         requireStatus(settlement, SettlementStatus.CALCULATED);
         settlement.requestReview(Instant.now());
         recordStatusChange(ActivityAction.SETTLEMENT_REVIEW_REQUESTED, callerId, settlement,
-                SettlementStatus.CALCULATED, "검토를 요청했다.");
+                SettlementStatus.CALCULATED, "검토 요청");
         return toSummaries(List.of(settlement)).get(0);
     }
 
@@ -267,7 +266,7 @@ public class SettlementService {
         requireStatus(settlement, SettlementStatus.REVIEW_REQUESTED);
         settlement.confirm(Instant.now());
         recordStatusChange(ActivityAction.SETTLEMENT_CONFIRMED, callerId, settlement,
-                SettlementStatus.REVIEW_REQUESTED, "확정했다.");
+                SettlementStatus.REVIEW_REQUESTED, "확정");
         return toSummaries(List.of(settlement)).get(0);
     }
 
@@ -281,7 +280,7 @@ public class SettlementService {
         requireStatus(settlement, SettlementStatus.CONFIRMED);
         settlement.recordPayment(paidAt, request.memo(), Instant.now());
         activityLogRecorder.record(ActivityAction.SETTLEMENT_PAID, callerId, settlement.getInstructorId(),
-                "SETTLEMENT", settlement.getId(), settlementLabel(settlement) + "의 지급을 기록했다. (지급일 " + paidAt
+                "SETTLEMENT", settlement.getId(), settlementLabel(settlement) + " 지급 기록 (지급일 " + paidAt
                         + ")",
                 ActivityChange.of("status", SettlementStatus.CONFIRMED, SettlementStatus.PAID),
                 ActivityChange.of("paidAt", null, paidAt));
@@ -298,7 +297,7 @@ public class SettlementService {
             throw new ApiException(ErrorCode.INVALID_SETTLEMENT_STATUS);
         }
         activityLogRecorder.record(ActivityAction.SETTLEMENT_DISCARDED, callerId, settlement.getInstructorId(),
-                "SETTLEMENT", settlementId, settlementLabel(settlement) + "을 폐기했다. 포함된 수업은 다시 정산할 수 있다.",
+                "SETTLEMENT", settlementId, settlementLabel(settlement) + " 폐기 (포함된 수업은 다시 정산할 수 있음)",
                 ActivityChange.of("status", settlement.getStatus(), null));
         itemRepository.deleteAllOf(settlementId);
         settlementRepository.deleteById(settlementId);
@@ -320,7 +319,7 @@ public class SettlementService {
     private void recordStatusChange(ActivityAction action, Long callerId, Settlement settlement,
             SettlementStatus before, String verb) {
         activityLogRecorder.record(action, callerId, settlement.getInstructorId(), "SETTLEMENT", settlement.getId(),
-                settlementLabel(settlement) + "을 " + verb,
+                settlementLabel(settlement) + " " + verb,
                 ActivityChange.of("status", before, settlement.getStatus()));
     }
 

@@ -35,7 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.ActivityTime;
 
 /**
@@ -154,7 +153,7 @@ public class PaymentService {
                 Instant.now()));
         activityLogRecorder.record(ActivityAction.PAYMENT_RECORDED, callerId, pass.getMemberId(), "PASS_PAYMENT",
                 payment.getId(), "이용권 #" + passId + "에 결제 " + won(payment.getAmount()) + "("
-                        + payment.getMethod() + ")을 기록했다.");
+                        + payment.getMethod() + ") 기록");
         return toResponses(List.of(payment)).get(0);
     }
 
@@ -191,7 +190,7 @@ public class PaymentService {
         payment.correct(method, request.getAmount(), paidAt, request.isMemoSpecified(), request.getMemo(),
                 Instant.now());
         activityLogRecorder.record(ActivityAction.PAYMENT_UPDATED, callerId, pass.getMemberId(), "PASS_PAYMENT",
-                payment.getId(), "이용권 #" + passId + "의 결제 기록 #" + payment.getId() + "을 정정했다.",
+                payment.getId(), "이용권 #" + passId + "의 결제 기록 #" + payment.getId() + " 정정",
                 ActivityChange.ifChanged("method", beforeMethod, payment.getMethod()),
                 ActivityChange.ifChanged("amount", beforeAmount, payment.getAmount()),
                 ActivityChange.ifChanged("paidAt", beforePaidAt, payment.getPaidAt()),
@@ -211,7 +210,7 @@ public class PaymentService {
         paymentRepository.delete(payment);
         activityLogRecorder.record(ActivityAction.PAYMENT_DELETED, callerId, pass.getMemberId(), "PASS_PAYMENT",
                 payment.getId(), "이용권 #" + passId + "의 결제 " + won(payment.getAmount()) + "("
-                        + payment.getMethod() + ") 기록을 삭제했다.",
+                        + payment.getMethod() + ") 기록 삭제",
                 ActivityChange.of("amount", payment.getAmount(), null));
     }
 
@@ -248,7 +247,7 @@ public class PaymentService {
                 request.refunded() ? ActivityAction.PAYMENT_REFUND_CHECKED : ActivityAction.PAYMENT_REFUND_UNCHECKED,
                 callerId, pass.getMemberId(), "PASS_PAYMENT", payment.getId(),
                 "이용권 #" + passId + "의 결제 " + won(payment.getAmount()) + "("
-                        + payment.getMethod() + ") 기록의 환불 체크를 " + (request.refunded() ? "했다." : "해제했다."),
+                        + payment.getMethod() + ") 기록 환불 " + (request.refunded() ? "체크" : "체크 해제"),
                 ActivityChange.ifChanged("refunded", beforeRefunded, payment.isRefunded()),
                 ActivityChange.ifChanged("refundedAt", beforeRefundedAt, payment.getRefundedAt()),
                 ActivityChange.ifChanged("refundMemo", beforeRefundMemo, payment.getRefundMemo()));

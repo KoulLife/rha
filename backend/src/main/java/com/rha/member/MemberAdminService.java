@@ -27,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.Masking;
 
 @Service
@@ -92,7 +91,7 @@ public class MemberAdminService {
         passwordResetService.invite(member);
         activityLogRecorder.record(ActivityAction.MEMBER_CREATED, callerId, member.getId(), "MEMBER",
                 member.getId(), (member.isRole(MemberRole.ADMIN) ? "관리자 " : "강사 ")
-                        + Josa.eulReul("'" + member.getName() + "'") + " 계정으로 등록했다.");
+                        + "'" + member.getName() + "' 계정 등록");
         return member;
     }
 
@@ -141,7 +140,7 @@ public class MemberAdminService {
             refreshTokenRepository.revokeAllOf(memberId, now);
         }
         activityLogRecorder.record(ActivityAction.MEMBER_UPDATED, callerId, memberId, "MEMBER", memberId,
-                Josa.eulReul("회원 '" + member.getName() + "'") + " 수정했다.",
+                "회원 '" + member.getName() + "' 정보 수정",
                 ActivityChange.ifChanged("name", beforeName, member.getName()),
                 ActivityChange.ifChanged("phoneNumber", beforePhone, member.getPhoneNumber(), Masking::phone),
                 ActivityChange.ifChanged("birthDate", beforeBirthDate, (Object) member.getBirthDate(),
@@ -187,7 +186,7 @@ public class MemberAdminService {
         MemberStatus beforeStatus = member.getStatus();
         member.changeStatus(requested, now);
         activityLogRecorder.record(ActivityAction.MEMBER_STATUS_CHANGED, callerId, memberId, "MEMBER", memberId,
-                Josa.eulReul("회원 '" + member.getName() + "'") + " " + requested.name() + " 상태로 변경했다.",
+                "회원 '" + member.getName() + "' 상태를 " + requested.name() + "로 변경",
                 ActivityChange.of("status", beforeStatus, requested));
         if (requested == MemberStatus.INACTIVE) {
             refreshTokenRepository.revokeAllOf(memberId, now);

@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 
 @Service
 public class LessonTypeService {
@@ -62,7 +61,7 @@ public class LessonTypeService {
             throw new ApiException(ErrorCode.LESSON_TYPE_CODE_DUPLICATED);
         }
         activityLogRecorder.record(ActivityAction.LESSON_TYPE_CREATED, callerId, null, "LESSON_TYPE", saved.getId(),
-                Josa.eulReul("수업 유형 '" + saved.getName() + "'") + " 등록했다. (코드 " + saved.getCode() + ")");
+                "수업 유형 '" + saved.getName() + "' 등록 (코드 " + saved.getCode() + ")");
         return LessonTypeResponse.from(saved);
     }
 
@@ -82,7 +81,7 @@ public class LessonTypeService {
         type.update(request.name() == null ? null : request.name().strip(), request.capacity(),
                 request.active(), Instant.now());
         activityLogRecorder.record(ActivityAction.LESSON_TYPE_UPDATED, callerId, null, "LESSON_TYPE", type.getId(),
-                Josa.eulReul("수업 유형 '" + type.getName() + "'") + " 수정했다.",
+                "수업 유형 '" + type.getName() + "' 수정",
                 ActivityChange.ifChanged("name", beforeName, type.getName()),
                 ActivityChange.ifChanged("capacity", beforeCapacity, type.getCapacity()),
                 ActivityChange.ifChanged("active", beforeActive, type.isActive()));

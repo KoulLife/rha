@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.Masking;
 
 @Service
@@ -57,7 +56,7 @@ public class AccountWithdrawalService {
         }
         // 탈퇴 처리가 이름을 바꾸더라도 요약에는 탈퇴 전 이름이 남도록 먼저 기록한다.
         activityLogRecorder.record(ActivityAction.ACCOUNT_WITHDRAWN, memberId, memberId, "MEMBER", memberId,
-                "회원탈퇴했다.");
+                "회원탈퇴");
         member.withdraw(now);
         refreshTokenRepository.revokeAllOf(memberId, now);
     }

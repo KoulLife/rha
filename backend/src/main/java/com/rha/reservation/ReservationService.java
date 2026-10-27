@@ -46,7 +46,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.ActivityTime;
 
 /**
@@ -144,7 +143,7 @@ public class ReservationService {
                 Reservation.reserve(lesson.getId(), callerId, pass.getId(), now));
         activityLogRecorder.record(ActivityAction.RESERVATION_CREATED, callerId, callerId, "RESERVATION",
                 reservation.getId(), "수업 '" + lesson.getTitle() + "'(" + ActivityTime.format(lesson.getStartAt())
-                        + ")을 예약했다. (이용권 #" + pass.getId() + ")");
+                        + ") 예약 (이용권 #" + pass.getId() + ")");
         return toResponses(List.of(reservation)).get(0);
     }
 
@@ -217,7 +216,7 @@ public class ReservationService {
         }
         activityLogRecorder.record(ActivityAction.RESERVATION_CANCELED, callerId, reservation.getMemberId(),
                 "RESERVATION", reservation.getId(), memberLabel(reservation, callerId) + "수업 '" + lesson.getTitle()
-                        + "'(" + ActivityTime.format(lesson.getStartAt()) + ") 예약을 취소했다.",
+                        + "'(" + ActivityTime.format(lesson.getStartAt()) + ") 예약 취소",
                 ActivityChange.of("status", ReservationStatus.RESERVED, ReservationStatus.CANCELED),
                 body.reason() == null ? null : ActivityChange.of("reason", null, body.reason()));
         return toResponses(List.of(reservation)).get(0);
@@ -261,13 +260,13 @@ public class ReservationService {
         reservation.confirmAttendance(target, now);
         activityLogRecorder.record(ActivityAction.ATTENDANCE_RECORDED, callerId, reservation.getMemberId(),
                 "RESERVATION", reservation.getId(), memberLabel(reservation, null) + "수업 '" + lesson.getTitle()
-                        + "'(" + ActivityTime.format(lesson.getStartAt()) + ")의 출결을 " + target.name()
-                        + "(으)로 기록했다.",
+                        + "'(" + ActivityTime.format(lesson.getStartAt()) + ") 출결을 " + target.name()
+                        + "로 기록",
                 ActivityChange.ifChanged("status", beforeStatus, target));
         return toResponses(List.of(reservation)).get(0);
     }
 
-    /** 예약한 회원이 행위자가 아니면 "'이름' 회원의 "을 앞에 붙인다. */
+    /** 예약한 회원이 행위자가 아니면 "회원 '이름'의 "을 앞에 붙인다. */
     private String memberLabel(Reservation reservation, Long callerId) {
         if (reservation.getMemberId().equals(callerId)) {
             return "";

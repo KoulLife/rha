@@ -75,7 +75,7 @@ class ActivityLogQueryTest extends ActivityLogTestSupport {
     @Test
     void 응답에_행위자와_영향받은_회원과_변경_내역이_담긴다() throws Exception {
         long id = insertLog(T0, "LESSON", "LESSON_UPDATED", instructorId, "INSTRUCTOR", memberId, "LESSON", 15L,
-                "김강사가 수업을 수정했다.", "[{\"field\":\"startAt\",\"before\":\"A\",\"after\":\"B\"}]");
+                "수업 '아침 필라테스' 수정", "[{\"field\":\"startAt\",\"before\":\"A\",\"after\":\"B\"}]");
 
         query(token)
                 .andExpect(status().isOk())
@@ -91,7 +91,7 @@ class ActivityLogQueryTest extends ActivityLogTestSupport {
                 .andExpect(jsonPath("$.content[0].subjectMember.name").value("이회원"))
                 .andExpect(jsonPath("$.content[0].targetType").value("LESSON"))
                 .andExpect(jsonPath("$.content[0].targetId").value(15))
-                .andExpect(jsonPath("$.content[0].summary").value("김강사가 수업을 수정했다."))
+                .andExpect(jsonPath("$.content[0].summary").value("수업 '아침 필라테스' 수정"))
                 .andExpect(jsonPath("$.content[0].changes[0].field").value("startAt"))
                 .andExpect(jsonPath("$.content[0].changes[0].before").value("A"))
                 .andExpect(jsonPath("$.content[0].changes[0].after").value("B"));

@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 
 @Service
 public class BusinessHourService {
@@ -78,7 +77,7 @@ public class BusinessHourService {
             }
         }
         activityLogRecorder.record(ActivityAction.BUSINESS_HOURS_UPDATED, callerId, null, "BUSINESS_HOURS", null,
-                "영업시간을 설정했다.", changes.toArray(new ActivityChange[0]));
+                "영업시간 설정", changes.toArray(new ActivityChange[0]));
         return toResponse(saved);
     }
 

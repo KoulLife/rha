@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 활동 이력을 남긴다. 업무 변경과 같은 트랜잭션에서 호출되므로 변경이 롤백되면 이력도 남지 않는다.
- * 행위자가 null이면 시스템이 자동으로 한 처리로 보고 요약에 행위자 이름을 붙이지 않는다.
+ * 행위자가 null이면 시스템이 자동으로 한 처리로 본다. 요약에는 행위자 이름을 넣지 않고 행위자는 별도 필드로 남긴다.
  */
 @Component
 public class ActivityLogRecorder {
@@ -29,8 +29,8 @@ public class ActivityLogRecorder {
     }
 
     /**
-     * @param detail 행위자를 뺀 서술어 문장. 예: {@code "수업 '필라테스'를 취소했다."}
-     *               행위자가 있으면 "{이름}이(가) "를 앞에 붙여 요약을 만든다.
+     * @param detail 요약 한 줄. 무엇을 했는지를 명사형으로 끝맺고 행위자 이름은 넣지 않는다.
+     *               예: {@code "수업 '필라테스' 취소"}, {@code "수업 '필라테스' 공개 상태를 PUBLISHED로 변경"}
      * @param changes null 항목은 무시한다(변경 없는 필드를 {@link ActivityChange#ifChanged}로 넘기기 위함).
      */
     @Transactional
@@ -50,7 +50,7 @@ public class ActivityLogRecorder {
 
     private void save(ActivityAction action, Member actor, Long subjectMemberId, String targetType,
             Long targetId, String detail, ActivityChange[] changes) {
-        String summary = actor == null ? detail : Josa.iGa(actor.getName()) + " " + detail;
+        String summary = detail;
         if (summary.length() > SUMMARY_MAX) {
             summary = summary.substring(0, SUMMARY_MAX - 1) + "…";
         }

@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 
 /** 이용권 상품 관리(관리자 전용). */
 @Service
@@ -77,7 +76,7 @@ public class PassProductService {
                 request.validityDays(), request.description(), Instant.now());
         PassProduct saved = passProductRepository.save(product);
         activityLogRecorder.record(ActivityAction.PASS_PRODUCT_CREATED, callerId, null, "PASS_PRODUCT", saved.getId(),
-                Josa.eulReul("이용권 상품 '" + saved.getName() + "'") + " 등록했다.");
+                "이용권 상품 '" + saved.getName() + "' 등록");
         return PassProductResponse.from(saved);
     }
 
@@ -112,9 +111,9 @@ public class PassProductService {
                 ? passService.applyProductChange(passProductId, countDelta, changedValidity) : 0;
         activityLogRecorder.record(ActivityAction.PASS_PRODUCT_UPDATED, callerId, null, "PASS_PRODUCT",
                 product.getId(),
-                Josa.eulReul("이용권 상품 '" + product.getName() + "'") + " 수정했다."
+                "이용권 상품 '" + product.getName() + "' 수정"
                         + (Boolean.TRUE.equals(request.getApplyToIssued())
-                                ? " 발급된 이용권 " + affected + "건에 반영했다." : ""),
+                                ? " (발급된 이용권 " + affected + "건에 반영)" : ""),
                 ActivityChange.ifChanged("name", beforeName, product.getName()),
                 ActivityChange.ifChanged("price", beforePrice, product.getPrice()),
                 ActivityChange.ifChanged("totalCount", beforeTotalCount, product.getTotalCount()),
@@ -132,7 +131,7 @@ public class PassProductService {
         }
         passProductRepository.delete(product);
         activityLogRecorder.record(ActivityAction.PASS_PRODUCT_DELETED, callerId, null, "PASS_PRODUCT",
-                product.getId(), Josa.eulReul("이용권 상품 '" + product.getName() + "'") + " 삭제했다.");
+                product.getId(), "이용권 상품 '" + product.getName() + "' 삭제");
     }
 
     private PassProduct find(Long passProductId) {

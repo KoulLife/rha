@@ -719,7 +719,7 @@ export interface ActivityLog {
   targetType?: string | null;
   /** @nullable */
   targetId?: number | null;
-  /** 사람이 읽을 수 있는 한 줄 요약 */
+  /** 사람이 읽을 수 있는 한 줄 요약. 무엇을 했는지만 명사형으로 끝맺으며(예: "개설", "변경", "취소"), 행위자 이름은 넣지 않는다(`actor`로 따로 내려간다). */
   summary: string;
   /** 변경 전후 값 목록. 변경 값이 없는 이벤트는 빈 배열이다. */
   changes: ActivityChange[];

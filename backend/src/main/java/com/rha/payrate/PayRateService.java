@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 
 /** 강사의 수업 유형별 수당 단가(관리자 전용). 변경은 이후에 계산하는 정산부터 적용된다. */
 @Service
@@ -102,7 +101,7 @@ public class PayRateService {
             }
         }
         activityLogRecorder.record(ActivityAction.PAY_RATES_UPDATED, callerId, memberId, "MEMBER", memberId,
-                "강사 " + Josa.eulReul("'" + instructor.getName() + "'") + " 수당 단가를 설정했다.",
+                "강사 '" + instructor.getName() + "' 수당 단가 설정",
                 changes.toArray(new ActivityChange[0]));
         return toResponse(instructor, saved.stream()
                 .sorted((a, b) -> a.getLessonTypeId().compareTo(b.getLessonTypeId())).toList());

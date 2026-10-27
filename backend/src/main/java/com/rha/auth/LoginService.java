@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.Masking;
 
 @Service
@@ -57,7 +56,7 @@ public class LoginService {
 
         AuthTokens tokens = tokenIssuer.issue(member, now);
         activityLogRecorder.record(ActivityAction.LOGIN, member.getId(), member.getId(), "MEMBER", member.getId(),
-                "로그인했다.");
+                "로그인");
         return tokens;
     }
 
@@ -65,6 +64,6 @@ public class LoginService {
     private void recordFailure(Member member, String email) {
         Long memberId = member == null ? null : member.getId();
         activityLogRecorder.recordIndependently(ActivityAction.LOGIN_FAILED, memberId, memberId, null, null,
-                "로그인에 실패했다. (이메일 " + Masking.email(email) + ")");
+                "로그인 실패 (이메일 " + Masking.email(email) + ")");
     }
 }
