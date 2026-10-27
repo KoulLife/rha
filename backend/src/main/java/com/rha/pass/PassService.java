@@ -157,7 +157,10 @@ public class PassService {
         return toResponse(find(passId));
     }
 
-    /** 로그인한 회원 본인의 이용권을 만료일 오름차순(같으면 id 오름차순)으로 조회한다. 일반 회원이 아니면 빈 목록이다. */
+    /**
+     * 로그인한 회원 본인의 이용권을 만료일 오름차순(같으면 id 오름차순)으로 조회한다. 일반 회원이 아니면 빈 목록이다.
+     * 상태를 지정하지 않으면 환불된 이용권은 제외한다.
+     */
     @Transactional
     public PassPageResponse getMyPasses(Long callerId, PassStatus status, int page, int size) {
         Member caller = memberRepository.findById(callerId)
@@ -169,9 +172,10 @@ public class PassService {
         }
         refreshStatuses(today());
 
-        Specification<Pass> spec = (root, query, cb) -> status == null
-                ? cb.equal(root.get("memberId"), callerId)
-                : cb.and(cb.equal(root.get("memberId"), callerId), cb.equal(root.get("status"), status));
+        Specification<Pass> spec = (root, query, cb) -> cb.and(cb.equal(root.get("memberId"), callerId),
+                status == null
+                        ? cb.notEqual(root.get("status"), PassStatus.REFUNDED)
+                        : cb.equal(root.get("status"), status));
         Page<Pass> result = passRepository.findAll(spec, pageable);
         return new PassPageResponse(toResponses(result.getContent()), PageInfo.of(result));
     }

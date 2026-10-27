@@ -273,6 +273,21 @@ class GetPassesTest extends PassTestSupport {
     }
 
     @Test
+    void 내_이용권은_상태를_지정하지_않으면_환불된_이용권을_빼고_REFUNDED를_지정해야_보인다() throws Exception {
+        long active = insertActivePass(productId, memberA, instructorId);
+        long refunded = insertPass(productId, memberA, instructorId, 1, 10, 10, days(0), days(29), "REFUNDED");
+        String token = login("a@example.com");
+
+        myPasses(token)
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(active))
+                .andExpect(jsonPath("$.pageInfo.totalElements").value(1));
+        myPasses(token, "status", "REFUNDED")
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(refunded));
+    }
+
+    @Test
     void 일반_회원이_아니면_빈_목록이다() throws Exception {
         insertActivePass(productId, memberA, instructorId);
 
