@@ -32,7 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.ActivityTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -131,7 +130,7 @@ public class InstructorService {
             }
         }
         activityLogRecorder.record(ActivityAction.AVAILABILITY_UPDATED, callerId, memberId, "MEMBER", memberId,
-                "강사 " + Josa.eulReul("'" + instructor.getName() + "'") + " 수업 가능시간을 설정했다.",
+                "강사 '" + instructor.getName() + "' 수업 가능시간 설정",
                 changes.toArray(new ActivityChange[0]));
         return toResponse(instructor, saved);
     }
@@ -194,7 +193,7 @@ public class InstructorService {
         LocalDate beforeDate = member.getResignationDate();
         member.registerResignation(date, Instant.now());
         activityLogRecorder.record(ActivityAction.RESIGNATION_REGISTERED, callerId, memberId, "MEMBER", memberId,
-                "강사 " + Josa.eulReul("'" + member.getName() + "'") + " 퇴사일로 " + date + "을 등록했다.",
+                "강사 '" + member.getName() + "' 퇴사일 " + date + " 등록",
                 ActivityChange.ifChanged("resignationDate", beforeDate, date));
         return MemberResponse.from(member, permissionsOf(memberId));
     }
@@ -210,7 +209,7 @@ public class InstructorService {
         LocalDate beforeDate = member.getResignationDate();
         member.cancelResignation(Instant.now());
         activityLogRecorder.record(ActivityAction.RESIGNATION_CANCELED, callerId, memberId, "MEMBER", memberId,
-                "강사 " + Josa.eulReul("'" + member.getName() + "'") + " 퇴사일 등록을 취소했다.",
+                "강사 '" + member.getName() + "' 퇴사일 등록 취소",
                 ActivityChange.of("resignationDate", beforeDate, null));
     }
 
@@ -246,12 +245,12 @@ public class InstructorService {
             absence.cancel(callerId, now);
             activityLogRecorder.record(ActivityAction.ABSENCE_CANCELED, callerId, memberId, "ABSENCE",
                     absence.getId(), "퇴사 처리로 부재(" + ActivityTime.period(absence.getStartAt(),
-                            absence.getEndAt()) + ")를 자동 취소했다.",
+                            absence.getEndAt()) + ") 자동 취소",
                     ActivityChange.of("status", beforeAbsenceStatus, AbsenceStatus.CANCELED));
         }
         activityLogRecorder.record(ActivityAction.RESIGNATION_COMPLETED, callerId, memberId, "MEMBER", memberId,
-                "강사 " + Josa.eulReul("'" + member.getName() + "'") + " 퇴사 처리했다."
-                        + (canceledAbsences.isEmpty() ? "" : " 부재 " + canceledAbsences.size() + "건이 자동 취소되었다."),
+                "강사 '" + member.getName() + "' 퇴사 처리"
+                        + (canceledAbsences.isEmpty() ? "" : " (부재 " + canceledAbsences.size() + "건 자동 취소)"),
                 ActivityChange.of("status", beforeStatus, member.getStatus()));
         return MemberResponse.from(member, List.of());
     }

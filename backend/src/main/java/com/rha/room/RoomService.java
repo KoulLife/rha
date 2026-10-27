@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 
 @Service
 public class RoomService {
@@ -63,7 +62,7 @@ public class RoomService {
         }
         Room room = saveUnique(Room.create(name, request.capacity(), Instant.now()));
         activityLogRecorder.record(ActivityAction.ROOM_CREATED, callerId, null, "ROOM", room.getId(),
-                Josa.eulReul("룸 '" + room.getName() + "'") + " 등록했다.");
+                "룸 '" + room.getName() + "' 등록");
         return RoomResponse.from(room);
     }
 
@@ -85,7 +84,7 @@ public class RoomService {
         room.update(name, request.capacity(), Instant.now());
         Room saved = saveUnique(room);
         activityLogRecorder.record(ActivityAction.ROOM_UPDATED, callerId, null, "ROOM", saved.getId(),
-                Josa.eulReul("룸 '" + saved.getName() + "'") + " 수정했다.",
+                "룸 '" + saved.getName() + "' 수정",
                 ActivityChange.ifChanged("name", beforeName, saved.getName()),
                 ActivityChange.ifChanged("capacity", beforeCapacity, saved.getCapacity()));
         return RoomResponse.from(saved);
@@ -103,7 +102,7 @@ public class RoomService {
         }
         room.delete(now);
         activityLogRecorder.record(ActivityAction.ROOM_DELETED, callerId, null, "ROOM", room.getId(),
-                Josa.eulReul("룸 '" + room.getName() + "'") + " 삭제했다.");
+                "룸 '" + room.getName() + "' 삭제");
     }
 
     private Room findActive(Long roomId) {

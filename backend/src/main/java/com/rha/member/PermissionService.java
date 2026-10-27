@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 
 @Service
 public class PermissionService {
@@ -90,7 +89,7 @@ public class PermissionService {
         permissionRepository.saveAll(toGrant);
 
         activityLogRecorder.record(ActivityAction.PERMISSIONS_UPDATED, callerId, memberId, "MEMBER", memberId,
-                "강사 " + Josa.eulReul("'" + target.getName() + "'") + " 권한을 설정했다.",
+                "강사 '" + target.getName() + "' 권한 설정",
                 ActivityChange.ifChanged("permissions", joined(existing), joined(requested)));
         return new MemberPermissionsResponse(requested.stream().sorted(Comparator.naturalOrder()).toList());
     }

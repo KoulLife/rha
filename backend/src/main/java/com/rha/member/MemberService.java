@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.Masking;
 
 @Service
@@ -45,7 +44,7 @@ public class MemberService {
         member.updateProfile(request.getName(), request.getPhoneNumber(), request.getBirthDate(),
                 request.isAddressSpecified(), request.getAddress(), Instant.now());
         activityLogRecorder.record(ActivityAction.MEMBER_PROFILE_UPDATED, memberId, memberId, "MEMBER", memberId,
-                "내 정보를 수정했다.",
+                "내 정보 수정",
                 ActivityChange.ifChanged("name", beforeName, member.getName()),
                 ActivityChange.ifChanged("phoneNumber", beforePhone, member.getPhoneNumber(), Masking::phone),
                 ActivityChange.ifChanged("birthDate", beforeBirthDate, (Object) member.getBirthDate(),

@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.Masking;
 
 @Service
@@ -54,6 +53,6 @@ public class PasswordChangeService {
         member.changePassword(passwordEncoder.encode(newPassword), now);
         refreshTokenRepository.revokeAllOf(memberId, now);
         activityLogRecorder.record(ActivityAction.PASSWORD_CHANGED, memberId, memberId, "MEMBER", memberId,
-                "비밀번호를 변경했다.");
+                "비밀번호 변경");
     }
 }

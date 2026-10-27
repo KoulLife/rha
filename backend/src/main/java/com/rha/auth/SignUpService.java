@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.Masking;
 
 @Service
@@ -56,7 +55,7 @@ public class SignUpService {
                 request.address(),
                 now));
         activityLogRecorder.record(ActivityAction.SIGN_UP, saved.getId(), saved.getId(), "MEMBER", saved.getId(),
-                "회원가입했다.");
+                "회원가입");
         return saved;
     }
 }

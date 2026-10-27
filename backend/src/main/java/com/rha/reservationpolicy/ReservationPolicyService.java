@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 
 @Service
 public class ReservationPolicyService {
@@ -42,7 +41,7 @@ public class ReservationPolicyService {
         boolean beforeAllowUnpaid = policy.isAllowUnpaidReservation();
         policy.replace(request.cancelDeadlineHours(), request.allowUnpaidReservation(), Instant.now());
         activityLogRecorder.record(ActivityAction.RESERVATION_POLICY_UPDATED, callerId, null, "RESERVATION_POLICY",
-                null, "예약 정책을 설정했다.",
+                null, "예약 정책 설정",
                 ActivityChange.ifChanged("cancelDeadlineHours", beforeHours, policy.getCancelDeadlineHours()),
                 ActivityChange.ifChanged("allowUnpaidReservation", beforeAllowUnpaid,
                         policy.isAllowUnpaidReservation()));

@@ -88,7 +88,7 @@ class AuthActivityLogTest extends ApiTestSupport {
         assertThat(((Number) log.get("subject_member_id")).longValue()).isEqualTo(memberId);
         assertThat(log.get("target_type")).isEqualTo("MEMBER");
         assertThat(((Number) log.get("target_id")).longValue()).isEqualTo(memberId);
-        assertThat((String) log.get("summary")).contains("홍길동");
+        assertThat((String) log.get("summary")).isEqualTo("회원가입");
         assertThat((String) log.get("summary")).doesNotContain("01012345678").doesNotContain(PASSWORD);
     }
 
@@ -103,7 +103,7 @@ class AuthActivityLogTest extends ApiTestSupport {
         assertThat(((Number) log.get("actor_id")).longValue()).isEqualTo(memberId);
         assertThat(log.get("actor_role")).isEqualTo("INSTRUCTOR");
         assertThat(((Number) log.get("subject_member_id")).longValue()).isEqualTo(memberId);
-        assertThat((String) log.get("summary")).startsWith("홍길동이 ");
+        assertThat((String) log.get("summary")).isEqualTo("로그인");
     }
 
     @Test
@@ -226,6 +226,6 @@ class AuthActivityLogTest extends ApiTestSupport {
         Map<String, Object> log = onlyLog("ACCOUNT_WITHDRAWN");
         assertThat(((Number) log.get("actor_id")).longValue()).isEqualTo(idOf(EMAIL));
         assertThat(((Number) log.get("subject_member_id")).longValue()).isEqualTo(idOf(EMAIL));
-        assertThat((String) log.get("summary")).contains("홍길동");
+        assertThat((String) log.get("summary")).isEqualTo("회원탈퇴");
     }
 }

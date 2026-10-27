@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.Masking;
 
 @Service
@@ -64,6 +63,6 @@ public class RefreshTokenService {
         if (rawRefreshToken != null && !rawRefreshToken.isBlank()) {
             refreshTokenRepository.revokeOwned(TokenHasher.sha256(rawRefreshToken), memberId, Instant.now());
         }
-        activityLogRecorder.record(ActivityAction.LOGOUT, memberId, memberId, "MEMBER", memberId, "로그아웃했다.");
+        activityLogRecorder.record(ActivityAction.LOGOUT, memberId, memberId, "MEMBER", memberId, "로그아웃");
     }
 }

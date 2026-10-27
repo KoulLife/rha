@@ -39,7 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.ActivityTime;
 
 /**
@@ -97,7 +96,7 @@ public class PassService {
             PassStatus beforeStatus = pass.getStatus();
             pass.changeStatus(PassStatus.EXPIRED, now);
             activityLogRecorder.record(ActivityAction.PASS_EXPIRED, null, pass.getMemberId(), "PASS", pass.getId(),
-                    "이용권 #" + pass.getId() + "이 만료일(" + pass.getEndDate() + ")이 지나 만료되었다.",
+                    "이용권 #" + pass.getId() + " 만료 (만료일 " + pass.getEndDate() + " 경과)",
                     ActivityChange.of("status", beforeStatus, PassStatus.EXPIRED));
         }
         passRepository.flush();
@@ -241,7 +240,7 @@ public class PassService {
         Pass pass = passRepository.save(Pass.issue(product.getId(), member.getId(), instructor.getId(), price,
                 product.getTotalCount(), start, end, status, Instant.now()));
         activityLogRecorder.record(ActivityAction.PASS_ISSUED, callerId, member.getId(), "PASS", pass.getId(),
-                "회원 '" + member.getName() + "'에게 이용권 '" + product.getName() + "'을 발급했다. (이용권 #"
+                "회원 '" + member.getName() + "'에게 이용권 '" + product.getName() + "' 발급 (이용권 #"
                         + pass.getId() + ", " + start + " ~ " + end + ")");
         return PassResponse.of(pass, product, member, instructor, 0);
     }
@@ -292,7 +291,7 @@ public class PassService {
             pass.changeStatus(statusOf(pass, today()), now);
         }
         activityLogRecorder.record(ActivityAction.PASS_UPDATED, callerId, pass.getMemberId(), "PASS", pass.getId(),
-                "이용권 #" + pass.getId() + "을 수정했다.",
+                "이용권 #" + pass.getId() + " 수정",
                 ActivityChange.ifChanged("remainingCount", beforeRemaining, pass.getRemainingCount()),
                 ActivityChange.ifChanged("instructorId", beforeInstructorId, pass.getInstructorId()),
                 ActivityChange.ifChanged("endDate", beforeEndDate, pass.getEndDate()),
@@ -366,7 +365,7 @@ public class PassService {
             pass.changeStatus(PassStatus.PAUSED, now);
         }
         activityLogRecorder.record(ActivityAction.PASS_PAUSED, callerId, pass.getMemberId(), "PASS_PAUSE",
-                pause.getId(), "이용권 #" + passId + "의 일시정지(" + start + " ~ " + end + ")를 등록했다. ("
+                pause.getId(), "이용권 #" + passId + "의 일시정지(" + start + " ~ " + end + ") 등록 ("
                         + pause.plannedDays() + "일, 만료일 연장)",
                 ActivityChange.ifChanged("endDate", beforeEndDate, pass.getEndDate()));
         return PassPauseResponse.from(pause);
@@ -404,7 +403,7 @@ public class PassService {
         pass.changeStatus(statusOf(pass, today), now);
         activityLogRecorder.record(ActivityAction.PASS_PAUSE_TERMINATED, callerId, pass.getMemberId(), "PASS_PAUSE",
                 pause.getId(), "이용권 #" + passId + "의 일시정지(" + pause.getStartDate() + " ~ "
-                        + pause.getEndDate() + ")를 해제했다.",
+                        + pause.getEndDate() + ") 해제",
                 ActivityChange.ifChanged("endDate", beforeEndDate, pass.getEndDate()));
         return PassPauseResponse.from(pause);
     }

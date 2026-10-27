@@ -47,7 +47,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.ActivityTime;
 
 /**
@@ -189,8 +188,7 @@ public class LessonService {
         Lesson lesson = lessonRepository.save(Lesson.create(request.title(), type.getId(), type.getCapacity(),
                 instructor.getId(), room.getId(), start, end, now));
         activityLogRecorder.record(ActivityAction.LESSON_CREATED, callerId, null, "LESSON", lesson.getId(),
-                Josa.eulReul("수업 '" + lesson.getTitle() + "'") + " 개설했다. ("
-                        + ActivityTime.period(start, end) + ")");
+                "수업 '" + lesson.getTitle() + "' 개설 (" + ActivityTime.period(start, end) + ")");
         return LessonResponse.of(lesson, type, instructor, room, 0);
     }
 
@@ -267,7 +265,7 @@ public class LessonService {
         Long beforeInstructorId = lesson.getInstructorId();
         lesson.reschedule(title, instructorId, roomId, start, end, now);
         activityLogRecorder.record(ActivityAction.LESSON_UPDATED, callerId, null, "LESSON", lesson.getId(),
-                Josa.eulReul("수업 '" + lesson.getTitle() + "'") + " 수정했다.",
+                "수업 '" + lesson.getTitle() + "' 수정",
                 ActivityChange.ifChanged("title", beforeTitle, lesson.getTitle()),
                 ActivityChange.ifChanged("startAt", beforeStart, lesson.getStartAt()),
                 ActivityChange.ifChanged("endAt", beforeEnd, lesson.getEndAt()),
@@ -308,7 +306,7 @@ public class LessonService {
         Instant beforePublishAt = lesson.getPublishAt();
         lesson.changeStatus(target, publishAt, now);
         activityLogRecorder.record(ActivityAction.LESSON_STATUS_CHANGED, callerId, null, "LESSON", lesson.getId(),
-                Josa.eunNeun("수업 '" + lesson.getTitle() + "'") + " 공개 상태를 " + target.name() + "(으)로 바꿨다.",
+                "수업 '" + lesson.getTitle() + "' 공개 상태를 " + target.name() + "로 변경",
                 ActivityChange.ifChanged("status", beforeStatus, target),
                 ActivityChange.ifChanged("publishAt", beforePublishAt, publishAt));
         return toResponse(lesson);
@@ -342,8 +340,8 @@ public class LessonService {
         }
         notificationPublisher.lessonCanceled(lesson, canceledMembers);
         activityLogRecorder.record(ActivityAction.LESSON_CANCELED, callerId, null, "LESSON", lesson.getId(),
-                Josa.eulReul("수업 '" + lesson.getTitle() + "'") + " 취소했다."
-                        + (canceledMembers.isEmpty() ? "" : " 예약 " + canceledMembers.size() + "건이 자동 취소되었다."),
+                "수업 '" + lesson.getTitle() + "' 취소"
+                        + (canceledMembers.isEmpty() ? "" : " (예약 " + canceledMembers.size() + "건 자동 취소)"),
                 ActivityChange.of("status", beforeStatus, LessonStatus.CANCELED),
                 body.reason() == null ? null : ActivityChange.of("reason", null, body.reason()));
         return toResponse(lesson);
@@ -398,8 +396,8 @@ public class LessonService {
         lessons.forEach(lesson -> lesson.reschedule(lesson.getTitle(), toInstructor.getId(), lesson.getRoomId(),
                 lesson.getStartAt(), lesson.getEndAt(), now));
         activityLogRecorder.record(ActivityAction.LESSONS_REASSIGNED, callerId, fromInstructorId, "MEMBER",
-                fromInstructorId, "강사 '" + fromInstructor.getName() + "'의 수업 " + lessons.size() + "건을 강사 '"
-                        + toInstructor.getName() + "'에게 인계했다.",
+                fromInstructorId, "강사 '" + fromInstructor.getName() + "'의 수업 " + lessons.size() + "건 강사 '"
+                        + toInstructor.getName() + "'에게 인계",
                 ActivityChange.of("instructorId", fromInstructorId, toInstructor.getId()));
         return new LessonReassignmentResponse(lessons.size());
     }
@@ -411,7 +409,7 @@ public class LessonService {
         for (Lesson lesson : due) {
             lesson.changeStatus(LessonStatus.PUBLISHED, null, now);
             activityLogRecorder.record(ActivityAction.LESSON_PUBLISHED, null, null, "LESSON", lesson.getId(),
-                    Josa.eunNeun("수업 '" + lesson.getTitle() + "'") + " 공개 예약 시각이 되어 자동 공개되었다.",
+                    "수업 '" + lesson.getTitle() + "' 공개 예약 시각 도래로 자동 공개",
                     ActivityChange.of("status", LessonStatus.SCHEDULED, LessonStatus.PUBLISHED));
         }
         return due.size();

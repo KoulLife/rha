@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.rha.activity.ActivityAction;
 import com.rha.activity.ActivityChange;
 import com.rha.activity.ActivityLogRecorder;
-import com.rha.activity.Josa;
 import com.rha.activity.Masking;
 
 @Service
@@ -102,7 +101,7 @@ public class PasswordResetService {
         refreshTokenRepository.revokeAllOf(member.getId(), now);
         tokenRepository.deleteUnusedByMemberId(member.getId());
         activityLogRecorder.record(ActivityAction.PASSWORD_RESET, member.getId(), member.getId(), "MEMBER",
-                member.getId(), "비밀번호를 재설정했다.");
+                member.getId(), "비밀번호 재설정");
     }
 
     private String newRandomToken() {
