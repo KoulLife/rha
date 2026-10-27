@@ -949,9 +949,10 @@ export interface PassProductUpdateResponse {
  * - ACTIVE: 사용 중
  * - PAUSED: 일시정지 중 (정지 기간에 속한 날, 예약 불가)
  * - EXPIRED: 만료됨 (만료일이 지나면 서버가 자동으로 전환)
+ * - REFUNDED: 환불됨 (`refundPass`로 환불 처리함. 예약·수정·일시정지·결제 기록 불가)
  * 횟수가 모두 소진되어도 상태는 바뀌지 않는다 (잔여 횟수가 0인 것으로 판단).
  * 날짜에 따른 전환은 서버가 1분 이내에 반영하며, 이용권을 조회하거나 수정할 때도 최신 상태로 반영된다.
- * 정지 시작과 종료, 만료는 서버가 날짜에 맞춰 자동으로 전환한다.
+ * 정지 시작과 종료, 만료는 서버가 날짜에 맞춰 자동으로 전환한다. 환불된 이용권은 자동 전환 대상이 아니며 다른 상태로 돌아가지 않는다.
  */
 export type PassStatus = typeof PassStatus[keyof typeof PassStatus];
 
@@ -961,6 +962,7 @@ export const PassStatus = {
   ACTIVE: 'ACTIVE',
   PAUSED: 'PAUSED',
   EXPIRED: 'EXPIRED',
+  REFUNDED: 'REFUNDED',
 } as const;
 
 /**
@@ -968,6 +970,7 @@ export const PassStatus = {
  * - UNPAID: 미결제 (결제 기록이 없고 이용권 금액이 0보다 큼)
  * - PARTIAL: 일부 결제 (미수금이 남아 있음)
  * - PAID: 완납 (이용권 금액이 0인 경우 포함)
+ * 환불된(`REFUNDED`) 이용권은 미수금이 0이므로 `PAID`이다. 화면에서는 이용권 상태로 환불 여부를 구분한다.
  */
 export type PaymentStatus = typeof PaymentStatus[keyof typeof PaymentStatus];
 
@@ -985,11 +988,29 @@ export interface Pass {
   instructor: InstructorSummary;
   /** 이용권 금액 (원). 발급할 때 지정하지 않았으면 발급 시점의 상품 가격이다. */
   price: number;
-  /** 기록된 결제 금액의 합계 (원). 환불로 체크된 기록도 포함한다 (환불은 금액에 자동 반영되지 않는다). */
+  /**
+     * 기록된 결제 금액의 합계 (원). 환불 금액(`refundedAmount`)은 빼지 않는다.
+     * `setPassPaymentRefund`(폐지 예정)로 환불 체크된 기록도 포함한다.
+     */
   paidAmount: number;
-  /** 미수금 (원). 이용권 금액에서 결제 합계를 뺀 값이다. */
+  /** 미수금 (원). 이용권 금액에서 결제 합계를 뺀 값이다. 환불된(`REFUNDED`) 이용권은 더 받을 금액이 없으므로 0이다. */
   unpaidAmount: number;
   paymentStatus: PaymentStatus;
+  /**
+     * 환불 금액 (원). 환불하지 않은 이용권은 0이다.
+     * 매출은 결제일 기준 결제 합계에서 환불일(`refundedAt`) 기준 환불 금액을 뺀 값이다. 환불한 달의 매출에서 빠지며, 결제한 달의 매출은 바뀌지 않는다.
+     */
+  refundedAmount: number;
+  /**
+     * 환불일 (센터 현지 날짜). 환불된 이용권에만 값이 있다.
+     * @nullable
+     */
+  refundedAt?: string | null;
+  /**
+     * 환불 메모. 환불하면서 입력한 경우에만 값이 있다.
+     * @nullable
+     */
+  refundMemo?: string | null;
   /** 총 횟수 */
   totalCount: number;
   /**
@@ -1027,7 +1048,11 @@ export interface PassPayment {
   paidAt: string;
   /** @nullable */
   memo?: string | null;
-  /** 환불로 체크되었는지 여부. 체크해도 이용권, 예약, 미수금은 자동으로 바뀌지 않는다. */
+  /**
+     * 폐지 예정. 결제 기록 단위 환불 체크 여부(`setPassPaymentRefund`). 체크해도 이용권, 예약, 미수금은 자동으로 바뀌지 않는다.
+     * 이용권 환불은 `refundPass`로 처리하며 이용권의 `status`, `refundedAmount`로 확인한다.
+     * @deprecated
+     */
   refunded: boolean;
   /**
      * 환불일 (센터 현지 날짜). 환불로 체크된 경우에만 값이 있다.
@@ -1079,6 +1104,21 @@ export interface PassPaymentUpdateRequest {
      * @nullable
      */
   memo?: string | null;
+}
+
+export interface PassRefundRequest {
+  /**
+     * 환불 금액 (원). 환불할 수 있는 금액(결제 합계에서 환불 체크된 결제 기록을 뺀 금액) 이하여야 한다.
+     * @minimum 1
+     */
+  amount: number;
+  /** 환불일 (센터 현지 날짜). 생략하면 오늘이다. */
+  refundedAt?: string;
+  /**
+     * 환불 메모 (선택)
+     * @maxLength 200
+     */
+  memo?: string;
 }
 
 export interface PassPaymentRefundRequest {
@@ -1609,7 +1649,7 @@ passProductId?: number;
  */
 status?: PassStatus;
 /**
- * 결제 상태 필터 (미수 이용권 조회에 사용한다)
+ * 결제 상태 필터 (미수 이용권 조회에 사용한다). 환불된 이용권은 미수금이 0이므로 `PAID`에만 포함된다.
  */
 paymentStatus?: PaymentStatus;
 /**
@@ -6001,7 +6041,8 @@ export const getUpdatePassUrl = (passId: number,) => {
  * - 담당 강사가 활성 상태의 강사(`INSTRUCTOR`)가 아니면 400 (INVALID_INSTRUCTOR)
  * - 담당 강사를 바꿀 때 퇴사일이 등록된 강사로는 지정할 수 없다 (409, INSTRUCTOR_RESIGNING). 같은 강사로 보내면 바뀌지 않은 것으로 보고 검사하지 않는다.
  * - 만료일은 시작일과 같아도 된다. 존재하지 않는 강사는 404이다.
- * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 이용권이나 강사가 없으면 404 → INVALID_REMAINING_COUNT, INVALID_END_DATE, INVALID_INSTRUCTOR 400 → INSTRUCTOR_RESIGNING 409.
+ * - 환불된(`REFUNDED`) 이용권은 수정할 수 없다 (409, PASS_REFUNDED).
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 이용권이나 강사가 없으면 404 → 환불된 이용권 409 (PASS_REFUNDED) → INVALID_REMAINING_COUNT, INVALID_END_DATE, INVALID_INSTRUCTOR 400 → INSTRUCTOR_RESIGNING 409.
  * @summary 이용권 수정 (관리자)
  */
 export const updatePass = async (passId: number,
@@ -6080,6 +6121,109 @@ export const useUpdatePass = <TError = BadRequestErrorResponse | UnauthorizedErr
         TContext
       > => {
       return useMutation(getUpdatePassMutationOptions(options), queryClient);
+    }
+
+export const getRefundPassUrl = (passId: number,) => {
+
+
+
+
+  return `/passes/${passId}/refunds`
+}
+
+/**
+ * 관리자 전용. 이용권을 환불 처리한다. 실제 환불(카드 취소, 계좌 송금 등)은 시스템 밖에서 이뤄지며, 환불한 금액과 날짜를 기록하고 이용권을 더 쓸 수 없게 한다.
+ * 한 번 환불한 이용권은 되돌릴 수 없다.
+ * - 환불 금액(`amount`)은 1원 이상, 환불할 수 있는 금액 이하여야 한다. 환불할 수 있는 금액은 결제 기록 합계에서 `setPassPaymentRefund`로 환불 체크된 기록을 뺀 금액이다. 벗어나면 400 (INVALID_REFUND_AMOUNT). 결제 기록이 없으면 환불할 수 없다.
+ * - 일부만 돌려주는 부분 환불도 같은 방법으로 처리한다. 어느 경우든 이용권은 환불 상태가 된다.
+ * - 환불일(`refundedAt`)을 생략하면 오늘(센터 현지 날짜)이다. 환불일이 미래이거나 첫 결제일보다 빠르면 400 (INVALID_PAYMENT_DATE).
+ * - 만료된 이용권도 환불할 수 있다. 이미 환불된 이용권이면 409 (PASS_REFUNDED).
+ *
+ * **환불하면 함께 처리되는 것 (한 번에 처리된다)**
+ * - 이용권 상태가 `REFUNDED`가 되고, 이후 날짜에 따른 자동 상태 전환(시작, 일시정지, 만료) 대상에서 빠진다.
+ * - 시작 전(`SCHEDULED`) 일시정지는 취소되고, 진행 중(`ACTIVE`) 일시정지는 오늘부터 해제된다. 연장했던 만료일은 `terminatePassPause`와 같은 규칙으로 되돌린다.
+ * - 아직 시작하지 않은 수업의 예약(`RESERVED`)은 자동 취소된다. 이미 시작했거나 끝난 수업의 예약·출결은 그대로 두며, 강사 정산에도 그대로 포함된다.
+ * - 미수금(`unpaidAmount`)은 0이 된다.
+ * - 활동 이력에 `PASS_REFUNDED` 한 건이 남는다. 자동 취소된 예약과 해제된 일시정지는 개별 이력을 남기지 않고 환불 이력의 `summary`에 건수를 적는다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 이용권이면 404 → 이미 환불된 이용권 409 (PASS_REFUNDED) → 환불 금액 400 (INVALID_REFUND_AMOUNT) → 환불일 400 (INVALID_PAYMENT_DATE).
+ * @summary 이용권 환불 (관리자)
+ */
+export const refundPass = async (passId: number,
+    passRefundRequest: PassRefundRequest, options?: Parameters<typeof apiRequest>[1]): Promise<Pass> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiRequest<Pass>(getRefundPassUrl(passId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(passRefundRequest)
+  }
+);}
+
+
+
+
+
+export const getRefundPassMutationKey = () => ['refundPass'] as const;
+
+export const getRefundPassMutationOptions = <TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | ConflictErrorResponse | InternalServerErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refundPass>>, TError,RefundPassMutationVariables, TContext>, request?: SecondParameter<typeof apiRequest>}
+): UseMutationOptions<Awaited<ReturnType<typeof refundPass>>, TError,RefundPassMutationVariables, TContext> => {
+
+const mutationKey = getRefundPassMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refundPass>>, RefundPassMutationVariables> = (props) => {
+          const {passId,data} = props ?? {};
+
+          return  refundPass(passId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefundPassMutationResult = NonNullable<Awaited<ReturnType<typeof refundPass>>>
+    export type RefundPassMutationBody = PassRefundRequest
+    export type RefundPassMutationError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | ConflictErrorResponse | InternalServerErrorResponse
+    export type RefundPassMutationVariables = {passId: number;data: PassRefundRequest}
+
+    /**
+ * @summary 이용권 환불 (관리자)
+ */
+export const useRefundPass = <TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | ConflictErrorResponse | InternalServerErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refundPass>>, TError,RefundPassMutationVariables, TContext>, request?: SecondParameter<typeof apiRequest>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof refundPass>>,
+        TError,
+        RefundPassMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRefundPassMutationOptions(options), queryClient);
     }
 
 export const getGetPassPaymentsUrl = (passId: number,
@@ -6213,7 +6357,8 @@ export const getRecordPassPaymentUrl = (passId: number,) => {
  * - 만료된 이용권에도 기록할 수 있다.
  * - 결제일이 오늘(센터 현지 날짜)보다 미래이면 400 (INVALID_PAYMENT_DATE)
  * - 기록하면 이용권의 `paidAmount`, `unpaidAmount`, `paymentStatus`가 갱신된다. 결제 상태는 합계가 0이고 금액이 0보다 크면 `UNPAID`, 합계가 금액보다 작으면 `PARTIAL`, 그 외는 `PAID`(금액이 0인 경우 포함)이다.
- * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT, INVALID_PAYMENT_DATE) → 없는 이용권이면 404 → 합계 초과 409 (PAYMENT_EXCEEDS_PRICE).
+ * - 환불된(`REFUNDED`) 이용권에는 기록할 수 없다 (409, PASS_REFUNDED).
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT, INVALID_PAYMENT_DATE) → 없는 이용권이면 404 → 환불된 이용권 409 (PASS_REFUNDED) → 합계 초과 409 (PAYMENT_EXCEEDS_PRICE).
  * @summary 이용권 결제 기록 (관리자)
  */
 export const recordPassPayment = async (passId: number,
@@ -6309,8 +6454,9 @@ export const getUpdatePassPaymentUrl = (passId: number,
  * - 금액을 고친 뒤의 결제 합계가 이용권 금액(`price`)을 넘으면 409 (PAYMENT_EXCEEDS_PRICE)
  * - 결제일이 오늘(센터 현지 날짜)보다 미래이면 400 (INVALID_PAYMENT_DATE)
  * - 환불로 체크된 기록은 정정할 수 없다 (409, PAYMENT_REFUNDED). 먼저 환불 체크를 해제해야 한다.
+ * - 환불된(`REFUNDED`) 이용권의 기록은 정정할 수 없다 (409, PASS_REFUNDED).
  * - 이용권의 `paidAmount`, `unpaidAmount`, `paymentStatus`가 다시 계산된다.
- * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT, INVALID_PAYMENT_DATE) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불로 체크된 기록 409 (PAYMENT_REFUNDED) → 합계 초과 409 (PAYMENT_EXCEEDS_PRICE).
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 값 오류 400 (INVALID_INPUT, INVALID_PAYMENT_DATE) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불된 이용권 409 (PASS_REFUNDED) → 환불로 체크된 기록 409 (PAYMENT_REFUNDED) → 합계 초과 409 (PAYMENT_EXCEEDS_PRICE).
  * @summary 이용권 결제 기록 정정 (관리자)
  */
 export const updatePassPayment = async (passId: number,
@@ -6403,9 +6549,10 @@ export const getDeletePassPaymentUrl = (passId: number,
 
 /**
  * 관리자 전용. 잘못 입력한 결제 기록을 삭제한다. 삭제하면 미수금이 다시 늘어난다.
- * 삭제한 사실은 활동 이력에 남는다. 환불은 삭제가 아니라 `setPassPaymentRefund`로 체크한다.
+ * 삭제한 사실은 활동 이력에 남는다. 환불은 삭제가 아니라 `refundPass`로 처리한다.
  * - 환불로 체크된 기록은 삭제할 수 없다 (409, PAYMENT_REFUNDED). 먼저 환불 체크를 해제해야 한다.
- * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불로 체크된 기록 409 (PAYMENT_REFUNDED).
+ * - 환불된(`REFUNDED`) 이용권의 기록은 삭제할 수 없다 (409, PASS_REFUNDED).
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불된 이용권 409 (PASS_REFUNDED) → 환불로 체크된 기록 409 (PAYMENT_REFUNDED).
  * @summary 이용권 결제 기록 삭제 (관리자)
  */
 export const deletePassPayment = async (passId: number,
@@ -6482,6 +6629,7 @@ export const getSetPassPaymentRefundUrl = (passId: number,
 }
 
 /**
+ * **폐지 예정.** 환불은 이용권 단위의 `refundPass`로 처리한다. 이 API는 기존 기록을 위해 당분간 유지하며 동작은 바뀌지 않는다.
  * 관리자 전용. 결제 기록에 환불 여부를 체크하거나 해제한다. 실제 환불은 시스템 밖에서 이뤄지며, 환불했다는 사실만 기록한다.
  * - 이용권, 예약, 미수금은 자동으로 바뀌지 않는다. 환불로 체크된 기록도 이용권의 결제 합계(`paidAmount`)에 그대로 포함된다. 이용권을 회수하려면 `updatePass`로 잔여 횟수나 만료일을 직접 조정한다.
  * - `refunded`가 true이면 환불일(`refundedAt`)을 기록한다. 생략하면 오늘(센터 현지 날짜)이다. 환불일이 미래이거나 결제일보다 빠르면 400 (INVALID_PAYMENT_DATE).
@@ -6489,7 +6637,8 @@ export const getSetPassPaymentRefundUrl = (passId: number,
  * - 같은 값으로 다시 요청해도 오류 없이 처리된다. 이미 환불로 체크된 기록에 `refunded`를 다시 true로 보내면 전달한 환불일과 메모로 갱신하고, 생략한 값은 기존 값을 유지한다.
  * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 이용권이거나 그 이용권의 결제 기록이 아니면 404 → 환불일 범위 400 (INVALID_PAYMENT_DATE).
  * - 체크와 해제는 활동 이력에 남는다.
- * @summary 결제 기록 환불 여부 체크 (관리자)
+ * @deprecated
+ * @summary 결제 기록 환불 여부 체크 (관리자, 폐지 예정)
  */
 export const setPassPaymentRefund = async (passId: number,
     paymentId: number,
@@ -6557,7 +6706,8 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SetPassPaymentRefundMutationVariables = {passId: number;paymentId: number;data: PassPaymentRefundRequest}
 
     /**
- * @summary 결제 기록 환불 여부 체크 (관리자)
+ * @deprecated
+ * @summary 결제 기록 환불 여부 체크 (관리자, 폐지 예정)
  */
 export const useSetPassPaymentRefund = <TError = BadRequestErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse | NotFoundErrorResponse | InternalServerErrorResponse,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setPassPaymentRefund>>, TError,SetPassPaymentRefundMutationVariables, TContext>, request?: SecondParameter<typeof apiRequest>}
@@ -6887,11 +7037,11 @@ export const getCreatePassPauseUrl = (passId: number,) => {
  * - 정지 기간에는 이용권 상태가 `PAUSED`이고, 정지 기간에 속한 수업일에는 이 이용권으로 예약할 수 없다.
  * - 정지 일수(`종료일 - 시작일 + 1`)만큼 이용권의 만료일이 즉시 연장된다. 조기 해제하거나 취소하면 사용하지 않은 일수만큼 다시 줄어든다.
  * - 시작일이 오늘보다 과거이거나 종료일이 시작일보다 빠르거나, 시작일이 이용권의 시작일~만료일 밖이면 400 (INVALID_PAUSE_PERIOD)
- * - 이미 만료된 이용권이면 409 (PASS_EXPIRED)
+ * - 이미 만료된 이용권이면 409 (PASS_EXPIRED), 환불된 이용권이면 409 (PASS_REFUNDED)
  * - 취소되지 않은 다른 정지 기간과 겹치면 409 (PAUSE_PERIOD_OVERLAP)
  * - 이 이용권으로 한 예약(`RESERVED`) 중 수업일이 정지 기간에 속하는 것이 있으면 409 (PAUSE_HAS_RESERVATIONS). 해당 예약을 먼저 취소해야 한다.
  * - 정지 등록 후에는 이용권의 만료일이 바뀌므로 클라이언트는 이용권을 다시 조회한다.
- * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 이용권이면 404 → 만료된 이용권 409 (PASS_EXPIRED) → 기간 오류 400 (INVALID_PAUSE_PERIOD) → 다른 정지와 겹침 409 (PAUSE_PERIOD_OVERLAP) → 정지 기간의 예약 409 (PAUSE_HAS_RESERVATIONS). 만료된 이용권은 기간 검사보다 먼저 거절한다.
+ * - 확인 순서: 관리자가 아니면 403 (PERMISSION_DENIED) → 요청 형식 400 (INVALID_INPUT) → 없는 이용권이면 404 → 환불된 이용권 409 (PASS_REFUNDED) → 만료된 이용권 409 (PASS_EXPIRED) → 기간 오류 400 (INVALID_PAUSE_PERIOD) → 다른 정지와 겹침 409 (PAUSE_PERIOD_OVERLAP) → 정지 기간의 예약 409 (PAUSE_HAS_RESERVATIONS). 환불·만료된 이용권은 기간 검사보다 먼저 거절한다.
  * @summary 이용권 일시정지 등록 (관리자)
  */
 export const createPassPause = async (passId: number,
@@ -7360,7 +7510,7 @@ export const getCreateReservationUrl = () => {
 /**
  * 일반 회원(`MEMBER`)만 가능하며 본인 명의로만 예약한다 (그 외 역할은 403). 예약 즉시 확정되고, 이용권의 잔여 횟수가 1회 차감된다.
  * 사용할 이용권은 서버가 자동으로 선택한다.
- * - 수업일(센터 현지 날짜)이 시작일~만료일 안에 있고, 일시정지 기간에 속하지 않으며, 잔여 횟수가 1회 이상인 이용권 중, 만료일이 가장 이른 것 (같으면 먼저 발급된 것)을 사용한다.
+ * - 수업일(센터 현지 날짜)이 시작일~만료일 안에 있고, 일시정지 기간에 속하지 않으며, 잔여 횟수가 1회 이상인 이용권 중, 만료일이 가장 이른 것 (같으면 먼저 발급된 것)을 사용한다. 환불된(`REFUNDED`) 이용권은 사용하지 않는다.
  * - 예약 정책에서 미수 예약을 허용하지 않으면(`allowUnpaidReservation`이 false) 완납(`PAID`)한 이용권만 대상이다.
  * - 공개된(`PUBLISHED`) 수업만 예약할 수 있다. 존재하지 않는 수업은 404.
  * - 비공개, 취소, 이미 시작한 수업이면 409 (LESSON_NOT_RESERVABLE)
@@ -8395,7 +8545,7 @@ export const getGetActivityLogActionsUrl = () => {
  * | LESSON 수업 | LESSON_CREATED 수업 개설, LESSON_UPDATED 수업 수정, LESSON_STATUS_CHANGED 수업 공개 상태 변경, LESSON_CANCELED 수업 취소, LESSON_PUBLISHED 수업 자동 공개 |
  * | RESERVATION 예약 | RESERVATION_CREATED 예약 생성, RESERVATION_CANCELED 예약 취소 |
  * | ATTENDANCE 출결 | ATTENDANCE_RECORDED 출결 기록 |
- * | PASS 이용권 | PASS_ISSUED 이용권 발급, PASS_UPDATED 이용권 수정, PASS_PAUSED 일시정지 등록, PASS_PAUSE_TERMINATED 일시정지 해제, PASS_EXPIRED 이용권 만료 |
+ * | PASS 이용권 | PASS_ISSUED 이용권 발급, PASS_UPDATED 이용권 수정, PASS_PAUSED 일시정지 등록, PASS_PAUSE_TERMINATED 일시정지 해제, PASS_EXPIRED 이용권 만료, PASS_REFUNDED 이용권 환불 |
  * | PAYMENT 결제 | PAYMENT_RECORDED 결제 기록, PAYMENT_UPDATED 결제 정정, PAYMENT_DELETED 결제 삭제, PAYMENT_REFUND_CHECKED 환불 체크, PAYMENT_REFUND_UNCHECKED 환불 체크 해제 |
  * | PASS_PRODUCT 이용권 상품 | PASS_PRODUCT_CREATED 등록, PASS_PRODUCT_UPDATED 수정, PASS_PRODUCT_DELETED 삭제 |
  * | LESSON_TYPE 수업 유형 | LESSON_TYPE_CREATED 등록, LESSON_TYPE_UPDATED 수정 |

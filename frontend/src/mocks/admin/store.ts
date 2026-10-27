@@ -126,6 +126,7 @@ export function createAdminStore() {
       paidAmount: index === 1 ? 100000 : 300000,
       unpaidAmount: index === 1 ? 200000 : 0,
       paymentStatus: index === 1 ? "PARTIAL" : "PAID",
+      refundedAmount: 0,
       totalCount: 10,
       remainingCount: 7,
       startDate: "2026-10-01",

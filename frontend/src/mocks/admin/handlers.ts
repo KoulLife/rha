@@ -810,6 +810,7 @@ export const adminHandlers = [
           paidAmount: 0,
           unpaidAmount: input.price ?? product.price,
           paymentStatus: "UNPAID",
+          refundedAmount: 0,
           status: "ACTIVE",
           createdAt: previewNow,
         };
