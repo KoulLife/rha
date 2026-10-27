@@ -264,14 +264,101 @@ export function LessonsPage({
     </AdminPage>
   );
 }
-export function LessonDetail({ id, onNavigate }: { id: number; onNavigate: Navigate }) {
-  const query = api.useGetLesson(id),
-    status = api.useChangeLessonStatus(),
+/** 시작 전이고 취소되지 않은 수업만 수정·공개 설정·취소할 수 있다. */
+export const isLessonEditable = (lesson: api.Lesson) =>
+  Date.parse(lesson.startAt) > Date.parse(currentTime()) && lesson.status !== "CANCELED";
+
+/** 수업 공개 상태 설정과 취소 버튼. 관리자 수업 상세와 권한 있는 강사의 수업 상세에서 함께 쓴다. */
+export function LessonStatusActions({ lesson: l }: { lesson: api.Lesson }) {
+  const status = api.useChangeLessonStatus(),
     cancel = api.useCancelLesson();
   const [action, setAction] = useState<Action | null>(null);
+  const id = l.id;
+  return (
+    <>
+      <Button
+        variant="outline"
+        onClick={() =>
+          setAction({
+            title: "공개 상태 설정",
+            description: "비공개로 변경해도 기존 예약은 유지됩니다.",
+            submitLabel: "공개 상태 저장",
+            fields: [
+              {
+                name: "status",
+                label: "공개 상태",
+                type: "select",
+                required: true,
+                options:
+                  l.status === "PUBLISHED"
+                    ? [{ value: "UNPUBLISHED", label: "비공개" }]
+                    : [
+                        { value: "PUBLISHED", label: "즉시 공개" },
+                        { value: "SCHEDULED", label: "공개 예약" },
+                        ...(l.status === "SCHEDULED"
+                          ? [{ value: "UNPUBLISHED", label: "비공개" }]
+                          : []),
+                      ],
+              },
+              {
+                name: "publishAt",
+                label: "공개 예약 시각",
+                type: "datetime-local",
+                description: "공개 예약을 선택한 경우에만 입력합니다.",
+              },
+            ],
+            initial: {
+              status: l.status === "PUBLISHED" ? "UNPUBLISHED" : "PUBLISHED",
+            },
+            onSubmit: (v) =>
+              status.mutateAsync({
+                lessonId: id,
+                data: {
+                  status: textValue(v, "status") as api.LessonStatusChangeRequestStatus,
+                  ...(v.status === "SCHEDULED"
+                    ? { publishAt: toUTC(textValue(v, "publishAt")) }
+                    : {}),
+                },
+              }),
+          })
+        }
+      >
+        공개 설정
+      </Button>
+      <Button
+        variant="warning"
+        onClick={() =>
+          setAction({
+            title: "수업 취소",
+            description: `예약 완료 ${l.reservedCount}명의 예약이 함께 취소되고 이용권 횟수가 복구됩니다.`,
+            submitLabel: "수업 취소",
+            submitVariant: "warning",
+            danger: true,
+            fields: [{ name: "reason", label: "취소 사유", type: "textarea" }],
+            onSubmit: (v) =>
+              cancel.mutateAsync({
+                lessonId: id,
+                data: { reason: textValue(v, "reason") },
+              }),
+          })
+        }
+      >
+        수업 취소
+      </Button>
+      {action && (
+        <ActionDialog
+          action={action}
+          onClose={() => setAction(null)}
+        />
+      )}
+    </>
+  );
+}
+
+export function LessonDetail({ id, onNavigate }: { id: number; onNavigate: Navigate }) {
+  const query = api.useGetLesson(id);
   const l = query.data;
-  const editable =
-    !!l && Date.parse(l.startAt) > Date.parse(currentTime()) && l.status !== "CANCELED";
+  const editable = !!l && isLessonEditable(l);
   return (
     <AdminPage
       title={l?.title ?? "수업 상세"}
@@ -299,78 +386,7 @@ export function LessonDetail({ id, onNavigate }: { id: number; onNavigate: Navig
                     >
                       수업 수정
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        setAction({
-                          title: "공개 상태 설정",
-                          description: "비공개로 변경해도 기존 예약은 유지됩니다.",
-                          submitLabel: "공개 상태 저장",
-                          fields: [
-                            {
-                              name: "status",
-                              label: "공개 상태",
-                              type: "select",
-                              required: true,
-                              options:
-                                l.status === "PUBLISHED"
-                                  ? [{ value: "UNPUBLISHED", label: "비공개" }]
-                                  : [
-                                      { value: "PUBLISHED", label: "즉시 공개" },
-                                      { value: "SCHEDULED", label: "공개 예약" },
-                                      ...(l.status === "SCHEDULED"
-                                        ? [{ value: "UNPUBLISHED", label: "비공개" }]
-                                        : []),
-                                    ],
-                            },
-                            {
-                              name: "publishAt",
-                              label: "공개 예약 시각",
-                              type: "datetime-local",
-                              description: "공개 예약을 선택한 경우에만 입력합니다.",
-                            },
-                          ],
-                          initial: {
-                            status: l.status === "PUBLISHED" ? "UNPUBLISHED" : "PUBLISHED",
-                          },
-                          onSubmit: (v) =>
-                            status.mutateAsync({
-                              lessonId: id,
-                              data: {
-                                status: textValue(
-                                  v,
-                                  "status",
-                                ) as api.LessonStatusChangeRequestStatus,
-                                ...(v.status === "SCHEDULED"
-                                  ? { publishAt: toUTC(textValue(v, "publishAt")) }
-                                  : {}),
-                              },
-                            }),
-                        })
-                      }
-                    >
-                      공개 설정
-                    </Button>
-                    <Button
-                      variant="warning"
-                      onClick={() =>
-                        setAction({
-                          title: "수업 취소",
-                          description: `예약 완료 ${l.reservedCount}명의 예약이 함께 취소되고 이용권 횟수가 복구됩니다.`,
-                          submitLabel: "수업 취소",
-                          submitVariant: "warning",
-                          danger: true,
-                          fields: [{ name: "reason", label: "취소 사유", type: "textarea" }],
-                          onSubmit: (v) =>
-                            cancel.mutateAsync({
-                              lessonId: id,
-                              data: { reason: textValue(v, "reason") },
-                            }),
-                        })
-                      }
-                    >
-                      수업 취소
-                    </Button>
+                    <LessonStatusActions lesson={l} />
                   </div>
                 )
               }
@@ -382,12 +398,6 @@ export function LessonDetail({ id, onNavigate }: { id: number; onNavigate: Navig
           </>
         )}
       </QueryState>
-      {action && (
-        <ActionDialog
-          action={action}
-          onClose={() => setAction(null)}
-        />
-      )}
     </AdminPage>
   );
 }
@@ -397,15 +407,21 @@ export function LessonEditor({
   initialValues = {},
   onSaved,
   onBack,
+  allowedTypeCodes,
 }: {
   id?: number;
   onNavigate: Navigate;
   initialValues?: Values;
   onSaved?: (lesson: api.Lesson) => void;
   onBack?: () => void;
+  /** 개설할 수 있는 수업 유형 코드. 생략하면(관리자) 모든 활성 유형이다. */
+  allowedTypeCodes?: string[];
 }) {
   const lesson = api.useGetLesson(id ?? 0, { query: { enabled: !!id } });
   const types = useAllLessonTypes({ active: true, size: 100 });
+  const typeChoices = (types.data?.content ?? []).filter(
+    (type) => !allowedTypeCodes || allowedTypeCodes.includes(type.code),
+  );
   const instructors = useAllInstructors({ size: 100 });
   const rooms = useAllRooms({ size: 100 });
   const create = api.useCreateLesson();
@@ -420,8 +436,10 @@ export function LessonEditor({
             label: "수업 유형",
             type: "select" as const,
             required: true,
-            options: options(types.data?.content),
-            description: "설정된 정원이 자동으로 적용됩니다.",
+            options: options(typeChoices),
+            description: allowedTypeCodes
+              ? "개설 권한을 받은 수업 유형만 선택할 수 있습니다. 설정된 정원이 자동으로 적용됩니다."
+              : "설정된 정원이 자동으로 적용됩니다.",
           },
         ]
       : []),
@@ -503,8 +521,8 @@ export function LessonEditor({
               }
             : {
                 publication: "PRIVATE",
-                lessonTypeId: types.data?.content.length === 1 ? String(types.data.content[0].id) : "",
-                title: types.data?.content.find((type) => String(type.id) === String(initialValues.lessonTypeId))?.name ?? (types.data?.content.length === 1 ? types.data.content[0].name : ""),
+                lessonTypeId: typeChoices.length === 1 ? String(typeChoices[0].id) : "",
+                title: typeChoices.find((type) => String(type.id) === String(initialValues.lessonTypeId))?.name ?? (typeChoices.length === 1 ? typeChoices[0].name : ""),
                 instructorId: instructors.data?.content.length === 1 ? String(instructors.data.content[0].id) : "",
                 roomId: rooms.data?.content.length === 1 ? String(rooms.data.content[0].id) : "",
                 durationMinutes: initialValues.startAt && initialValues.endAt
@@ -514,8 +532,8 @@ export function LessonEditor({
               }
         }
         onFieldChange={!id ? (name, values): Values => {
-          if (name === "lessonTypeId" && (!values.title || types.data?.content.some((type) => type.name === values.title))) {
-            return { title: types.data?.content.find((type) => String(type.id) === values.lessonTypeId)?.name ?? "" };
+          if (name === "lessonTypeId" && (!values.title || typeChoices.some((type) => type.name === values.title))) {
+            return { title: typeChoices.find((type) => String(type.id) === values.lessonTypeId)?.name ?? "" };
           }
           if ((name === "startAt" || name === "durationMinutes") && values.startAt) {
             const minutes = Number(values.durationMinutes);
@@ -579,7 +597,8 @@ export function LessonEditor({
               toast.error(
                 `수업은 비공개로 개설됐지만 공개 설정을 적용하지 못했습니다. ${errorMessage(error)}`,
               );
-              onNavigate("admin-lesson-detail", created.id);
+              if (onSaved) onSaved(created);
+              else onNavigate("admin-lesson-detail", created.id);
               return;
             }
           }
