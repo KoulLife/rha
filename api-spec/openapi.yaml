@@ -1923,12 +1923,13 @@ paths:
       description: |
         로그인한 회원 본인의 이용권만 조회한다. 만료일 오름차순으로 정렬된다 (예약 시 자동으로 선택되는 순서와 같다). 만료일이 같으면 id 오름차순이다.
         일반 회원이 아닌 계정은 빈 목록이 반환된다.
+        - `status`를 생략하면 환불된(`REFUNDED`) 이용권은 제외한다. 목록, 전체 건수(`pageInfo`) 모두 환불된 이용권을 세지 않는다.
       parameters:
         - $ref: '#/components/parameters/PageQuery'
         - $ref: '#/components/parameters/SizeQuery'
         - name: status
           in: query
-          description: 상태 필터
+          description: 상태 필터. 생략하면 환불된(`REFUNDED`) 이용권을 제외한 전체이고, `REFUNDED`를 지정한 경우에만 환불된 이용권을 조회한다.
           required: false
           schema:
             $ref: '#/components/schemas/PassStatus'
