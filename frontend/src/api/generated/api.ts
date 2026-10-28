@@ -636,6 +636,7 @@ export interface Notification {
      * 현재 정의된 값은 다음과 같다.
      * - LESSON_CANCELED: 예약한 수업이 취소됨
      * - RESERVATION_CANCELED: 관리자가 예약을 취소함
+     * - RESERVATION_CANCELED_BY_MEMBER: 회원이 본인 예약을 취소함 (관리자에게 발송)
      * - ABSENCE_REQUESTED: 강사가 부재를 신청함 (관리자에게 발송)
      * - ABSENCE_APPROVED: 부재가 승인됨 (신청한 강사에게 발송)
      * - ABSENCE_REJECTED: 부재가 반려됨 (신청한 강사에게 발송)
@@ -643,6 +644,7 @@ export interface Notification {
      * 알림은 원인이 되는 처리와 같은 트랜잭션으로 생성된다. 수신 대상은 다음과 같다.
      * - LESSON_CANCELED: 취소된 수업의 예약(`RESERVED`)을 가진 회원. `relatedType`은 LESSON이다.
      * - RESERVATION_CANCELED: 관리자가 취소한 예약의 회원. `relatedType`은 RESERVATION이다.
+     * - RESERVATION_CANCELED_BY_MEMBER: 활동 중인(`ACTIVE`) 모든 관리자. `relatedType`은 LESSON이고 `relatedId`는 취소된 예약의 수업 ID이다 (관리자는 수업 상세의 예약자 목록에서 취소 내역을 확인한다).
      * - ABSENCE_REQUESTED: 활동 중인(`ACTIVE`) 모든 관리자. `relatedType`은 ABSENCE이다.
      * - ABSENCE_APPROVED, ABSENCE_REJECTED: 부재를 신청한 강사. `relatedType`은 ABSENCE이다.
      * 날짜와 시각은 센터 현지 시각(Asia/Seoul)으로 표기한다.
@@ -7714,6 +7716,7 @@ export const getCancelReservationUrl = (reservationId: number,) => {
  * 예약한 회원 본인 또는 관리자만 가능하다. 취소하면 사용했던 이용권의 잔여 횟수가 1회 복구된다 (만료된 이용권도 횟수만 증가).
  * - 회원 본인은 수업 시작 `cancelDeadlineHours`시간 전까지만 취소할 수 있다. 지나면 409 (CANCELLATION_DEADLINE_PASSED).
  * - 관리자는 취소 시간 정책과 무관하게 취소할 수 있다. 관리자가 취소하면 회원에게 인앱 알림이 발송된다.
+ * - 회원 본인이 취소하면 활동 중인(`ACTIVE`) 모든 관리자에게 인앱 알림(`RESERVATION_CANCELED_BY_MEMBER`)이 발송된다.
  * - 이미 시작한 수업의 예약은 누구도 취소할 수 없다 (409, LESSON_ALREADY_STARTED). 출결로 처리한다.
  * - `RESERVED`가 아닌 예약은 409 (INVALID_RESERVATION_STATUS)
  * - 본인 예약이 아니면 403, 볼 수 없는 예약이면 404
