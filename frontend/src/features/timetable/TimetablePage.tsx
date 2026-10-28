@@ -591,6 +591,7 @@ function Schedule({
               lessons={rows}
               selectedId={selectedId}
               onSelect={onSelect}
+              showStatus={user.role !== "MEMBER"}
             />
           ) : (
             <div
@@ -807,10 +808,13 @@ function WeekLessonList({
   lessons,
   selectedId,
   onSelect,
+  showStatus,
 }: {
   lessons: Lesson[];
   selectedId: number | null;
   onSelect: (id: number) => void;
+  /** 수업 공개 상태. 회원에게는 공개된 수업만 보이므로 표시하지 않는다. */
+  showStatus: boolean;
 }) {
   return (
     <MenuPanel
@@ -826,7 +830,7 @@ function WeekLessonList({
       >
         <TableHeader>
           <TableRow>
-            {["일시", "수업", "강사·룸", "예약", "상태"].map((label) => (
+            {["일시", "수업", "강사·룸", "예약", ...(showStatus ? ["상태"] : [])].map((label) => (
               <TableHead key={label}>{label}</TableHead>
             ))}
           </TableRow>
@@ -882,12 +886,14 @@ function WeekLessonList({
                   <TableCell>
                     {lesson.reservedCount} / {lesson.capacity}명
                   </TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      domain="lesson"
-                      status={lesson.status}
-                    />
-                  </TableCell>
+                  {showStatus && (
+                    <TableCell>
+                      <StatusBadge
+                        domain="lesson"
+                        status={lesson.status}
+                      />
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
