@@ -28,7 +28,10 @@ import { dashboardPreviewTime } from "./preview";
 import { MemberHomePage } from "./MemberHomePage";
 import { ReservationRoster } from "./ReservationRoster";
 import { NotificationsPage } from "@/features/member/pages/NotificationsPage";
-import { useNotificationDetail } from "@/features/member/pages/NotificationDetail";
+import {
+  NOTIFICATION_POLL_MS,
+  useNotificationDetail,
+} from "@/features/member/pages/NotificationDetail";
 import { QueryState } from "@/features/admin/AdminUI";
 import { AttendanceActions, type RecordAttendance } from "../instructor/AttendanceActions";
 import { attendanceRestriction } from "../instructor/model";
@@ -147,10 +150,18 @@ export function DashboardPage({
   );
   const notificationQuery = api.useGetMyNotifications(
     { page: 1, size: 100 },
-    { query: { enabled: screen === "home" && user.role !== "MEMBER" && !empty } },
+    {
+      query: {
+        enabled: screen === "home" && user.role !== "MEMBER" && !empty,
+        refetchInterval: NOTIFICATION_POLL_MS,
+      },
+    },
   );
   const unreadQuery = api.useGetMyUnreadNotificationCount({
-    query: { enabled: screen === "home" && user.role !== "MEMBER" && !empty },
+    query: {
+      enabled: screen === "home" && user.role !== "MEMBER" && !empty,
+      refetchInterval: NOTIFICATION_POLL_MS,
+    },
   });
   const detail = useNotificationDetail(user.role, onNavigate);
   const recentNotifications = empty ? [] : (notificationQuery.data?.content ?? []);
