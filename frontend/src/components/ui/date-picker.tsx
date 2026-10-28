@@ -26,6 +26,7 @@ function DatePicker({
   onBlur,
   min,
   max,
+  isDisabled,
   placeholder = "날짜 선택",
   className,
   ...props
@@ -35,6 +36,8 @@ function DatePicker({
   onBlur?: () => void;
   min?: string;
   max?: string;
+  /** 고를 수 없는 날짜 (예: 휴무일). 값은 "YYYY-MM-DD"로 받는다. */
+  isDisabled?: (value: string) => boolean;
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -43,7 +46,11 @@ function DatePicker({
   const to = toDate(max);
   const today = new Date();
   const todayValue = toValue(today);
-  const disabled = [from && { before: from }, to && { after: to }].filter(Boolean) as Matcher[];
+  const disabled = [
+    from && { before: from },
+    to && { after: to },
+    isDisabled && ((date: Date) => isDisabled(toValue(date))),
+  ].filter(Boolean) as Matcher[];
   const close = () => {
     setOpen(false);
     onBlur?.();
@@ -101,7 +108,9 @@ function DatePicker({
             type="button"
             variant="ghost"
             size="sm"
-            disabled={Boolean((min && todayValue < min) || (max && todayValue > max))}
+            disabled={Boolean(
+              (min && todayValue < min) || (max && todayValue > max) || isDisabled?.(todayValue),
+            )}
             onClick={() => {
               onChange(todayValue);
               close();

@@ -1,0 +1,58 @@
+@layer utilities {
+  .lesson-time-field {
+    display: grid;
+    gap: var(--space-control);
+  }
+  .lesson-time-range {
+    display: flex;
+    align-items: center;
+    gap: var(--space-control);
+  }
+  .lesson-time-range > [data-slot="button"] {
+    flex: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .lesson-time-range > [data-slot="button"][data-empty="true"] {
+    color: var(--muted-foreground);
+    font-weight: 400;
+  }
+  .lesson-time-duration {
+    min-width: 4em;
+    color: var(--muted-foreground);
+    font-size: var(--font-size-caption);
+    text-align: right;
+  }
+  .lesson-time-hint {
+    color: var(--muted-foreground);
+    font-size: var(--font-size-caption);
+  }
+  .lesson-time-list {
+    display: grid;
+  }
+  .lesson-time-list button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: var(--space-control) var(--space-tight);
+    border-radius: var(--radius-md);
+    font-variant-numeric: tabular-nums;
+    text-align: left;
+  }
+  .lesson-time-list button:hover:not(:disabled) {
+    background: var(--muted);
+  }
+  .lesson-time-list button[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--accent-foreground);
+    font-weight: 600;
+  }
+  .lesson-time-list button:disabled {
+    color: var(--muted-foreground);
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .lesson-time-reason {
+    font-size: var(--font-size-caption);
+  }
+}

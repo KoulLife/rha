@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { MenuPanel } from "@/components/layout/MenuPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { StatusBadge, getStatusLabel } from "@/components/ui/StatusBadge";
@@ -277,6 +278,7 @@ function AbsenceForm({
 }) {
   const {
     register,
+    control,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
@@ -341,12 +343,21 @@ function AbsenceForm({
       >
         <Field>
           <FieldLabel htmlFor="absence-start-at">시작 일시</FieldLabel>
-          <Input
-            id="absence-start-at"
-            type="datetime-local"
-            aria-invalid={!!errors.start}
-            aria-describedby={errors.start ? "absence-start-error" : undefined}
-            {...register("start", { required: "시작 일시를 입력해 주세요." })}
+          <Controller
+            name="start"
+            control={control}
+            rules={{ required: "시작 일시를 입력해 주세요." }}
+            render={({ field }) => (
+              <DateTimePicker
+                id="absence-start-at"
+                label="시작 일시"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                aria-invalid={!!errors.start}
+                aria-describedby={errors.start ? "absence-start-error" : undefined}
+              />
+            )}
           />
           <FieldError
             id="absence-start-error"
@@ -355,12 +366,21 @@ function AbsenceForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="absence-end-at">종료 일시</FieldLabel>
-          <Input
-            id="absence-end-at"
-            type="datetime-local"
-            aria-invalid={!!errors.end}
-            aria-describedby={errors.end ? "absence-end-error" : undefined}
-            {...register("end", { required: "종료 일시를 입력해 주세요." })}
+          <Controller
+            name="end"
+            control={control}
+            rules={{ required: "종료 일시를 입력해 주세요." }}
+            render={({ field }) => (
+              <DateTimePicker
+                id="absence-end-at"
+                label="종료 일시"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                aria-invalid={!!errors.end}
+                aria-describedby={errors.end ? "absence-end-error" : undefined}
+              />
+            )}
           />
           <FieldError
             id="absence-end-error"

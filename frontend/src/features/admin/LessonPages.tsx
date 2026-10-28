@@ -1,6 +1,7 @@
 import { LessonReservationSummary } from "@/components/ui/ReservationSummary";
 import { currentTime } from "@/api/runtime";
 import { useAllInstructors, useAllLessonTypes, useAllLessons, useAllRooms } from "./queries";
+import { assertLessonTime, lessonTimeField } from "./LessonTimeField";
 import { PAGE_SIZE } from "@/components/ui/Pagination";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -458,25 +459,11 @@ export function LessonEditor({
       required: true,
       options: options(rooms.data?.content),
     },
-    {
-      name: "startAt",
-      label: "시작 시각 (서울)",
-      type: "datetime-local",
-      required: true,
+    lessonTimeField({
+      excludeLessonId: id,
+      canSeeInstructorSchedule: !allowedTypeCodes,
       disabled: !!l?.reservedCount,
-    },
-    ...(!id ? [{
-      name: "durationMinutes", label: "수업 길이 (분)", type: "number" as const,
-      required: true, min: 1, max: 1440,
-      description: "시작 시각이나 수업 길이를 바꾸면 종료 시각을 자동 계산합니다. 종료 시각은 직접 조정할 수도 있습니다.",
-    }] : []),
-    {
-      name: "endAt",
-      label: "종료 시각 (서울)",
-      type: "datetime-local",
-      required: true,
-      disabled: !!l?.reservedCount,
-    },
+    }),
     ...(!id
       ? [
           {
@@ -525,22 +512,12 @@ export function LessonEditor({
                 title: typeChoices.find((type) => String(type.id) === String(initialValues.lessonTypeId))?.name ?? (typeChoices.length === 1 ? typeChoices[0].name : ""),
                 instructorId: instructors.data?.content.length === 1 ? String(instructors.data.content[0].id) : "",
                 roomId: rooms.data?.content.length === 1 ? String(rooms.data.content[0].id) : "",
-                durationMinutes: initialValues.startAt && initialValues.endAt
-                  ? String((Date.parse(toUTC(String(initialValues.endAt))) - Date.parse(toUTC(String(initialValues.startAt)))) / 60000)
-                  : "50",
                 ...initialValues,
               }
         }
         onFieldChange={!id ? (name, values): Values => {
           if (name === "lessonTypeId" && (!values.title || typeChoices.some((type) => type.name === values.title))) {
             return { title: typeChoices.find((type) => String(type.id) === values.lessonTypeId)?.name ?? "" };
-          }
-          if ((name === "startAt" || name === "durationMinutes") && values.startAt) {
-            const minutes = Number(values.durationMinutes);
-            const start = Date.parse(`${values.startAt}:00+09:00`);
-            if (Number.isFinite(start) && Number.isInteger(minutes) && minutes > 0 && minutes <= 1440) {
-              return { endAt: toLocalInput(new Date(start + minutes * 60000).toISOString()) };
-            }
           }
           return {};
         } : undefined}
@@ -550,6 +527,7 @@ export function LessonEditor({
           onBack ? onBack() : onNavigate(id ? "admin-lesson-detail" : "admin-lessons", id)
         }
         onSubmit={async (v) => {
+          if (!l?.reservedCount) assertLessonTime(v);
           const data = {
             title: textValue(v, "title").trim(),
             instructorId: numValue(v, "instructorId"),
@@ -607,14 +585,9 @@ export function LessonEditor({
           else onNavigate("admin-lesson-detail", result.id);
         }}
       >
-        {l?.reservedCount ? (
+        {!!l?.reservedCount && (
           <p className="menu-note">예약이 있는 수업은 시간을 변경할 수 없습니다.</p>
-        ) : !id ? (
-          <p className="menu-note">
-            비공개·즉시 공개·공개 예약 중 선택할 수 있습니다. 개설 후에도 상세 화면에서 공개 상태를
-            변경할 수 있습니다.
-          </p>
-        ) : null}
+        )}
       </AdminForm>
     </MenuPanel>
   );
