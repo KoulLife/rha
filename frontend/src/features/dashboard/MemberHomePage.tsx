@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { cva } from "class-variance-authority";
 import type { Screen } from "@/app/routes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { useGetMyPasses, useGetMyReservations } from "@/api/generated/api";
+import { useGetLessons, useGetMyPasses, useGetMyReservations } from "@/api/generated/api";
 import {
   Table,
   TableBody,
@@ -14,11 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { mocksEnabled } from "@/api/runtime";
-import { useAllLessons } from "@/features/admin/queries";
+import { currentTime } from "@/api/runtime";
 import { seoulDate, seoulTime } from "./model";
-import { dashboardPreviewTime } from "./preview";
-import { dateInSeoul, timeInSeoul, weekRange, weekStart } from "@/features/timetable/model";
+import { HOME_LESSON_LIMIT, homeLessonStatus, upcomingLessons } from "./homeLessons";
+import { dateInSeoul, timeInSeoul } from "@/features/timetable/model";
 import { PassUsage } from "@/features/member/PassUsage";
 import { passUsage } from "@/features/member/pages/PassesPage";
 import { nextPass } from "@/features/member/nextPass";
@@ -84,14 +83,14 @@ export function MemberHomePage({
   );
   const pass = nextPass(passQuery.data?.content ?? []);
   const reserved = reservedQuery.data?.content ?? [];
-  const { from: weekFrom, to: weekTo } = weekRange(
-    weekStart(dateInSeoul(mocksEnabled ? dashboardPreviewTime : Date.now())),
+  // 화면을 연 시각 이후에 시작하는 공개 수업. 조회 키가 매번 바뀌지 않도록 연 시각을 고정한다.
+  const [openedAt] = useState(currentTime);
+  const lessonsQuery = useGetLessons(
+    { from: openedAt, status: "PUBLISHED", order: "ASC", page: 1, size: HOME_LESSON_LIMIT },
+    { query: { enabled: !empty } },
   );
-  const lessonsQuery = useAllLessons(
-    { from: weekFrom, to: weekTo, status: "PUBLISHED", order: "ASC" },
-    !empty,
-  );
-  const publicLessons = empty ? [] : (lessonsQuery.data?.content ?? []);
+  const now = Date.parse(currentTime());
+  const publicLessons = empty ? [] : upcomingLessons(lessonsQuery.data?.content ?? [], now);
   const metrics: { label: string; value: string; target: Screen }[] = [
     {
       label: "예약 완료",
@@ -173,7 +172,7 @@ export function MemberHomePage({
             <Table
               variant="management"
               className="home-public-table"
-              aria-label="이번 주 수업 목록"
+              aria-label="예정된 수업 목록"
             >
               <TableHeader>
                 <TableRow>
@@ -217,7 +216,7 @@ export function MemberHomePage({
                     <TableCell>
                       <StatusBadge
                         domain="lesson"
-                        status={lesson.reservedCount >= lesson.capacity ? "CLOSED" : "AVAILABLE"}
+                        status={homeLessonStatus(lesson, now)}
                       />
                     </TableCell>
                     <TableCell>
@@ -242,7 +241,7 @@ export function MemberHomePage({
                     ? "수업을 불러오는 중입니다"
                     : lessonsQuery.isError
                       ? "수업을 불러오지 못했습니다"
-                      : "이번 주 수업이 없습니다"}
+                      : "예정된 수업이 없습니다"}
                 </EmptyTitle>
                 <EmptyDescription>
                   {lessonsQuery.isError
