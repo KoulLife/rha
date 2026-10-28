@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ApiError } from "@/api/client";
 
 export const money = (n: number) => `${n.toLocaleString("ko-KR")}원`;
@@ -48,6 +49,19 @@ export type FormField = {
   description?: string;
   disabled?: boolean;
   showWhen?: { name: string; value: string };
+  /** 기본 입력 대신 직접 그린다. 다른 필드 값도 읽고 바꿀 수 있다 (예: 시작·종료 시각을 함께 고르는 칸). */
+  render?: (field: CustomFieldProps) => ReactNode;
+};
+export type CustomFieldProps = {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+  values: Values;
+  setValue: (name: string, value: string) => void;
+  disabled?: boolean;
+  invalid: boolean;
+  describedBy?: string;
 };
 export const textValue = (values: Values, key: string) => String(values[key] ?? "");
 export const numValue = (values: Values, key: string) => Number(values[key]);

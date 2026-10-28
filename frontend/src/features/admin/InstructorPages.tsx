@@ -1,4 +1,5 @@
 import { useAllMembers, useAllInstructors, useAllRooms } from "./queries";
+import { assertLessonTime, lessonTimeField } from "./LessonTimeField";
 import { todayInSeoul } from "@/api/runtime";
 import { PAGE_SIZE } from "@/components/ui/Pagination";
 import { useState } from "react";
@@ -193,20 +194,11 @@ export function AbsenceDetail({ id, onNavigate }: { id: number; onNavigate: Navi
           required: true,
           options: options(rooms.data?.content),
         },
-        {
-          name: "startAt",
-          label: "시작 시각 (서울)",
-          type: "datetime-local",
-          required: true,
+        lessonTimeField({
+          excludeLessonId: lesson.id,
+          canSeeInstructorSchedule: true,
           disabled: !!lesson.reservedCount,
-        },
-        {
-          name: "endAt",
-          label: "종료 시각 (서울)",
-          type: "datetime-local",
-          required: true,
-          disabled: !!lesson.reservedCount,
-        },
+        }),
       ],
       initial: {
         title: lesson.title,
@@ -232,6 +224,7 @@ export function AbsenceDetail({ id, onNavigate }: { id: number; onNavigate: Navi
         </>
       ),
       onSubmit: async (v) => {
+        if (!lesson.reservedCount) assertLessonTime(v);
         const startAt = lesson.reservedCount ? undefined : toUTC(textValue(v, "startAt")),
           endAt = lesson.reservedCount ? undefined : toUTC(textValue(v, "endAt"));
         if (startAt && endAt && endAt <= startAt)

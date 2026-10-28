@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, FieldDescription, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Select,
   SelectTrigger,
@@ -333,7 +334,28 @@ export function AdminForm({
             {field.required ? " *" : ""}
           </FieldLabel>
         )}
-        {field.type === "select" || field.type === "search" ? (
+        {field.render ? (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={{ required: field.required ? `${field.label}을 입력해 주세요.` : false }}
+            render={({ field: f }) => (
+              <>
+                {field.render!({
+                  id,
+                  value: String(f.value ?? ""),
+                  onChange: f.onChange,
+                  onBlur: f.onBlur,
+                  values,
+                  setValue: (name, value) => setValue(name, value, { shouldDirty: true }),
+                  disabled: field.disabled,
+                  invalid: !!error,
+                  describedBy: error ? `${id}-error` : undefined,
+                })}
+              </>
+            )}
+          />
+        ) : field.type === "select" || field.type === "search" ? (
           <Controller
             name={field.name}
             control={control}
@@ -403,6 +425,24 @@ export function AdminForm({
                 onBlur={f.onBlur}
                 min={field.min === undefined ? undefined : String(field.min)}
                 max={field.max === undefined ? undefined : String(field.max)}
+                disabled={field.disabled}
+                aria-invalid={!!error}
+                aria-describedby={error ? `${id}-error` : undefined}
+              />
+            )}
+          />
+        ) : field.type === "datetime-local" ? (
+          <Controller
+            name={field.name}
+            control={control}
+            rules={{ required: field.required ? `${field.label}을 입력해 주세요.` : false }}
+            render={({ field: f }) => (
+              <DateTimePicker
+                id={id}
+                label={field.label}
+                value={String(f.value ?? "")}
+                onChange={f.onChange}
+                onBlur={f.onBlur}
                 disabled={field.disabled}
                 aria-invalid={!!error}
                 aria-describedby={error ? `${id}-error` : undefined}

@@ -1,0 +1,20 @@
+@layer utilities {
+  .date-time-picker[data-slot="date-time-picker"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: var(--space-control);
+  }
+  @media (max-width: 479px) {
+    /* 좁은 화면에서는 날짜를 한 줄에 두고 시·분을 그 아래에 나란히 둔다 */
+    .date-time-picker[data-slot="date-time-picker"] {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .date-time-picker[data-slot="date-time-picker"] > [data-slot="date-picker"] {
+      grid-column: 1 / -1;
+    }
+  }
+  .date-time-picker-popup[data-slot="select-content"] {
+    /* 대화상자 안에서 열려도 가려지지 않게 날짜 선택(.date-picker-popup)과 같은 층에 둔다 */
+    z-index: 100;
+  }
+}
