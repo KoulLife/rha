@@ -313,7 +313,7 @@ export function MemberHomePage({
           </HomePanel>
           <HomePanel
             variant="pass"
-            title="내 이용권"
+            title="사용 중인 이용권"
             action={
               <Button
                 variant="ghost"
@@ -327,6 +327,7 @@ export function MemberHomePage({
               <>
                 <div className="home-pass-heading">
                   <h3>{pass.passProduct.name}</h3>
+                  <p className="home-pass-note">예약하면 이 이용권에서 1회씩 차감됩니다.</p>
                 </div>
                 <PassUsage
                   pass={passUsage(pass)}
