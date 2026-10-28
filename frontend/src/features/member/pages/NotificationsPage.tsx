@@ -123,10 +123,14 @@ export function NotificationsPage({ role, onNavigate }: { role: UserRole; onNavi
                     className="admin-notification-indicator"
                     aria-hidden="true"
                   />
-                  <div>
+                  <button
+                    type="button"
+                    className="admin-notification-open"
+                    onClick={() => void detail.open(notification)}
+                  >
                     <strong>{notification.title}</strong>
-                    <p>{notification.message}</p>
-                  </div>
+                    <span className="admin-notification-message">{notification.message}</span>
+                  </button>
                 </div>
               ),
             },
@@ -147,18 +151,6 @@ export function NotificationsPage({ role, onNavigate }: { role: UserRole; onNavi
                   domain="notification"
                   status={notification.read ? "READ" : "UNREAD"}
                 />
-              ),
-            },
-            {
-              label: "확인",
-              render: (notification) => (
-                <Button
-                  variant="ghost"
-                  aria-label={`${notification.title} 알림 상세 보기`}
-                  onClick={() => void detail.open(notification)}
-                >
-                  상세 보기
-                </Button>
               ),
             },
           ]}

@@ -65,7 +65,11 @@ export const notificationCategories: Record<string, string> = {
   ABSENCE_REJECTED: "부재 반려",
   LESSON_CANCELED: "수업 취소",
   RESERVATION_CANCELED: "예약 취소",
+  RESERVATION_CANCELED_BY_MEMBER: "회원 예약 취소",
 };
+
+// 알림은 실시간 전송이 없어 클라이언트가 주기적으로 조회한다 (getMyUnreadNotificationCount).
+export const NOTIFICATION_POLL_MS = 30_000;
 
 export function useNotificationDetail(role: UserRole, onNavigate: Navigate) {
   const [selected, setSelected] = useState<api.Notification | null>(null);

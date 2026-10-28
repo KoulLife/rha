@@ -389,6 +389,18 @@
     grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
   }
+  /* 알림 제목을 눌러도 상세가 열리도록 제목 자체를 버튼으로 둔다 */
+  .dashboard-list-title-button {
+    max-width: 100%;
+    font: inherit;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+  .dashboard-list-title-button:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
   .dashboard-list-date {
     display: grid;
     gap: var(--space-tight);

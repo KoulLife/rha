@@ -49,14 +49,27 @@ public class NotificationPublisher {
                 reservation.getId());
     }
 
+    /** 회원이 본인 예약을 취소했을 때 활동 중인 모든 관리자에게 보낸다. 취소 내역은 수업 상세에서 확인하므로 수업으로 연결한다. */
+    public void reservationCanceledByMember(Lesson lesson, String memberName) {
+        String message = memberName + " 회원이 " + TIME.format(lesson.getStartAt()) + " " + lesson.getTitle()
+                + " 수업 예약을 취소했습니다.";
+        for (Member admin : activeAdmins()) {
+            send(admin.getId(), "RESERVATION_CANCELED_BY_MEMBER", "회원이 예약을 취소했습니다", message, "LESSON",
+                    lesson.getId());
+        }
+    }
+
     /** 부재 신청을 활동 중인 모든 관리자에게 보낸다. */
     public void absenceRequested(Absence absence, String instructorName) {
         String message = instructorName + " 강사가 " + period(absence) + " 부재를 신청했습니다.";
-        List<Member> admins = memberRepository.findByRoleAndStatus(MemberRole.ADMIN, MemberStatus.ACTIVE,
-                org.springframework.data.domain.Pageable.unpaged()).getContent();
-        for (Member admin : admins) {
+        for (Member admin : activeAdmins()) {
             send(admin.getId(), "ABSENCE_REQUESTED", "부재 신청이 접수되었습니다", message, "ABSENCE", absence.getId());
         }
+    }
+
+    private List<Member> activeAdmins() {
+        return memberRepository.findByRoleAndStatus(MemberRole.ADMIN, MemberStatus.ACTIVE,
+                org.springframework.data.domain.Pageable.unpaged()).getContent();
     }
 
     public void absenceApproved(Absence absence) {

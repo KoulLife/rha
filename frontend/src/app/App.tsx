@@ -69,6 +69,7 @@ import { dashboardPreview } from "@/features/dashboard/preview";
 import { roleLabels, seoulDate, type DashboardUser } from "@/features/dashboard/model";
 import { PassDetailPage, PassesPage } from "../features/member/pages/PassesPage";
 import { ReservationsPage } from "../features/member/pages/ReservationsPage";
+import { NOTIFICATION_POLL_MS } from "../features/member/pages/NotificationDetail";
 import { NotificationsPage } from "../features/member/pages/NotificationsPage";
 import type { Screen } from "./routes";
 import { DashboardError, DashboardLoading } from "@/features/dashboard/DashboardState";
@@ -139,7 +140,9 @@ function App({
   const [instructorChanges, setInstructorChanges] = useState<AttendanceChange[]>([]);
   const admin = useAdminDashboard(user.role === "ADMIN");
   const viewData = user.role === "ADMIN" && homeView !== "empty" ? admin.data : data;
-  const unread = api.useGetMyUnreadNotificationCount();
+  const unread = api.useGetMyUnreadNotificationCount({
+    query: { refetchInterval: NOTIFICATION_POLL_MS },
+  });
   const unreadCount = homeView === "empty" ? 0 : (unread.data?.unreadCount ?? 0);
   const navigation = getNavigation(user.role, currentUser.permissions);
 

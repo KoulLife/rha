@@ -173,11 +173,38 @@ class NotificationDispatchTest extends ApiTestSupport {
     }
 
     @Test
-    void 회원이_스스로_취소하면_알림이_없다() throws Exception {
+    void 회원이_스스로_취소하면_활동_중인_모든_관리자에게_알림이_생긴다() throws Exception {
+        long secondAdmin = insertMember("admin2@example.com", "두번째관리자", "ADMIN", "ACTIVE", BASE);
+        long inactiveAdmin = insertMember("admin3@example.com", "비활성관리자", "ADMIN", "INACTIVE", BASE);
+        long adminId = jdbc.queryForObject("SELECT id FROM members WHERE email = 'admin@example.com'", Long.class);
         long reservationId = reserve(lessonId, memberA, passA, "RESERVED");
 
         send("/reservations/" + reservationId + "/cancellations", login("a@example.com"), null)
                 .andExpect(status().isOk());
+
+        for (long recipient : new long[] {adminId, secondAdmin}) {
+            List<Map<String, Object>> rows = notificationsOf(recipient);
+            assertThat(rows).hasSize(1);
+            Map<String, Object> row = rows.get(0);
+            assertThat(row.get("type")).isEqualTo("RESERVATION_CANCELED_BY_MEMBER");
+            assertThat(row.get("title")).isEqualTo("회원이 예약을 취소했습니다");
+            assertThat((String) row.get("message")).contains("김회원").contains("아침 필라테스")
+                    .contains(lessonTime());
+            assertThat(row.get("related_type")).isEqualTo("LESSON");
+            assertThat(row.get("related_id")).isEqualTo(lessonId);
+            assertThat(row.get("read_at")).isNull();
+        }
+        assertThat(notificationsOf(inactiveAdmin)).isEmpty();
+        assertThat(notificationsOf(memberA)).isEmpty();
+        assertThat(notificationsOf(instructorId)).isEmpty();
+    }
+
+    @Test
+    void 회원의_취소가_거절되면_관리자_알림도_생기지_않는다() throws Exception {
+        long reservationId = reserve(lessonId, memberA, passA, "CANCELED");
+
+        send("/reservations/" + reservationId + "/cancellations", login("a@example.com"), null)
+                .andExpect(status().isConflict());
 
         assertThat(notificationCount()).isZero();
     }
