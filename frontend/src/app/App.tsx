@@ -127,6 +127,8 @@ function App({
   const [homeView, setHomeView] = useState(initialHomeView);
   const [screen, setScreen] = useState<Screen>("home");
   const [selectedId, setSelectedId] = useState(101);
+  // 회원이 홈에서 담당 강사 수업으로 이동할 때 시간표에 미리 걸 강사 필터
+  const [timetableInstructorId, setTimetableInstructorId] = useState<number>();
   const [data] = useState(() =>
     initialHomeView === "empty"
       ? { lessons: [], reservations: [], absences: [], notifications: [] }
@@ -183,7 +185,9 @@ function App({
     }
     if (!canAccessScreen(next, user.role, currentUser.permissions)) return;
     if (user.role === "MEMBER" && next === "reservation-detail") next = "reservations";
-    if (id !== undefined) setSelectedId(id);
+    // 회원 시간표의 id는 수업이 아니라 담당 강사다.
+    if (user.role === "MEMBER" && next === "timetable") setTimetableInstructorId(id);
+    else if (id !== undefined) setSelectedId(id);
     else if (user.role === "INSTRUCTOR" && next === "timetable") setSelectedId(0);
     else if (next === "admin-settlement-create") setSelectedId(0);
     setScreen(next);
@@ -244,10 +248,11 @@ function App({
             />
           ) : screen === "timetable" || screen === "classes" || screen === "admin-lessons" ? (
             <LessonViews
-              key={`${screen}-${user.role === "INSTRUCTOR" ? selectedId : ""}`}
+              key={`${screen}-${user.role === "INSTRUCTOR" ? selectedId : (timetableInstructorId ?? "")}`}
               screen={screen}
               user={user}
               initialLessonId={user.role === "INSTRUCTOR" ? selectedId : 0}
+              initialInstructorId={screen === "timetable" ? timetableInstructorId : undefined}
               canViewReservations={canAccessScreen("attendees", user.role, currentUser.permissions)}
               changes={instructorChanges}
               onRecorded={onApiAttendanceRecorded}
@@ -319,6 +324,7 @@ function LessonViews({
   onNavigate,
   canReserve,
   initialLessonId,
+  initialInstructorId,
   canViewReservations,
   changes,
   onRecorded,
@@ -328,6 +334,7 @@ function LessonViews({
   onNavigate: (screen: Screen, id?: number) => void;
   canReserve: boolean;
   initialLessonId: number;
+  initialInstructorId?: number;
   canViewReservations: boolean;
   changes: AttendanceChange[];
   onRecorded: (
@@ -377,6 +384,7 @@ function LessonViews({
               canReserve={canReserve}
               view={view}
               initialDate={initialLesson.data ? seoulDate(initialLesson.data.startAt) : undefined}
+              initialInstructorId={initialInstructorId}
               selectedLessonId={
                 user.role === "INSTRUCTOR" || user.role === "ADMIN" ? selectedLessonId : undefined
               }
