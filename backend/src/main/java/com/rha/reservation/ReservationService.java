@@ -213,6 +213,8 @@ public class ReservationService {
         passRepository.findByIdForUpdate(reservation.getPassId()).ifPresent(pass -> pass.restoreOne(now));
         if (admin && !reservation.getMemberId().equals(callerId)) {
             notificationPublisher.reservationCanceledByAdmin(reservation, lesson);
+        } else if (!admin) {
+            notificationPublisher.reservationCanceledByMember(lesson, caller.getName());
         }
         activityLogRecorder.record(ActivityAction.RESERVATION_CANCELED, callerId, reservation.getMemberId(),
                 "RESERVATION", reservation.getId(), memberLabel(reservation, callerId) + "수업 '" + lesson.getTitle()
