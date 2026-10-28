@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   useCreateReservation,
+  useGetMyPasses,
   useGetMyReservations,
   getGetMyReservationsQueryKey,
   getGetLessonsInfiniteQueryKey,
@@ -38,6 +39,7 @@ import {
 } from "@/components/ui/table";
 import { ApiError } from "@/api/client";
 import { fallbackInstructorColor, useInstructorColors } from "@/features/instructor/colors";
+import { nextPass } from "@/features/member/nextPass";
 import { LessonSelectionCard } from "./LessonSelectionCard";
 import { WeekToolbarControls } from "./WeekToolbarControls";
 import { useLessonPermissions } from "./lessonPermissions";
@@ -54,6 +56,7 @@ export function TimetablePage({
   initialDate,
   selectedLessonId,
   onSelectLesson,
+  initialInstructorId,
 }: {
   user: DashboardUser;
   onNavigate: (screen: Screen, id?: number) => void;
@@ -62,11 +65,15 @@ export function TimetablePage({
   initialDate?: string;
   selectedLessonId?: number | null;
   onSelectLesson?: (id: number | null) => void;
+  initialInstructorId?: number;
 }) {
   const today = dateInSeoul();
   const [date, setDate] = useState(initialDate ?? today);
   const [room, setRoom] = useState("all");
   const [lessonType, setLessonType] = useState("all");
+  const [instructor, setInstructor] = useState(
+    initialInstructorId ? String(initialInstructorId) : "all",
+  );
   const [scope, setScope] = useState("all");
   const [status, setStatus] = useState("all");
   const [editing, setEditing] = useState(false);
@@ -110,6 +117,7 @@ export function TimetablePage({
           setDate(dateInSeoul(lesson.startAt));
           setRoom("all");
           setLessonType("all");
+          setInstructor("all");
           setScope("all");
           setStatus("all");
           setSelectedId(lesson.id);
@@ -168,6 +176,8 @@ export function TimetablePage({
         setRoom={setRoom}
         lessonType={lessonType}
         setLessonType={setLessonType}
+        instructor={instructor}
+        setInstructor={setInstructor}
         scope={scope}
         setScope={setScope}
         status={status}
@@ -192,6 +202,8 @@ type ScheduleProps = {
   view: "calendar" | "list";
   lessonType: string;
   setLessonType: (value: string) => void;
+  instructor: string;
+  setInstructor: (value: string) => void;
   editing: boolean;
   canCreate: boolean;
   canUpdate: (lesson: Lesson) => boolean;
@@ -293,6 +305,8 @@ function Schedule({
   setRoom,
   lessonType,
   setLessonType,
+  instructor,
+  setInstructor,
   scope,
   setScope,
   status,
@@ -326,6 +340,7 @@ function Schedule({
       (view !== "calendar" || lesson.status !== "CANCELED") &&
       (lessonType === "all" || String(lesson.lessonType.id) === lessonType) &&
       (room === "all" || String(lesson.room.id) === room) &&
+      (instructor === "all" || String(lesson.instructor.id) === instructor) &&
       (scope === "all" ||
         (user.role === "MEMBER" ? myLessonIds.has(lesson.id) : lesson.instructor.id === user.id)) &&
       (status === "all" || lesson.status === status),
@@ -335,6 +350,16 @@ function Schedule({
   const instructors = [
     ...new Map(visibleRows.map((lesson) => [lesson.instructor.id, lesson.instructor])).values(),
   ].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  const myPasses = useGetMyPasses(
+    { page: 1, size: 100 },
+    { query: { enabled: user.role === "MEMBER" } },
+  );
+  const myInstructor = nextPass(myPasses.data?.content ?? [])?.instructor;
+  const instructorOptions = [
+    ...new Map(lessons.map((lesson) => [lesson.instructor.id, lesson.instructor])).values(),
+  ]
+    .filter((item) => item.id !== myInstructor?.id)
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
   const selected = visibleRows.find((lesson) => lesson.id === selectedId);
   const dates = Array.from({ length: 7 }, (_, i) => shiftDate(start, i));
   const days = dates.map((date) => layoutDay(visibleRows, date));
@@ -437,6 +462,43 @@ function Schedule({
                   <SelectItem value={lessonType}>선택한 유형 (수업 없음)</SelectItem>
                 )}
               {lessonTypes.map((item) => (
+                <SelectItem
+                  key={item.id}
+                  value={String(item.id)}
+                >
+                  {item.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field>
+          <FieldLabel
+            htmlFor="timetable-instructor"
+            className="sr-only"
+          >
+            담당 강사
+          </FieldLabel>
+          <Select
+            value={instructor}
+            onValueChange={setInstructor}
+          >
+            <SelectTrigger id="timetable-instructor">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체 강사</SelectItem>
+              {myInstructor && (
+                <SelectItem value={String(myInstructor.id)}>
+                  담당 강사 수업 ({myInstructor.name})
+                </SelectItem>
+              )}
+              {instructor !== "all" &&
+                instructor !== String(myInstructor?.id) &&
+                !instructorOptions.some((item) => String(item.id) === instructor) && (
+                  <SelectItem value={instructor}>선택한 강사 (수업 없음)</SelectItem>
+                )}
+              {instructorOptions.map((item) => (
                 <SelectItem
                   key={item.id}
                   value={String(item.id)}

@@ -21,6 +21,7 @@ import { dashboardPreviewTime } from "./preview";
 import { dateInSeoul, timeInSeoul, weekRange, weekStart } from "@/features/timetable/model";
 import { PassUsage } from "@/features/member/PassUsage";
 import { passUsage } from "@/features/member/pages/PassesPage";
+import { nextPass } from "@/features/member/nextPass";
 import "./member-home.css";
 
 const weekdayFormatter = new Intl.DateTimeFormat("ko-KR", {
@@ -72,11 +73,7 @@ export function MemberHomePage({
   onNavigate: (screen: Screen, id?: number) => void;
   empty?: boolean;
 }) {
-  const activePassQuery = useGetMyPasses(
-    { page: 1, size: 1, status: "ACTIVE" },
-    { query: { enabled: !empty } },
-  );
-  const allPassQuery = useGetMyPasses({ page: 1, size: 1 }, { query: { enabled: !empty } });
+  const passQuery = useGetMyPasses({ page: 1, size: 100 }, { query: { enabled: !empty } });
   const reservedQuery = useGetMyReservations(
     { page: 1, size: 3, status: "RESERVED", order: "ASC" },
     { query: { enabled: !empty } },
@@ -85,7 +82,7 @@ export function MemberHomePage({
     { page: 1, size: 1 },
     { query: { enabled: !empty } },
   );
-  const pass = activePassQuery.data?.content[0];
+  const pass = nextPass(passQuery.data?.content ?? []);
   const reserved = reservedQuery.data?.content ?? [];
   const { from: weekFrom, to: weekTo } = weekRange(
     weekStart(dateInSeoul(mocksEnabled ? dashboardPreviewTime : Date.now())),
@@ -103,12 +100,12 @@ export function MemberHomePage({
     },
     {
       label: "보유 이용권",
-      value: allPassQuery.data ? String(allPassQuery.data.pageInfo.totalElements) : "—",
+      value: passQuery.data ? String(passQuery.data.pageInfo.totalElements) : "—",
       target: "passes",
     },
     {
       label: "이용권 현재 잔여",
-      value: activePassQuery.data ? `${pass?.remainingCount ?? 0}회` : "—",
+      value: passQuery.data ? `${pass?.remainingCount ?? 0}회` : "—",
       target: "passes",
     },
     {
@@ -340,20 +337,27 @@ export function MemberHomePage({
                     domain="pass"
                     status={pass.status}
                   />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onNavigate("timetable", pass.instructor.id)}
+                  >
+                    담당 강사 수업 보기
+                  </Button>
                 </div>
               </>
             ) : (
               <Empty>
                 <EmptyHeader>
                   <EmptyTitle>
-                    {activePassQuery.isPending && !empty
+                    {passQuery.isPending && !empty
                       ? "이용권을 불러오는 중입니다"
-                      : activePassQuery.isError
+                      : passQuery.isError
                         ? "이용권을 불러오지 못했습니다"
                         : "사용 중인 이용권이 없습니다"}
                   </EmptyTitle>
                   <EmptyDescription>
-                    {activePassQuery.isError
+                    {passQuery.isError
                       ? "잠시 후 다시 확인해 주세요."
                       : "내 이용권에서 잔여 횟수와 만료일을 확인할 수 있습니다."}
                   </EmptyDescription>
