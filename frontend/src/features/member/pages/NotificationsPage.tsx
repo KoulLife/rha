@@ -153,18 +153,6 @@ export function NotificationsPage({ role, onNavigate }: { role: UserRole; onNavi
                 />
               ),
             },
-            {
-              label: "확인",
-              render: (notification) => (
-                <Button
-                  variant="ghost"
-                  aria-label={`${notification.title} 알림 상세 보기`}
-                  onClick={() => void detail.open(notification)}
-                >
-                  상세 보기
-                </Button>
-              ),
-            },
           ]}
         />
       </QueryState>
