@@ -251,10 +251,23 @@
   .admin-notification-summary > div {
     min-width: 0;
   }
+  /* 알림 제목·내용을 눌러도 상세가 열린다 */
+  .admin-notification-open {
+    display: block;
+    min-width: 0;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .admin-notification-open:hover strong {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
   .admin-notification-summary strong {
     font-weight: var(--font-weight-heading);
   }
-  .admin-notification-summary p {
+  .admin-notification-summary p,
+  .admin-notification-message {
     display: -webkit-box;
     overflow: hidden;
     margin: var(--space-control) 0 0;

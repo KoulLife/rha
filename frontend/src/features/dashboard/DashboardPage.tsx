@@ -100,7 +100,15 @@ function NotificationList({
       <ul className="dashboard-short-list dashboard-dated-list">
         {items.map((item) => (
           <li key={item.id}>
-            <h3>{item.title}</h3>
+            <h3>
+              <button
+                type="button"
+                className="dashboard-list-title-button"
+                onClick={() => void detail.open(item)}
+              >
+                {item.title}
+              </button>
+            </h3>
             <time
               className="dashboard-list-date"
               dateTime={item.createdAt}

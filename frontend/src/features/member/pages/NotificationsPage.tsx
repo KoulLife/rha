@@ -123,10 +123,14 @@ export function NotificationsPage({ role, onNavigate }: { role: UserRole; onNavi
                     className="admin-notification-indicator"
                     aria-hidden="true"
                   />
-                  <div>
+                  <button
+                    type="button"
+                    className="admin-notification-open"
+                    onClick={() => void detail.open(notification)}
+                  >
                     <strong>{notification.title}</strong>
-                    <p>{notification.message}</p>
-                  </div>
+                    <span className="admin-notification-message">{notification.message}</span>
+                  </button>
                 </div>
               ),
             },
